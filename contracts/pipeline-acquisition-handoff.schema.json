@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ocg.local/contracts/pipeline-acquisition-handoff.schema.json",
+  "title": "OCG PIPELINE Closed Acquisition Handoff",
+  "type": "object",
+  "required": ["contractVersion", "sourceSystem", "targetSystem", "opportunityId", "closedAt", "acquisition", "underwriting", "renovationSeed"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "sourceSystem": { "const": "pipeline" },
+    "targetSystem": { "const": "mission-control" },
+    "opportunityId": { "type": "string", "minLength": 1 },
+    "opportunityCode": { "type": ["string", "null"] },
+    "propertyId": { "type": ["string", "null"] },
+    "address": { "type": ["string", "null"] },
+    "closedAt": { "type": "string", "minLength": 1 },
+    "acquisition": {
+      "type": "object",
+      "required": ["purchasePrice", "strategyType", "offerId", "offerVersionId"],
+      "properties": {
+        "purchasePrice": { "type": ["number", "null"], "minimum": 0 },
+        "earnestMoney": { "type": ["number", "null"], "minimum": 0 },
+        "strategyType": { "type": ["string", "null"] },
+        "offerId": { "type": ["string", "null"] },
+        "offerVersionId": { "type": ["string", "null"] }
+      }
+    },
+    "underwriting": {
+      "type": "object",
+      "properties": {
+        "sourceSystem": { "type": ["string", "null"] },
+        "sourceUnderwritingId": { "type": ["string", "null"] },
+        "arv": { "type": ["number", "null"] },
+        "rehab": { "type": ["number", "null"] },
+        "mao": { "type": ["number", "null"] },
+        "confidence": { "type": ["number", "string", "null"] },
+        "limitations": { "type": ["string", "null"] }
+      }
+    },
+    "renovationSeed": {
+      "type": "object",
+      "required": ["scopeStatus", "projectStatus"],
+      "properties": {
+        "budgetBaseline": { "type": ["number", "null"] },
+        "scopeStatus": { "const": "needs_field_validation" },
+        "projectStatus": { "const": "intake_ready" }
+      }
+    }
+  },
+  "additionalProperties": true
+}
