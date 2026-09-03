@@ -31,7 +31,7 @@ test("risk report detects schedule slippage, budget pressure and weak contractor
   workflow.decideChangeOrder({changeOrderId:co.id,decision:"approved",rationale:"Required structural repair"});
   ops.scoreContractor({contractor:"Acme Renovations",quality:3,schedule:2,communication:2,documentation:2,safety:4});
   const report=ops.riskReport("2026-09-25T12:00:00Z");
-  assert.equal(report.riskLevel,"high");
+  assert.equal(report.riskLevel,"critical");
   assert.ok(report.risks.some(r=>r.kind==="budget_over_approved"));
   assert.ok(report.risks.some(r=>r.kind==="schedule_progress_gap"));
   assert.ok(report.risks.some(r=>r.kind==="contractor_performance"));
