@@ -5,7 +5,7 @@ import { validateMeasurement, validateGeometryChange, verifyFurnitureFit } from 
 const base = {
   propertyId:"p1", roomId:"r1", measurementId:"m1", captureId:"c1",
   deviceModel:"laser meter", platform:"manual", timestamp:"2026-10-22T00:00:00Z",
-  coordinateFrame:"room-local", evidenceRef:"sha256:test-fixture",
+  coordinateFrame:"room-local", evidenceRef:"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   semanticType:"wall", method:"manual_laser", value:4.2, unit:"m",
   uncertainty:0.01, calibrationStatus:"calibrated",
   verificationStatus:"verified", verifiedBy:"field-reviewer",
@@ -41,4 +41,20 @@ test("furniture fits only with dimensional provenance and clearance", () => {
   assert.deepEqual(verifyFurnitureFit(room,item),{fits:true,verified:true,errors:[]});
   assert.equal(verifyFurnitureFit(room,{...item,x:3.5}).fits,false);
   assert.equal(verifyFurnitureFit(room,{...item,dimensionsVerified:false}).verified,false);
+});
+
+test("rejects malformed timestamps", () => {
+ assert.equal(validateMeasurement({...base,timestamp:"yesterday"}).valid,false);
+ assert.equal(validateMeasurement({...base,verifiedAt:"not-a-date"}).valid,false);
+});
+test("rejects unverifiable evidence references", () => {
+ assert.equal(validateMeasurement({...base,evidenceRef:"photo.jpg"}).valid,false);
+});
+test("requires approved scope for structural changes even without lock list", () => {
+ assert.equal(validateGeometryChange({featureId:"wall2",semanticType:"wall",targetState:"PROPOSED"},[]).allowed,false);
+});
+test("rejects overlapping furniture footprints", () => {
+ const room={width:4,depth:4,geometryVerified:true};
+ const item={productId:"sku1",dimensionSource:"manufacturer",dimensionsVerified:true,width:1,depth:1,x:1,y:1,clearance:0.2};
+ assert.equal(verifyFurnitureFit(room,item,[{x:1.5,y:1.5,width:1,depth:1}]).fits,false);
 });
