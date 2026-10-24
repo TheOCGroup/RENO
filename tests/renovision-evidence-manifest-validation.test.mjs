@@ -10,3 +10,13 @@ test("rejects missing tenant",()=>assert.equal(validateEvidenceManifest({...mani
 test("rejects invalid capture timestamp",()=>assert.equal(validateEvidenceManifest({...manifest,capturedAt:"yesterday"}).valid,false));
 test("rejects unrecognized calibration state",()=>assert.equal(validateEvidenceManifest({...manifest,calibrationStatus:"certified"}).valid,false));
 test("rejects zero byte evidence",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,byteLength:0}]}).valid,false));
+
+test("rejects excessive artifact count",()=>{
+ const artifacts=Array.from({length:33},(_,i)=>({...artifact,id:"a"+i}));
+ assert.equal(validateEvidenceManifest({...manifest,artifacts}).valid,false);
+});
+test("rejects per-artifact size over capture limit",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,byteLength:20_000_001}]}).valid,false));
+test("rejects aggregate byte budget over limit",()=>{
+ const artifacts=Array.from({length:6},(_,i)=>({...artifact,id:"a"+i,byteLength:20_000_000}));
+ assert.equal(validateEvidenceManifest({...manifest,artifacts}).valid,false);
+});
