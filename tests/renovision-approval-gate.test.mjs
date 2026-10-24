@@ -35,3 +35,12 @@ test("approval at trusted current time is accepted",async()=>{
  const r=await authorizeSpatialChange(request({now:()=>Date.parse("2026-10-24T00:00:00Z")}));
  assert.equal(r.authorized,true);
 });
+
+test("undelegated self-approval is rejected",async()=>{
+ const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,approvedBy:"operator1",allowedActorIds:undefined})}));
+ assert.equal(r.authorized,false);
+});
+test("explicit actor delegation preserves separately approved workflow",async()=>{
+ const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,approvedBy:"operator1",allowedActorIds:["operator1"]})}));
+ assert.equal(r.authorized,true);
+});
