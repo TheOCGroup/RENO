@@ -24,3 +24,7 @@ test("rejects aggregate byte budget over limit",()=>{
 test("rejects nontext coverage gaps",()=>assert.equal(validateEvidenceManifest({...manifest,coverageGaps:[{location:"corner"}]}).valid,false));
 test("rejects excessive coverage gaps",()=>assert.equal(validateEvidenceManifest({...manifest,coverageGaps:Array(129).fill("corner")}).valid,false));
 test("rejects overlong artifact identifier",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,id:"x".repeat(129)}]}).valid,false));
+
+test("rejects path traversal in room identifier",()=>assert.equal(validateEvidenceManifest({...manifest,roomId:"../other"}).valid,false));
+test("rejects path separators in artifact reference",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,id:"private/file"}]}).valid,false));
+test("rejects oversized property identifier",()=>assert.equal(validateEvidenceManifest({...manifest,propertyId:"p".repeat(129)}).valid,false));
