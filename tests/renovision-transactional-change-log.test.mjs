@@ -13,3 +13,18 @@ test("stale snapshot revision rejected",async()=>{const store=makeStore();await 
 test("compare and append conflict rejected",async()=>{const store={readFeatureEvents:async()=>({revision:0,events:[]}),compareAndAppend:async()=>({committed:false})};assert.equal((await commitSpatialEvent(req(store))).committed,false);});
 test("unapproved event never reaches append",async()=>{let calls=0;const store={readFeatureEvents:async()=>({revision:0,events:[]}),compareAndAppend:async()=>{calls++;return {committed:true,revision:1};}};const r=await commitSpatialEvent({...req(store),resolveApproval:async()=>({...approval,status:"pending"})});assert.equal(r.committed,false);assert.equal(calls,0);});
 test("unexpected storage exception fails closed",async()=>{const store={readFeatureEvents:async()=>{throw Error("offline")},compareAndAppend:async()=>{}};assert.equal((await commitSpatialEvent(req(store))).committed,false);});
+
+test("mixed-room snapshot rejected before approval resolver",async()=>{
+ let called=false;const store={readFeatureEvents:async()=>({revision:1,events:[{...event,roomId:"other"}]}),compareAndAppend:async()=>{called=true;}};
+ const r=await commitSpatialEvent({...req(store),expectedRevision:1});
+ assert.equal(r.committed,false);assert.equal(called,false);
+});
+test("snapshot revision and event count mismatch rejected",async()=>{
+ let called=false;const store={readFeatureEvents:async()=>({revision:2,events:[]}),compareAndAppend:async()=>{called=true;}};
+ const r=await commitSpatialEvent({...req(store),expectedRevision:2});
+ assert.equal(r.committed,false);assert.equal(called,false);
+});
+test("mixed-property snapshot rejected",async()=>{
+ const store={readFeatureEvents:async()=>({revision:1,events:[{...event,propertyId:"other"}]}),compareAndAppend:async()=>({committed:true,revision:2})};
+ assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);
+});
