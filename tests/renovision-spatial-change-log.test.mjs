@@ -45,3 +45,13 @@ test("different property cannot supply previous feature state",()=>{
  const other=appendSpatialEvent(first,{...event,eventId:"e2",propertyId:"other",fromState:"PROPOSED",toState:"AS_BUILT"});
  assert.equal(other.ok,false);
 });
+
+test("non-ISO event timestamp rejected",()=>assert.equal(appendSpatialEvent([],{...event,occurredAt:"yesterday"}).ok,false));
+test("backdated event rejected even when state transition matches",()=>{
+ const first=appendSpatialEvent([],{...event,occurredAt:"2026-10-25T00:00:00Z"}).events;
+ assert.equal(appendSpatialEvent(first,{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT",occurredAt:"2026-10-24T00:00:00Z"}).ok,false);
+});
+test("later event timestamp permits state transition",()=>{
+ const first=appendSpatialEvent([],event).events;
+ assert.equal(appendSpatialEvent(first,{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT",occurredAt:"2026-10-25T00:00:00Z"}).ok,true);
+});
