@@ -28,3 +28,13 @@ test("mixed-property snapshot rejected",async()=>{
  const store={readFeatureEvents:async()=>({revision:1,events:[{...event,propertyId:"other"}]}),compareAndAppend:async()=>({committed:true,revision:2})};
  assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);
 });
+
+test("duplicate event IDs in snapshot rejected",async()=>{
+ const history=[{...event,eventId:"prior",toState:"PROPOSED"},{...event,eventId:"prior",fromState:"PROPOSED",toState:"ALTERNATE"}];
+ const store={readFeatureEvents:async()=>({revision:2,events:history}),compareAndAppend:async()=>({committed:true,revision:3})};
+ assert.equal((await commitSpatialEvent({...req(store),expectedRevision:2})).committed,false);
+});
+test("missing event ID in snapshot rejected",async()=>{
+ const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:null}]}),compareAndAppend:async()=>({committed:true,revision:2})};
+ assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);
+});
