@@ -64,3 +64,6 @@ test("rejects historical timestamps out of order",async()=>{
 });
 
 test("rejects historical entries without audit actor",async()=>{const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:"prior",actorId:""}]}),compareAndAppend:async()=>({committed:true,revision:2})};assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);});
+
+test("rejects historical entry missing approval reference",async()=>{const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:"prior",approvalRef:""}]}),compareAndAppend:async()=>({committed:true,revision:2})};assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);});
+test("rejects historical timestamp not in ISO format",async()=>{const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:"prior",occurredAt:"October 24 2026"}]}),compareAndAppend:async()=>({committed:true,revision:2})};assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);});
