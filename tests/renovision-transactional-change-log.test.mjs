@@ -38,3 +38,14 @@ test("missing event ID in snapshot rejected",async()=>{
  const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:null}]}),compareAndAppend:async()=>({committed:true,revision:2})};
  assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);
 });
+
+test("anonymous transaction never reads feature history",async()=>{
+ let reads=0;const store={readFeatureEvents:async()=>{reads++;return {revision:0,events:[]}},compareAndAppend:async()=>({committed:true,revision:1})};
+ const r=await commitSpatialEvent({...req(store),actor:{id:"operator",tenantId:"tenant",authenticated:false}});
+ assert.equal(r.committed,false);assert.equal(reads,0);
+});
+test("missing actor identity never reads feature history",async()=>{
+ let reads=0;const store={readFeatureEvents:async()=>{reads++;return {revision:0,events:[]}},compareAndAppend:async()=>({committed:true,revision:1})};
+ const r=await commitSpatialEvent({...req(store),actor:{tenantId:"tenant",authenticated:true}});
+ assert.equal(r.committed,false);assert.equal(reads,0);
+});
