@@ -20,3 +20,7 @@ test("rejects aggregate byte budget over limit",()=>{
  const artifacts=Array.from({length:6},(_,i)=>({...artifact,id:"a"+i,byteLength:20_000_000}));
  assert.equal(validateEvidenceManifest({...manifest,artifacts}).valid,false);
 });
+
+test("rejects nontext coverage gaps",()=>assert.equal(validateEvidenceManifest({...manifest,coverageGaps:[{location:"corner"}]}).valid,false));
+test("rejects excessive coverage gaps",()=>assert.equal(validateEvidenceManifest({...manifest,coverageGaps:Array(129).fill("corner")}).valid,false));
+test("rejects overlong artifact identifier",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,id:"x".repeat(129)}]}).valid,false));
