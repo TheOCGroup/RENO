@@ -48,3 +48,12 @@ test("declared and actual blob size mismatch is rejected",async()=>{
  const blob={size:100,arrayBuffer:async()=>new Uint8Array([1,2]).buffer};
  await assert.rejects(storage.put({blob,artifact:{propertyId:"p1",roomId:"r1"},actorId:"owner",retentionDays:30}));
 });
+
+test("fixture rejects missing room scope even with permissive authorization",async()=>{
+ const storage=createMemoryEvidenceStorage({authorize:async()=>true});
+ await assert.rejects(storage.put({blob:new Blob(["x"]),artifact:{propertyId:"p1"},actorId:"owner",retentionDays:1}));
+});
+test("fixture rejects invalid retention clock",async()=>{
+ const storage=createMemoryEvidenceStorage({authorize:async()=>true,clock:()=>Number.POSITIVE_INFINITY});
+ await assert.rejects(storage.put({blob:new Blob(["x"]),artifact:{propertyId:"p1",roomId:"r1"},actorId:"owner",retentionDays:1}));
+});
