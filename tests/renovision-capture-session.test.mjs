@@ -37,3 +37,16 @@ test("play failure stops camera",async()=>{
  const b=base();b.args.video.play=async()=>{throw Error("blocked")};
  const r=await captureAndPersistFrame(b.args);assert.equal(r.ok,false);assert.equal(b.stats().stopped,1);
 });
+
+test("invalid capture identifiers never request camera access",async()=>{
+ const b=base();const r=await captureAndPersistFrame({...b.args,roomId:"../other"});
+ assert.equal(r.stage,"input");assert.equal(b.stats().opened,0);
+});
+test("missing storage never requests camera access",async()=>{
+ const b=base();const r=await captureAndPersistFrame({...b.args,storage:null});
+ assert.equal(r.stage,"input");assert.equal(b.stats().opened,0);
+});
+test("invalid retention never requests camera access",async()=>{
+ const b=base();const r=await captureAndPersistFrame({...b.args,retentionDays:366});
+ assert.equal(r.stage,"input");assert.equal(b.stats().opened,0);
+});
