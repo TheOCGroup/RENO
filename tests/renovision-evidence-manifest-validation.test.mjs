@@ -1,0 +1,12 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {validateEvidenceManifest} from "../lib/renovision/evidence-manifest-validation.mjs";
+const artifact={id:"a1",kind:"photo",digest:"sha256:"+"a".repeat(64),byteLength:100};
+const manifest={tenantId:"t",propertyId:"p",roomId:"r",captureId:"c",operatorId:"o",deviceModel:"test",coordinateFrame:"local",capturedAt:"2026-10-24T00:00:00Z",platform:"web",calibrationStatus:"pending",coverageGaps:[],artifacts:[artifact]};
+test("accepts structurally complete unverified manifest",()=>{const r=validateEvidenceManifest(manifest);assert.equal(r.valid,true);assert.equal(r.fieldVerified,false);});
+test("rejects duplicate artifact IDs",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[artifact,artifact]}).valid,false));
+test("rejects invalid artifact digest",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,digest:"not-a-hash"}]}).valid,false));
+test("rejects missing tenant",()=>assert.equal(validateEvidenceManifest({...manifest,tenantId:""}).valid,false));
+test("rejects invalid capture timestamp",()=>assert.equal(validateEvidenceManifest({...manifest,capturedAt:"yesterday"}).valid,false));
+test("rejects unrecognized calibration state",()=>assert.equal(validateEvidenceManifest({...manifest,calibrationStatus:"certified"}).valid,false));
+test("rejects zero byte evidence",()=>assert.equal(validateEvidenceManifest({...manifest,artifacts:[{...artifact,byteLength:0}]}).valid,false));
