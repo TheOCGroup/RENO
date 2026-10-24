@@ -9,22 +9,29 @@ const req=store=>({store,actor,event,expectedRevision:0,resolveApproval:async()=
 test("test store integrates with approved atomic append",async()=>{
  const store=createMemorySpatialEventStore({authorize:async ({actor})=>actor?.id==="owner"});
  assert.equal((await commitSpatialEvent(req(store))).committed,true);
- const state=await store.readFeatureEvents({tenantId:"tenant1",propertyId:"p1",featureId:"wall",actor});
+ const state=await store.readFeatureEvents({tenantId:"tenant1",propertyId:"p1",roomId:"r1",featureId:"wall",actor});
  assert.equal(state.revision,1);assert.equal(state.events[0].eventId,"e1");
 });
 test("test store rejects stale writer revision",async()=>{
  const store=createMemorySpatialEventStore({authorize:async()=>true});
  await commitSpatialEvent(req(store));
- const receipt=await store.compareAndAppend({tenantId:"tenant1",propertyId:"p1",featureId:"wall",actor,expectedRevision:0,event});
+ const receipt=await store.compareAndAppend({tenantId:"tenant1",propertyId:"p1",roomId:"r1",featureId:"wall",actor,expectedRevision:0,event});
  assert.equal(receipt.committed,false);
 });
 test("test store denies unauthorized access",async()=>{
  const store=createMemorySpatialEventStore({authorize:async ({actor})=>actor?.id==="owner"});
- await assert.rejects(store.readFeatureEvents({tenantId:"tenant1",propertyId:"p1",featureId:"wall",actor:{id:"outsider"}}));
+ await assert.rejects(store.readFeatureEvents({tenantId:"tenant1",propertyId:"p1",roomId:"r1",featureId:"wall",actor:{id:"outsider"}}));
 });
 test("tenant-scoped storage does not leak another tenant state",async()=>{
  const store=createMemorySpatialEventStore({authorize:async()=>true});
  await commitSpatialEvent(req(store));
- const other=await store.readFeatureEvents({tenantId:"tenant2",propertyId:"p1",featureId:"wall",actor});
+ const other=await store.readFeatureEvents({tenantId:"tenant2",propertyId:"p1",roomId:"r1",featureId:"wall",actor});
+ assert.equal(other.revision,0);assert.equal(other.events.length,0);
+});
+
+test("same feature name in another room remains isolated",async()=>{
+ const store=createMemorySpatialEventStore({authorize:async()=>true});
+ await commitSpatialEvent(req(store));
+ const other=await store.readFeatureEvents({tenantId:"tenant1",propertyId:"p1",roomId:"r2",featureId:"wall",actor});
  assert.equal(other.revision,0);assert.equal(other.events.length,0);
 });
