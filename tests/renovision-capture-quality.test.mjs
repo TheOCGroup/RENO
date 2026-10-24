@@ -8,3 +8,7 @@ test("coverage gaps require review",()=>assert.equal(assessCaptureQuality({...ba
 test("high blur requires review",()=>assert.equal(assessCaptureQuality({...base,blurScore:0.5}).quality,"review_required"));
 test("low depth coverage requires review",()=>assert.equal(assessCaptureQuality({...base,depthCoverageFraction:0.3}).quality,"review_required"));
 test("missing depth metric is invalid",()=>assert.equal(assessCaptureQuality({...base,depthCoverageFraction:undefined}).valid,false));
+
+test("malformed coverage gap is invalid rather than silently accepted",()=>assert.equal(assessCaptureQuality({...base,coverageGaps:[{location:"corner"}]}).valid,false));
+test("excessive coverage gaps are rejected",()=>assert.equal(assessCaptureQuality({...base,coverageGaps:Array(129).fill("corner")}).valid,false));
+test("oversized device identifier is rejected",()=>assert.equal(assessCaptureQuality({...base,deviceClass:"x".repeat(129)}).valid,false));
