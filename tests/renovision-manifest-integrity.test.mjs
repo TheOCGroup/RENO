@@ -41,3 +41,12 @@ test("artifact loader receives tenant property room and actor scope",async()=>{
  let seen;const r=await verifyManifestArtifacts(req({loadArtifact:async scope=>{seen=scope;return blob;}}));
  assert.equal(r.verified,true);assert.equal(seen.roomId,"r");assert.equal(seen.actor.tenantId,"tenant");assert.equal(seen.artifactId,"a1");
 });
+
+test("hash provider exception fails closed instead of throwing",async()=>{
+ const r=await verifyManifestArtifacts(req({cryptoApi:{subtle:{digest:async()=>{throw Error("hash unavailable");}}}}));
+ assert.equal(r.verified,false);assert.equal(r.checked,0);
+});
+test("missing hash provider fails closed",async()=>{
+ const r=await verifyManifestArtifacts(req({cryptoApi:{}}));
+ assert.equal(r.verified,false);
+});
