@@ -33,3 +33,24 @@ test("read rejects tampered stored evidence",async()=>{
  const c=await capture();const r=await readFrameEvidence({storage:{get:async()=>new Blob(["tampered"])},storageRef:"private-object-1",expectedDigest:c.artifact.digest,cryptoApi:webcrypto,actorId:"operator"});
  assert.equal(r.ok,false);
 });
+
+test("declared frame length mismatch rejects before storage",async()=>{
+ const c=await capture();c.artifact.byteLength+=1;let called=false;
+ const r=await persistFrameEvidence(c,{storage:{put:async()=>{called=true;}},cryptoApi:webcrypto,actorId:"operator"});
+ assert.equal(r.stored,false);assert.equal(called,false);
+});
+test("oversized frame rejected before hashing or storage",async()=>{
+ const c=await capture();c.blob={size:20_000_001,arrayBuffer:async()=>{throw Error("should not read")}};c.artifact.byteLength=20_000_001;
+ const r=await persistFrameEvidence(c,{storage:{put:async()=>{throw Error("should not write")}},cryptoApi:webcrypto,actorId:"operator"});
+ assert.equal(r.stored,false);
+});
+test("hash provider failure returns controlled rejection",async()=>{
+ const c=await capture();
+ const r=await persistFrameEvidence(c,{storage:{put:async()=>{throw Error("should not write")}},cryptoApi:{subtle:{digest:async()=>{throw Error("offline")}}},actorId:"operator"});
+ assert.equal(r.stored,false);
+});
+test("oversized read blob rejected before hashing",async()=>{
+ const c=await capture();
+ const r=await readFrameEvidence({storage:{get:async()=>({size:20_000_001,arrayBuffer:async()=>{throw Error("should not read")}})},storageRef:"private-object-1",expectedDigest:c.artifact.digest,cryptoApi:webcrypto,actorId:"operator"});
+ assert.equal(r.ok,false);
+});
