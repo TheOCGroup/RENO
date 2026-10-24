@@ -49,3 +49,16 @@ test("missing actor identity never reads feature history",async()=>{
  const r=await commitSpatialEvent({...req(store),actor:{tenantId:"tenant",authenticated:true}});
  assert.equal(r.committed,false);assert.equal(reads,0);
 });
+
+test("rejects historical feature state discontinuity before approval",async()=>{
+ let approvals=0;
+ const history=[{...event,eventId:"prior1",toState:"PROPOSED"},{...event,eventId:"prior2",fromState:"EXISTING",toState:"ALTERNATE"}];
+ const store={readFeatureEvents:async()=>({revision:2,events:history}),compareAndAppend:async()=>{throw Error("must not append")}};
+ const r=await commitSpatialEvent({...req(store),expectedRevision:2,resolveApproval:async()=>{approvals++;return approval}});
+ assert.equal(r.committed,false);assert.equal(approvals,0);
+});
+test("rejects historical timestamps out of order",async()=>{
+ const history=[{...event,eventId:"prior1",toState:"PROPOSED",occurredAt:"2026-10-24T02:00:00Z"},{...event,eventId:"prior2",fromState:"PROPOSED",toState:"ALTERNATE",occurredAt:"2026-10-24T01:00:00Z"}];
+ const store={readFeatureEvents:async()=>({revision:2,events:history}),compareAndAppend:async()=>{throw Error("must not append")}};
+ assert.equal((await commitSpatialEvent({...req(store),expectedRevision:2})).committed,false);
+});
