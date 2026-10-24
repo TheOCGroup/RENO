@@ -62,3 +62,5 @@ test("rejects historical timestamps out of order",async()=>{
  const store={readFeatureEvents:async()=>({revision:2,events:history}),compareAndAppend:async()=>{throw Error("must not append")}};
  assert.equal((await commitSpatialEvent({...req(store),expectedRevision:2})).committed,false);
 });
+
+test("rejects historical entries without audit actor",async()=>{const store={readFeatureEvents:async()=>({revision:1,events:[{...event,eventId:"prior",actorId:""}]}),compareAndAppend:async()=>({committed:true,revision:2})};assert.equal((await commitSpatialEvent({...req(store),expectedRevision:1})).committed,false);});
