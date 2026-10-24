@@ -17,3 +17,12 @@ test("revoked approval rejected",async()=>assert.equal((await authorizeSpatialCh
 test("unauthorized actor rejected",async()=>assert.equal((await authorizeSpatialChange(request({actor:{...actor,id:"outsider"}}))).authorized,false));
 test("approval lookup failures do not authorize",async()=>assert.equal((await authorizeSpatialChange(request({resolveApproval:async()=>{throw Error("offline")}}))).authorized,false));
 test("missing approval audit timestamp rejected",async()=>assert.equal((await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,approvedAt:"yesterday"})}))).authorized,false));
+
+test("expired approval is rejected",async()=>{
+ const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,expiresAt:"2026-10-24T00:00:00Z"}),now:()=>Date.parse("2026-10-25T00:00:00Z")}));
+ assert.equal(r.authorized,false);
+});
+test("future-dated expiry is accepted by trusted clock",async()=>{
+ const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,expiresAt:"2026-10-26T00:00:00Z"}),now:()=>Date.parse("2026-10-25T00:00:00Z")}));
+ assert.equal(r.authorized,true);
+});
