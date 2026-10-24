@@ -15,6 +15,12 @@ test("stale feature state rejected",async()=>{
 });
 test("valid sequential state transition accepted",async()=>{
  const first=await appendAuthorizedSpatialEvent(request());
- const second=await appendAuthorizedSpatialEvent(request({events:first.events,event:{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT"}}));
+ const second=await appendAuthorizedSpatialEvent(request({events:first.events,expectedLastEventId:"e1",event:{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT"}}));
  assert.equal(second.ok,true);
+});
+
+test("version conflict rejects a stale concurrent writer",async()=>{
+ const first=await appendAuthorizedSpatialEvent(request());
+ const second=await appendAuthorizedSpatialEvent(request({events:first.events,expectedLastEventId:"old",event:{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT"}}));
+ assert.equal(second.ok,false);
 });
