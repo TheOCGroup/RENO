@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {authorizeAccuracyClaim} from "../lib/renovision/accuracy-claim-authorization.mjs";
+const record={attestationId:"a",tenantId:"t",propertyId:"p",roomId:"r",status:"passed",independentReviewerVerified:true,evidenceRef:"review",commitSha:"a".repeat(40)};
+const attestation={attestationId:"a",tenantId:"t",propertyId:"p",roomId:"r",actor:{authenticated:true,id:"user",tenantId:"t"},resolveAttestation:async()=>record};
+const req={attestation,previewEvidenceRef:"preview",sourceEvidenceRef:"source",geometryLocked:true,dimensionsFieldVerified:true};
+test("even positive resolver assertion cannot authorize marketing claim",async()=>{const r=await authorizeAccuracyClaim(req);assert.equal(r.authorized,false);assert.match(r.errors[0],/trust anchor/);});
+test("missing preview source fails closed",async()=>assert.equal((await authorizeAccuracyClaim({...req,previewEvidenceRef:""})).authorized,false));
+test("unlocked geometry fails closed",async()=>assert.equal((await authorizeAccuracyClaim({...req,geometryLocked:false})).authorized,false));
+test("unverified dimensions fail closed",async()=>assert.equal((await authorizeAccuracyClaim({...req,dimensionsFieldVerified:false})).authorized,false));
+test("revoked attestation fails closed",async()=>assert.equal((await authorizeAccuracyClaim({...req,attestation:{...attestation,resolveAttestation:async()=>({...record,revoked:true})}})).authorized,false));

@@ -1,0 +1,26 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {verifyBenchmarkAttestation} from "../lib/renovision/benchmark-attestation.mjs";
+const actor={authenticated:true,id:"owner",tenantId:"t"};
+const record={attestationId:"a",tenantId:"t",propertyId:"p",roomId:"r",status:"passed",revoked:false,independentReviewerVerified:true,evidenceRef:"private-report",commitSha:"a".repeat(40)};
+const req={attestationId:"a",tenantId:"t",propertyId:"p",roomId:"r",actor,resolveAttestation:async()=>record};
+test("matching trusted resolver assertion is verified but not survey certified",async()=>{const r=await verifyBenchmarkAttestation(req);assert.equal(r.verified,true);assert.equal(r.physicalSurveyCertified,false);});
+test("anonymous actor rejected without resolver call",async()=>{let called=false;const r=await verifyBenchmarkAttestation({...req,actor:null,resolveAttestation:async()=>{called=true;return record;}});assert.equal(r.verified,false);assert.equal(called,false);});
+test("cross-tenant actor rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,actor:{...actor,tenantId:"other"}})).verified,false));
+test("cross-room attestation rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,roomId:"other"})})).verified,false));
+test("revoked attestation rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,revoked:true})})).verified,false));
+test("unverified independent reviewer rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,independentReviewerVerified:false})})).verified,false));
+test("resolver failure rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>{throw Error("unavailable");}})).verified,false));
+
+test("authenticated actor must have nonempty identity",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,actor:{authenticated:true,id:"",tenantId:"t"}});
+ assert.equal(r.verified,false);
+});
+test("attestation self-review is rejected when reviewer identity supplied",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,reviewerId:"owner"})});
+ assert.equal(r.verified,false);
+});
+test("separate reviewer identity remains an eligible resolver assertion",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,reviewerId:"reviewer"})});
+ assert.equal(r.verified,true);assert.equal(r.physicalSurveyCertified,false);
+});
