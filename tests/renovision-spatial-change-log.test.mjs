@@ -27,3 +27,21 @@ test("cannot silently rewrite existing state",()=>{
 test("unknown feature returns not found",()=>{
  assert.deepEqual(getLatestFeatureState([],"missing"),{found:false});
 });
+
+test("rejects transition from older rather than latest feature state",()=>{
+ const first=appendSpatialEvent([],event).events;
+ const second=appendSpatialEvent(first,{...event,eventId:"e2",fromState:"PROPOSED",toState:"AS_BUILT"}).events;
+ const stale=appendSpatialEvent(second,{...event,eventId:"e3",fromState:"PROPOSED",toState:"ALTERNATE"});
+ assert.equal(stale.ok,false);
+});
+test("different room with same feature name has independent baseline",()=>{
+ const first=appendSpatialEvent([],event).events;
+ const other=appendSpatialEvent(first,{...event,eventId:"e2",roomId:"other",fromState:"EXISTING",toState:"PROPOSED"});
+ assert.equal(other.ok,true);
+ assert.deepEqual(getLatestFeatureState(other.events,"wall1","p","r"),{found:true,state:"PROPOSED",eventId:"e1"});
+});
+test("different property cannot supply previous feature state",()=>{
+ const first=appendSpatialEvent([],event).events;
+ const other=appendSpatialEvent(first,{...event,eventId:"e2",propertyId:"other",fromState:"PROPOSED",toState:"AS_BUILT"});
+ assert.equal(other.ok,false);
+});
