@@ -11,3 +11,16 @@ test("cross-room attestation rejected",async()=>assert.equal((await verifyBenchm
 test("revoked attestation rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,revoked:true})})).verified,false));
 test("unverified independent reviewer rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,independentReviewerVerified:false})})).verified,false));
 test("resolver failure rejected",async()=>assert.equal((await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>{throw Error("unavailable");}})).verified,false));
+
+test("authenticated actor must have nonempty identity",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,actor:{authenticated:true,id:"",tenantId:"t"}});
+ assert.equal(r.verified,false);
+});
+test("attestation self-review is rejected when reviewer identity supplied",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,reviewerId:"owner"})});
+ assert.equal(r.verified,false);
+});
+test("separate reviewer identity remains an eligible resolver assertion",async()=>{
+ const r=await verifyBenchmarkAttestation({...req,resolveAttestation:async()=>({...record,reviewerId:"reviewer"})});
+ assert.equal(r.verified,true);assert.equal(r.physicalSurveyCertified,false);
+});
