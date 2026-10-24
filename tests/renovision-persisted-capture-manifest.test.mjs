@@ -35,3 +35,14 @@ test("missing tenant cannot create validated manifest",async()=>{
  const f=await fixture();
  assert.equal(createPersistedCaptureManifest({...f,operatorId:"owner",deviceModel:"browser-test"}).ok,false);
 });
+
+test("captured artifact byte count must match captured blob",async()=>{
+ const f=await fixture();
+ const capture={...f.capture,artifact:{...f.capture.artifact,byteLength:f.capture.artifact.byteLength+1}};
+ assert.equal(createPersistedCaptureManifest({...f,capture,tenantId:"tenant",operatorId:"owner",deviceModel:"browser-test"}).ok,false);
+});
+test("oversized storage reference cannot become manifest identifier",async()=>{
+ const f=await fixture();
+ const receipt={...f.receipt,storageRef:"x".repeat(129)};
+ assert.equal(createPersistedCaptureManifest({...f,receipt,tenantId:"tenant",operatorId:"owner",deviceModel:"browser-test"}).ok,false);
+});
