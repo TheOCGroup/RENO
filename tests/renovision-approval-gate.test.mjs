@@ -26,3 +26,12 @@ test("future-dated expiry is accepted by trusted clock",async()=>{
  const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,expiresAt:"2026-10-26T00:00:00Z"}),now:()=>Date.parse("2026-10-25T00:00:00Z")}));
  assert.equal(r.authorized,true);
 });
+
+test("future-dated approval is rejected using trusted clock",async()=>{
+ const r=await authorizeSpatialChange(request({resolveApproval:async()=>({...approval,approvedAt:"2026-10-27T00:00:00Z"}),now:()=>Date.parse("2026-10-25T00:00:00Z")}));
+ assert.equal(r.authorized,false);
+});
+test("approval at trusted current time is accepted",async()=>{
+ const r=await authorizeSpatialChange(request({now:()=>Date.parse("2026-10-24T00:00:00Z")}));
+ assert.equal(r.authorized,true);
+});
