@@ -32,3 +32,18 @@ test("missing capture identifiers fail closed",async()=>{
  const r=await captureFrameEvidence({...args(),propertyId:""});
  assert.equal(r.ok,false);
 });
+
+test("oversized frame dimensions are rejected before drawing",async()=>{
+ let drawn=false;
+ const a=args();a.video.videoWidth=8000;a.video.videoHeight=8000;
+ a.canvas.getContext=()=>({drawImage:()=>{drawn=true;}});
+ const r=await captureFrameEvidence(a);assert.equal(r.ok,false);assert.equal(drawn,false);
+});
+test("oversized encoded image is rejected before hashing",async()=>{
+ const a=args();a.canvas.toBlob=cb=>cb({size:20_000_001,arrayBuffer:async()=>{throw Error("should not read");}});
+ const r=await captureFrameEvidence(a);assert.equal(r.ok,false);
+});
+test("oversized stored image fails integrity verification",async()=>{
+ const r=await verifyEvidenceBytes({size:20_000_001,arrayBuffer:async()=>{throw Error("should not read");}},"sha256:"+"a".repeat(64),webcrypto);
+ assert.equal(r,false);
+});
