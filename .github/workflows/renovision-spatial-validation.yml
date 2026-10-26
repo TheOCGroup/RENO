@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - "lib/renovision/**"
+      - "src/renovision*.mjs"
+      - "scripts/renovision-*.mjs"
       - "tests/renovision-*.test.mjs"
+      - "tests/fixtures/renovision-*.json"
       - "package.json"
       - ".github/workflows/renovision-spatial-validation.yml"
   workflow_dispatch:
