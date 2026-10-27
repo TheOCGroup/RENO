@@ -7,6 +7,8 @@ on:
       - "scripts/renovision-*.mjs"
       - "tests/renovision-*.test.mjs"
       - "tests/fixtures/renovision-*.json"
+      - "infra/**"
+      - "docs/**"
       - "package.json"
       - ".github/workflows/renovision-spatial-validation.yml"
   workflow_dispatch:

@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "start:renovision": "node src/renovisionMain.mjs",
-    "benchmark:renovision": "node scripts/renovision-benchmark-runner.mjs"
+    "benchmark:renovision": "node scripts/renovision-benchmark-runner.mjs",
+    "backup:renovision": "node scripts/renovision-backup.mjs"
   },
   "engines": {
     "node": ">=24"

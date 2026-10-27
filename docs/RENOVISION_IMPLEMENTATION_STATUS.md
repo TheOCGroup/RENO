@@ -91,3 +91,54 @@ No bucket, identity, or paid resource has been created by this handoff.
 - Project snapshot restore on service restart (evidence/events are durable;
   project state export exists, restore is future work).
 - QUINCEY independent review of the exact handoff commit: PENDING.
+
+## Final completion pass — 2026-10-27
+
+The founder's final-completion directive closed the remaining engineering
+items. Superseding notes for the sections above:
+
+- **Production identity: IMPLEMENTED.** `lib/renovision/identity.mjs` verifies
+  RS256 ID tokens against a JWKS (Google/Firebase-compatible OIDC boundary),
+  checks issuer/audience/expiry/issued-at, supports per-token and per-subject
+  revocation, and fails closed when unconfigured. The service reads ONLY the
+  `Authorization: Bearer` header — demo header auth now requires the explicit
+  `RENOVISION_DEMO_AUTH=1` local-development flag, and the process refuses to
+  start without either token config or that flag (verified by smoke test).
+- **RBAC + scope: IMPLEMENTED.** `lib/renovision/access-control.mjs`: roles
+  viewer/operator/approver/admin grant actions; verified tenant + property/room
+  entitlements bound every route. Forged headers, cross-tenant tokens,
+  unentitled properties, expired/revoked tokens: tested
+  (`tests/renovision-server-security.test.mjs`, `renovision-identity.test.mjs`,
+  `renovision-access-control.test.mjs`).
+- **Persistent projects + resumable sessions: IMPLEMENTED.** Projects
+  serialize/restore fully (tamper-evident audit chain verified on restore) and
+  persist atomically via `lib/renovision/project-store.mjs`; a restart-recovery
+  test and a live two-process smoke test both resume mid-workflow.
+- **Audit + export: IMPLEMENTED.** Audit entries are hash-chained
+  (`audit-chain.mjs`); `GET .../export` returns a digest-bound evidence package
+  that verifies offline (`export-package.mjs`); export requires the
+  `export:read` action.
+- **Storage hardening: IMPLEMENTED.** Real retention purge for both adapters
+  (filesystem scan + GCS list/delete), 12-way concurrent-put test, duplicate
+  submission behavior pinned by test, and backup/verify/restore tooling with
+  digest manifests (`lib/renovision/backup.mjs`,
+  `scripts/renovision-backup.mjs`) incl. tamper and non-empty-target refusal.
+- **Furnishing: orientation support added** (`orientation: "rotated"` swaps the
+  footprint across fit/collision/clearance/uncertainty) and missing-dimension
+  explanations are reported field by field.
+- **Photorealistic provider: prepared behind disabled flags**
+  (`render-provider.mjs`); activation needs flag + founder approval + injected
+  provider. Not activated; no paid generation.
+- **Netlify checks adjudicated.** The three failing checks on PR #3 come from
+  the **Netlify** GitHub App (site `theocgroup`, "Deploy failed", deploy
+  `6adf9f68cad2da1c85ac54e5`) — a deploy preview of this repository failing
+  since 2026-10-22, identically on the pre-existing baseline commit. They are
+  not RENOVISION CI, not Cloudflare, and not caused by this code; both
+  repository workflows pass. Disposition: a Netlify admin may disconnect the
+  site from this repo or exclude it — outside this change's authorization;
+  nothing was bypassed or silenced.
+- **GCP readiness:** Terraform under `infra/gcp/` (private bucket, least
+  privilege runtime account, Cloud Run service), environment manifest in
+  `docs/RENOVISION_ENVIRONMENT_MANIFEST.md`. NOT APPLIED.
+- **Release candidate:** `docs/RENOVISION_RELEASE_CANDIDATE.md`; QUINCEY
+  request: `docs/RENOVISION_QUINCEY_REVIEW_REQUEST.md`. Verdict: PENDING.
