@@ -1,10 +1,18 @@
 # RENOVISION AI — Release Candidate Record
 
-**Frozen engineering subject:** `9d36c6499da31533cecd78bf7c9bad110c3ec48f`
+**Frozen engineering subject (as published on the branch):**
+`75c94ff853522eb34548a98ac2ef2bf43213e46e`
 (branch `research/renovision-accuracy-contract-20261022`, draft PR #3).
-This document is committed on top of the frozen subject; it changes no code.
-If any code file changes, the subject is void and a new candidate must be
-frozen and re-reviewed.
+The commits were authored locally and published through the GitHub Git Data
+API; the API assigns its own commit SHAs, so the published SHAs differ from
+the local build SHAs while every commit's **tree is byte-identical** (tree
+equality was asserted per commit during publication). Local → published:
+identity `70f31759` → `1688ca7f`, persistence `d64f159d` → `394335fc`,
+service `1f4aefc8` → `8270726a`, storage `ea630fde` → `65d14599`, furnishing
+`d330edd8` → `73a15285`, docs/IaC `9d36c649` → `75c94ff8` (frozen subject).
+This document and its SHA correction are documentation-only commits on top
+of the frozen subject; they change no code. If any code file changes, the
+subject is void and a new candidate must be frozen and re-reviewed.
 
 ## Test results (on the frozen subject)
 
@@ -47,7 +55,7 @@ rollback). **NOT APPLIED** — founder authorization required.
 
 ## Rollback procedure
 
-- Code: reset the branch to the previous certified commit
+- Code: reset the branch to the previous candidate commit
   (`8e53b28bdbafc4d42f73f5c1dd8abfe94204713b` before this candidate) and
   redeploy; data directories are forward-compatible JSON — a rollback reads
   the same project/evidence/event records (older code ignores export/audit
