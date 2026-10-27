@@ -31,6 +31,7 @@ pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:aut
 <div><label>Project ID</label><input id="projectId" value="reno-demo-1"></div>
 <div><label>Property ID</label><input id="propertyId" value="property-1"></div>
 <div><label>Room ID</label><input id="roomId" value="room-1"></div>
+<div><label>Bearer ID token (production identity mode; leave empty in demo mode)</label><input id="bearerToken" type="password" value=""></div>
 </div>
 <button id="btnCreate">Create project</button><button id="btnOpen" class="alt">Open project</button>
 <span class="small" id="sessionMsg"></span></section>
@@ -137,13 +138,15 @@ pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:aut
 <div><label>Test count</label><input id="qTests" value=""></div>
 </div>
 <button id="btnPacket" class="alt">Build QUINCEY review packet</button>
+<button id="btnExport">Export evidence package (digest-bound)</button>
+<button id="btnAudit" class="alt">Show audit trail</button>
 <div class="small">The packet is a review request, not a certification. Release readiness remains blocked until device capture, durable private storage, a physical room benchmark and independent QUINCEY review have verified passing evidence.</div>
 <pre id="out">Session output appears here.</pre></section>
 </main>
 <script>
 var $=function(id){return document.getElementById(id)};
 var state={receipt:null,project:null};
-function headers(){return {'content-type':'application/json','x-actor-id':$('actorId').value,'x-tenant-id':$('tenantId').value}}
+function headers(){var h={'content-type':'application/json','x-actor-id':$('actorId').value,'x-tenant-id':$('tenantId').value};var t=$('bearerToken').value.trim();if(t){h['authorization']='Bearer '+t}return h}
 function projectPath(sub){return '/api/renovision/projects/'+encodeURIComponent($('projectId').value)+(sub?'/'+sub:'')}
 function show(x){$('out').textContent=typeof x==='string'?x:JSON.stringify(x,null,2)}
 function call(method,path,body){return fetch(path,{method:method,headers:headers(),body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){return {status:r.status,body:j}})})}
@@ -166,4 +169,6 @@ $('btnPreview').onclick=function(){call('POST',projectPath('preview'),{mode:'ren
 $('btnFurnish').onclick=function(){var item={id:$('fId').value,productId:$('fProduct').value,dimensionSource:$('fSource').value,dimensionsVerified:$('fDimsVer').value==='true',width:Number($('fW').value),depth:Number($('fD').value),x:Number($('fX').value),y:Number($('fY').value),uncertaintyMeters:Number($('fUnc').value),clearance:Number($('fClear').value)};call('POST',projectPath('furnishing'),{items:[item]}).then(function(r){if(r.body.plan){$('furnBody').innerHTML=r.body.plan.items.map(function(i){return '<tr><td>'+i.id+'</td><td>'+i.verdict+'</td><td>'+(i.reasons||[]).join('; ')+'</td></tr>'}).join('');$('furnMsg').textContent=r.body.plan.disclosure}else{$('furnMsg').textContent=(r.body.errors||[]).join('; ')}show(r.body)})};
 $('btnCompare').onclick=function(){call('POST',projectPath('comparison'),{}).then(function(r){if(r.body.comparison){$('cmpBody').innerHTML=r.body.comparison.diff.entries.map(function(e){return '<tr><td>'+e.featureId+'</td><td>'+e.change+'</td><td>'+(e.unapproved?'<span class="bad">UNAPPROVED</span>':'approved / n/a')+'</td></tr>'}).join('');}show(r.body)})};
 $('btnPacket').onclick=function(){call('POST',projectPath('quincey-packet'),{commitSha:$('qSha').value,prUrl:$('qPr').value,studyId:$('qStudy').value,testCount:Number($('qTests').value)||undefined,ciRuns:[{workflow:'RENOVISION Spatial Validation CI',status:'pending'}]}).then(function(r){show(r.body)})};
+$('btnExport').onclick=function(){call('GET',projectPath('export')).then(function(r){if(r.body.export){show('Export digest: '+r.body.export.digest+'\\nAudit entries: '+(r.body.export.content.project.audit||[]).length+'\\nStage: '+r.body.export.content.project.stage+'\\n\\n'+JSON.stringify(r.body.export,null,2))}else{show(r.body)}})};
+$('btnAudit').onclick=function(){call('GET',projectPath('')).then(function(r){if(r.body.project){show((r.body.project.audit||[]).map(function(a){return a.seq+' · '+a.action+' · '+a.actorId+' · '+a.at+' · '+String(a.hash||'').slice(0,12)}).join('\\n')||'no audit entries')}else{show(r.body)}})};
 </script></body></html>`;

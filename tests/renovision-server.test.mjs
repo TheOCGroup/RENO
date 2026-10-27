@@ -16,7 +16,7 @@ async function boot(t) {
    const id = req.headers["x-actor-id"], tenantId = req.headers["x-tenant-id"];
    if (!id || !tenantId) return null;
    actorTenants.set(id, tenantId);
-   return {id, tenantId, authenticated: true};
+   return {id, tenantId, authenticated: true, roles: ["admin"], propertyIds: ["*"], roomIds: []};
  };
  const authorize = async ({actorId, tenantId}) => Boolean(actorId && actorTenants.has(actorId) && (!tenantId || actorTenants.get(actorId) === tenantId));
  const evidenceStorage = createDurableEvidenceStorage({rootDir: join(dir, "evidence"), authorize});
