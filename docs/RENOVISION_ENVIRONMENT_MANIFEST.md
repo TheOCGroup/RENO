@@ -13,6 +13,7 @@ service holds no signing keys (it verifies tokens against the provider JWKS).
 | `RENOVISION_TOKEN_ISSUER` | production | Expected `iss` claim. |
 | `RENOVISION_TOKEN_AUDIENCE` | production | Expected `aud` claim. |
 | `RENOVISION_TENANT_CLAIM` | no (default `tenant_id`) | Claim carrying the tenant id. Roles/property claims default to `roles` / `property_ids` / `room_ids`. |
+| `RENOVISION_TOKEN_SINGLE_USE` | no | `1` enables single-use token ids: each `jti` authenticates exactly once (tokens without a `jti` are rejected in this mode). Off by default — see replay limitations below. |
 | `RENOVISION_GCS_BUCKET` | GCP mode | Existing private bucket for evidence. Setting it switches evidence storage to GCS; nothing is provisioned by the app. |
 | `RENOVISION_GCS_TOKEN_URL` | no | Override for the metadata-server token URL (GCE/Cloud Run default when unset). |
 | `RENOVISION_PHOTOREAL_ENABLED` | no | `1` arms the photoreal render flag — rendering still requires founder approval flag + injected provider. |
@@ -26,6 +27,22 @@ and entitlement claims — or the deployment injects a server-side
 `resolveEntitlements` resolver. Roles: `viewer`, `operator`, `approver`,
 `admin` (see `lib/renovision/access-control.mjs`). Entitlements bound every
 property/room the operator may touch; there is no cross-tenant access path.
+
+## Token replay — safeguards and limitations
+
+Bearer ID tokens are replayable by design inside their validity window:
+anyone holding a valid token can present it until it expires. Safeguards
+implemented: expiry is enforced on every request; individual tokens can be
+revoked by `jti` and all of a subject's earlier tokens by a revocation
+cutoff (operator action via the authenticator); and the optional
+single-use mode (`RENOVISION_TOKEN_SINGLE_USE=1`) makes each token id
+single-authentication. Limitations: single-use mode requires clients to
+mint a fresh token per request, which standard IdP client flows do not do,
+so it suits machine-to-machine staging checks rather than interactive
+operators; revocation state is in-process (a restart clears it — production
+deployments should back revocation with the IdP's own token revocation and
+short token lifetimes, recommended ≤ 15 minutes for operator tokens).
+Transport security (HTTPS at the ingress) is assumed and required.
 
 ## Logging rule
 
