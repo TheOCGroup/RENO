@@ -25,6 +25,18 @@ variable "container_image" {
   description = "RENOVISION container image (built from this repository; set at deploy time)."
 }
 
+variable "max_instances" {
+  type        = number
+  description = "Cloud Run maximum instances — a hard cost ceiling for staging."
+  default     = 2
+}
+
+variable "run_ingress" {
+  type        = string
+  description = "Cloud Run ingress. Default restricts to internal/load-balancer traffic; INGRESS_TRAFFIC_ALL is a deliberate founder choice, not a default."
+  default     = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+}
+
 variable "token_issuer" {
   type        = string
   description = "OIDC issuer for verified ID tokens (e.g. Firebase / Google Identity Platform)."

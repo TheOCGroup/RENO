@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -23,12 +27,43 @@ resource "google_service_account" "renovision_runtime" {
   display_name = "RENOVISION runtime (evidence bucket only)"
 }
 
+# Customer-managed encryption for evidence at rest (CMEK).
+resource "google_kms_key_ring" "renovision" {
+  name     = "renovision"
+  location = var.region
+}
+
+resource "google_kms_crypto_key" "evidence" {
+  name            = "renovision-evidence"
+  key_ring        = google_kms_key_ring.renovision.id
+  rotation_period = "7776000s" # 90 days
+
+  lifecycle {
+    prevent_destroy = false # staging teardown must be possible; set true for production by founder decision
+  }
+}
+
+resource "google_project_service_identity" "storage" {
+  provider = google-beta
+  service  = "storage.googleapis.com"
+}
+
+resource "google_kms_crypto_key_iam_member" "storage_cmek" {
+  crypto_key_id = google_kms_crypto_key.evidence.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_project_service_identity.storage.email}"
+}
+
 resource "google_storage_bucket" "evidence" {
   name                        = var.evidence_bucket_name
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
   force_destroy               = false
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.evidence.id
+  }
 
   versioning {
     enabled = true
@@ -55,10 +90,16 @@ resource "google_storage_bucket_iam_member" "runtime_object_admin" {
 resource "google_cloud_run_v2_service" "renovision" {
   name     = "renovision"
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  # Default restricts traffic to internal + load balancer paths; the service's
+  # own verified-token authentication remains the application boundary.
+  ingress = var.run_ingress
 
   template {
     service_account = google_service_account.renovision_runtime.email
+    scaling {
+      min_instance_count = 0 # scale to zero when idle — staging cost safeguard
+      max_instance_count = var.max_instances
+    }
     containers {
       image = var.container_image
       env {

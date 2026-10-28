@@ -9,12 +9,18 @@ this path.
 1. `renovision-runtime` service account — least privilege.
 2. One private evidence bucket: uniform bucket-level access, public access
    prevention enforced, versioning on, lifecycle delete backstop
-   (`evidence_retention_days`). The runtime account gets
+   (`evidence_retention_days`), and **CMEK** via a dedicated KMS key
+   (90-day rotation; the Cloud Storage service agent holds
+   encrypter/decrypter on that key only). The runtime account gets
    `roles/storage.objectAdmin` on this bucket only.
 3. Cloud Run service `renovision` running the repository's server with token
    identity configured (issuer/audience/JWKS from the founder's identity
    provider — Firebase / Google Identity Platform fits the approved
-   architecture).
+   architecture). **Ingress defaults to internal + load balancer**
+   (`var.run_ingress`); public ingress is a deliberate founder choice, not
+   a default. Scaling is pinned `min 0 / max var.max_instances (2)` as a
+   cost safeguard. Smoke tests run through an authorized
+   `gcloud run services proxy` session or the load-balancer path.
 
 ## Apply procedure (founder-approved session only)
 
