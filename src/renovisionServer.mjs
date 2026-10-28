@@ -34,6 +34,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  if (typeof authenticate !== "function") throw new TypeError("authenticate function required");
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
+ const keyFor = (actor, projectId) => actor.tenantId + "/" + projectId;
  const loadArtifact = async ({artifactId, actor}) => evidenceStorage.get({storageRef: artifactId, actorId: actor.id});
  const send = (res, status, body, type = "application/json") => {
    const payload = type === "application/json" ? JSON.stringify(body) : body;
@@ -46,12 +47,13 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
    req.on("error", reject);
  });
- const resolveProject = async (id) => {
-   if (projects.has(id)) return projects.get(id);
+ const resolveProject = async (id, actor) => {
+   const key = keyFor(actor, id);
+   if (projects.has(key)) return projects.get(key);
    if (projectStore) {
-     const data = await projectStore.load(id);
+     const data = await projectStore.load(id, actor.tenantId);
      if (data) {
-       try { const restored = RenovisionProject.restore(data); projects.set(id, restored); return restored; } catch { return null; }
+       try { const restored = RenovisionProject.restore(data); if (restored.tenantId !== actor.tenantId) return null; projects.set(key, restored); return restored; } catch { return null; }
      }
    }
    return null;
@@ -80,15 +82,15 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && path === "/api/renovision/projects") {
        const check = guard("project:create", {propertyId: body.propertyId, roomId: body.roomId});
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
-       if (projects.has(body.projectId) || (projectStore && await projectStore.load(body.projectId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
+       if (projects.has(keyFor(actor, body.projectId)) || (projectStore && await projectStore.load(body.projectId, actor.tenantId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
        const project = new RenovisionProject({projectId: body.projectId, tenantId: actor.tenantId, propertyId: body.propertyId, roomId: body.roomId, createdBy: actor.id});
-       projects.set(project.projectId, project);
+       projects.set(keyFor(actor, project.projectId), project);
        if (projectStore) await projectStore.save(project.projectId, project.serialize());
        return send(res, 201, {ok: true, project: project.snapshot()});
      }
      const match = path.match(/^\/api\/renovision\/projects\/([^/]+)(?:\/(.+))?$/);
      if (!match) return send(res, 404, {ok: false, errors: ["not_found"]});
-     const project = await resolveProject(decodeURIComponent(match[1]));
+     const project = await resolveProject(decodeURIComponent(match[1]), actor);
      if (!project || project.tenantId !== actor.tenantId) return send(res, 404, {ok: false, errors: ["project_not_found"]});
      const sub = match[2] ?? "";
      const scope = {propertyId: project.propertyId, roomId: project.roomId};
@@ -147,7 +149,9 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && sub === "quincey-packet") return done(200, {ok: true, ...project.buildReviewPacket({actor, commitSha: body.commitSha, prUrl: body.prUrl, studyId: body.studyId, ciRuns: body.ciRuns, testCount: body.testCount, readinessEvidence: body.readinessEvidence})});
      return send(res, 404, {ok: false, errors: ["route_not_found"]});
    } catch (e) {
-     return send(res, 422, {ok: false, errors: Array.isArray(e?.errors) ? e.errors : [e?.message ?? "request_failed"]});
+     const errors = Array.isArray(e?.errors) ? e.errors : [e?.message ?? "request_failed"];
+     if (e?.code === "SPATIAL_EVENT_CONFLICT" || errors.includes("spatial_event_conflict")) return send(res, 409, {ok: false, conflict: true, errors: ["spatial_event_conflict"]});
+     return send(res, 422, {ok: false, errors});
    }
  };
  const server = createServer((req, res) => { route(req, res).catch(() => { try { send(res, 500, {ok: false, errors: ["internal_error"]}); } catch {} }); });

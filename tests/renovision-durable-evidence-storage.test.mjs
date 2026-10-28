@@ -14,7 +14,7 @@ async function fixture(t) {
  t.after(() => rm(dir, {recursive: true, force: true}));
  return {dir, storage: createDurableEvidenceStorage({rootDir: dir, authorize: allow})};
 }
-const artifact = {propertyId: "property-1", roomId: "room-1", captureId: "capture-1", digest};
+const artifact = {propertyId: "property-1", roomId: "room-1", captureId: "capture-1", digest, tenantId: "tenant-a"};
 test("durable storage round-trips evidence through the repository contract", async (t) => {
  const {storage} = await fixture(t);
  assert.equal(storage.storageClass, "durable-filesystem");

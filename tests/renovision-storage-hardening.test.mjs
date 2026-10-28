@@ -42,9 +42,9 @@ test("filesystem purge removes expired evidence and keeps live evidence", async 
  let tick = Date.now();
  const storage = createDurableEvidenceStorage({rootDir: dir, authorize: async () => true, clock: () => tick});
  const blob = new Blob([new Uint8Array([1, 2, 3])], {type: "image/png"});
- const old = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1"}, actorId: "operator-1", retentionDays: 1});
+ const old = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1", tenantId: "tenant-a"}, actorId: "operator-1", retentionDays: 1});
  tick += 48 * 60 * 60 * 1000;
- const fresh = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1"}, actorId: "operator-1", retentionDays: 30});
+ const fresh = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1", tenantId: "tenant-a"}, actorId: "operator-1", retentionDays: 30});
  assert.equal(await storage.purgeExpired(), 1);
  await assert.rejects(() => storage.get({storageRef: old.storageRef, actorId: "operator-1"}), /not found/);
  assert.ok(await storage.get({storageRef: fresh.storageRef, actorId: "operator-1"}));
@@ -66,7 +66,7 @@ test("backup verifies round-trip and restoration refuses tampered or non-empty t
  const dataDir = join(dir, "data"), backupDir = join(dir, "backup"), restoreDir = join(dir, "restore");
  const storage = createDurableEvidenceStorage({rootDir: join(dataDir, "evidence"), authorize: async () => true});
  const blob = new Blob([new Uint8Array([9, 9, 9])], {type: "image/png"});
- const receipt = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1"}, actorId: "operator-1", retentionDays: 30});
+ const receipt = await storage.put({blob, artifact: {propertyId: "property-1", roomId: "room-1", tenantId: "tenant-a"}, actorId: "operator-1", retentionDays: 30});
  const created = await createBackup({sourceDir: dataDir, destDir: backupDir});
  assert.ok(created.fileCount >= 2);
  assert.equal((await verifyBackup({backupDir})).valid, true);

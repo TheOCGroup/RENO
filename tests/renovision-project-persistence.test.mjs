@@ -58,10 +58,12 @@ test("file project store persists records across instances and rejects unsafe id
  const store = createFileProjectStore({rootDir: dir});
  await store.save(project.projectId, project.serialize());
  const reopened = createFileProjectStore({rootDir: dir});
- const loaded = await reopened.load(project.projectId);
+ const loaded = await reopened.load(project.projectId, "tenant-a");
  assert.equal(loaded.stage, "geometry_locked");
- assert.deepEqual(await reopened.list(), ["reno-persist-1"]);
- assert.equal(await reopened.load("../escape"), null);
+ assert.equal(await reopened.load(project.projectId, "tenant-b"), null);
+ assert.deepEqual(await reopened.list("tenant-a"), ["reno-persist-1"]);
+ assert.deepEqual(await reopened.list("tenant-b"), []);
+ assert.equal(await reopened.load("../escape", "tenant-a"), null);
  await assert.rejects(() => store.save("../escape", {projectId: "../escape"}), /invalid project record/);
 });
 test("export package verifies and detects tampering", async () => {

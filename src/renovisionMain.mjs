@@ -42,6 +42,7 @@ if (process.env.RENOVISION_DEMO_AUTH === "1") {
    audience: process.env.RENOVISION_TOKEN_AUDIENCE,
    issuer: process.env.RENOVISION_TOKEN_ISSUER,
    tenantClaim: process.env.RENOVISION_TENANT_CLAIM || "tenant_id",
+   singleUseJti: process.env.RENOVISION_TOKEN_SINGLE_USE === "1",
    onActor: registerActor
  });
  if (!authenticator.configured) {
