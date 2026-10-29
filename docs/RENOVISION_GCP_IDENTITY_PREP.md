@@ -12,16 +12,22 @@ Nothing was created, linked, or provisioned.
   region **us-central1**: a runtime service account and an Artifact
   Registry repository were created and verified there at that time.
 
-**Live verification status: NOT VERIFIED from this environment.** The only
+**Live verification status: SUPERSEDED IN PART (2026-10-29).** The
+founder's connected desktop verified (PR #3 comment 6503007807):
+project `ocg-pipeline`, `billingEnabled: true`, billing account linked,
+active CLI identity `gocasiorealtor@gmail.com`. Remaining live items
+(APIs, IAM, resource inventory, authenticated plan) run through
+`docs/RENOVISION_DESKTOP_VERIFICATION_PACK.md`. From THIS build
+environment, live verification remains impossible: the only
 available GCP credential (the certifier service account) is revoked —
 read-only probes on 2026-10-29 fail with
-`invalid_grant: Invalid JWT Signature`. Project lifecycle state, current
-billing linkage, and enabled services therefore cannot be confirmed from
-here. **Founder console checks required before any apply decision:**
+`invalid_grant: Invalid JWT Signature`. Project lifecycle state and
+enabled services therefore cannot be confirmed from here.
+**Founder console checks before any apply decision (billing item
+already satisfied by the 6503007807 desktop verification):**
 1. Console → project `ocg-pipeline`: confirm it is the intended staging home.
-2. Console → Billing: confirm the project is linked to an active billing
-   account (do not rely on older records — billing state has changed
-   before; verify on the billing surface itself).
+2. ~~Console → Billing linkage~~ — VERIFIED 2026-10-29 via the founder
+   desktop session (billingEnabled: true, account linked).
 3. Console → APIs: note which of run/storage/kms/artifactregistry/
    identitytoolkit APIs are already enabled (enabling happens at apply
    preparation, not now).

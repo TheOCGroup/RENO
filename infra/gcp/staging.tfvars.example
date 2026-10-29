@@ -1,0 +1,30 @@
+# RENOVISION staging values for project ocg-pipeline (copy to
+# staging.tfvars on the operator workstation; staging.tfvars itself is
+# operator-local and must not be committed with real environment data).
+#
+# Identity values assume Firebase Authentication / Google Identity
+# Platform enabled in ocg-pipeline (see
+# docs/RENOVISION_GCP_IDENTITY_PREP.md). The plan does not require the
+# container image to exist yet; the image is built and pushed in the
+# authorized staging run before apply (see
+# docs/RENOVISION_STAGING_RUNBOOK.md).
+
+project_id          = "ocg-pipeline"
+region              = "us-central1"
+service_name        = "renovision"
+environment         = "staging"
+image               = "us-central1-docker.pkg.dev/ocg-pipeline/cloud-run-source-deploy/renovision:3162ce51"
+evidence_bucket_name = "ocg-renovision-evidence-staging"
+kms_key_ring_name   = "renovision"
+
+identity_issuer    = "https://securetoken.google.com/ocg-pipeline"
+identity_audience  = "ocg-pipeline"
+identity_jwks_url  = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+
+# Default (internal). Cloud Run then has no public ingress; the
+# acceptance battery reaches it through an operator-side authenticated
+# proxy path (runbook section 3). If the founder prefers direct
+# authenticated browser access during acceptance, set:
+# cloud_run_ingress = "INGRESS_TRAFFIC_ALL"
+# (IAM still requires an authenticated invoker; there is no
+# unauthenticated access in either mode.)
