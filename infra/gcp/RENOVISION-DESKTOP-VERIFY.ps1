@@ -1,4 +1,4 @@
-# RENOVISION-DESKTOP-VERIFY.ps1 (v2.1)
+# RENOVISION-DESKTOP-VERIFY.ps1 (v2.2)
 # Strictly READ-ONLY verification for RENOVISION staging readiness.
 # Runs on the founder's authenticated Windows desktop (DESKTOP-5E83JLJ).
 # It never creates, modifies, or deletes any Google Cloud resource.
@@ -8,6 +8,12 @@
 # a local staging.tfvars (created from the committed example), and
 # local Terraform working files.
 #
+# v2.2 changes vs v2.1: the session pinning also locks the API
+# consumer/quota project (CLOUDSDK_BILLING_QUOTA_PROJECT) to the target
+# project - a KMS describe with an explicit --project flag was observed
+# returning SERVICE_DISABLED for a DIFFERENT project (the ambient quota
+# project left by another product's acceptance work); diagnostics print
+# the ambient quota property and related env vars before pinning.
 # v2 changes vs v1: no dynamic command execution (direct calls with
 # argument arrays); project routing PINNED via CLOUDSDK_CORE_PROJECT
 # plus explicit --project flags on every call; per-command exit codes
@@ -35,7 +41,7 @@ $script:Results = @()
 $script:ProbeOutcomes = @()
 
 Start-Transcript -Path $TranscriptPath -Force | Out-Null
-Write-Output "RENOVISION-VERIFY-BEGIN v2.1 $Stamp"
+Write-Output "RENOVISION-VERIFY-BEGIN v2.2 $Stamp"
 Write-Output "Machine: $env:COMPUTERNAME  User: $env:USERNAME"
 
 function Section($Name) { Write-Output ""; Write-Output "===== $Name =====" }
@@ -81,7 +87,7 @@ function Probe {
 
 # ---------- Routing diagnostics (BEFORE pinning) ----------
 Section "DIAGNOSTICS - AMBIENT ROUTING STATE (pre-pin)"
-foreach ($V in @("CLOUDSDK_CORE_PROJECT","CLOUDSDK_ACTIVE_CONFIG_NAME","CLOUDSDK_CONFIG","GOOGLE_CLOUD_PROJECT")) {
+foreach ($V in @("CLOUDSDK_CORE_PROJECT","CLOUDSDK_BILLING_QUOTA_PROJECT","GOOGLE_CLOUD_PROJECT","GOOGLE_CLOUD_QUOTA_PROJECT","CLOUDSDK_ACTIVE_CONFIG_NAME","CLOUDSDK_CONFIG")) {
     $Val = [Environment]::GetEnvironmentVariable($V)
     if (-not $Val) { $Val = "(unset)" }
     Write-Output "env $V = $Val"
@@ -89,12 +95,15 @@ foreach ($V in @("CLOUDSDK_CORE_PROJECT","CLOUDSDK_ACTIVE_CONFIG_NAME","CLOUDSDK
 Invoke-Cap "gcloud configurations list" "gcloud" @("config","configurations","list","--format=value(name,is_active)") | Out-Null
 Invoke-Cap "ambient config account" "gcloud" @("config","get-value","account") | Out-Null
 Invoke-Cap "ambient config project" "gcloud" @("config","get-value","project") | Out-Null
+Invoke-Cap "ambient billing/quota_project" "gcloud" @("config","get-value","billing/quota_project") | Out-Null
 
 # ---------- Pin routing for this session ----------
 Section "PINNING - SESSION ROUTING LOCKED TO $ExpectedProject"
 $env:CLOUDSDK_CORE_PROJECT = $ExpectedProject
+$env:CLOUDSDK_BILLING_QUOTA_PROJECT = $ExpectedProject
 $env:CLOUDSDK_CORE_DISABLE_PROMPTS = "1"
 Write-Output "CLOUDSDK_CORE_PROJECT = $env:CLOUDSDK_CORE_PROJECT"
+Write-Output "CLOUDSDK_BILLING_QUOTA_PROJECT = $env:CLOUDSDK_BILLING_QUOTA_PROJECT (API consumer/quota routing locked to the same project)"
 Write-Output "CLOUDSDK_CORE_DISABLE_PROMPTS = 1 (API-enablement prompts cannot occur)"
 
 # ---------- Gate ----------

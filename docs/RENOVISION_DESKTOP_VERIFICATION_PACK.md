@@ -14,43 +14,60 @@ resource, and nothing in it can enable an API.
 `ocg-pipeline`; `billingEnabled: true` with a linked billing account
 (identifier intentionally not recorded).
 
-## KMS project-mismatch — root cause and resolution (2026-10-29)
+## KMS project-routing — root-cause investigation (2026-10-29)
 
-**Observed:** three collision probes (Cloud Run service, evidence
-bucket, runtime service account) returned NOT FOUND for `ocg-pipeline`,
-but the KMS key-ring probe produced an interactive prompt offering to
-enable the Cloud KMS API in **`ocg-media-acceptance`** — a different
-project.
+**Live facts (founder desktop verification):** active account
+`gocasiorealtor@gmail.com`; configured project `ocg-pipeline`;
+`cloudkms.googleapis.com` is **not** among `ocg-pipeline`'s enabled
+services; and `gcloud kms keyrings describe renovision
+--project=ocg-pipeline --location=us-central1 --quiet` nevertheless
+returned `SERVICE_DISABLED` naming **`ocg-media-acceptance`**. Three
+other probes (Cloud Run service, bucket, runtime SA) returned NOT
+FOUND for `ocg-pipeline`. The KMS outcome is **UNKNOWN**.
 
-**Root cause (evidence-based):** an API-enablement prompt names the
-project gcloud resolved for that command, and it only appears in an
-interactive shell when the API is disabled in the resolved project.
-`ocg-media-acceptance` is the OCG MEDIA acceptance project whose
-workstation execution ran on this same desktop on 2026-10-28 — the
-desktop's ambient gcloud routing (active configuration and/or a
-`CLOUDSDK_CORE_PROJECT`-style override in that shell) pointed at it when
-the KMS probe ran, outside the pinned context the other checks used.
-The prompt is therefore evidence of **command routing**, not of
-anything about `ocg-pipeline`. Two consequences, stated plainly:
+**Mechanism (the distinction that explains it):** a `SERVICE_DISABLED`
+error names the **API consumer / quota project**, which is a separate
+routing layer from the requested resource project. The quota project
+is resolved from the `billing/quota_project` configuration property,
+the `CLOUDSDK_BILLING_QUOTA_PROJECT` / `GOOGLE_CLOUD_QUOTA_PROJECT`
+environment variables, or the ADC `quota_project_id` — in that
+precedence family — and an explicit `--project` flag does **not**
+override it. `ocg-media-acceptance` is the OCG MEDIA acceptance
+project whose workstation execution ran on this same desktop on
+2026-10-28; a leftover quota-project setting from that work attributes
+this desktop's API consumption to it, so the KMS enablement check was
+evaluated against `ocg-media-acceptance` (where KMS is also disabled)
+even though the resource project was correctly `ocg-pipeline`.
 
-1. The KMS result is **UNKNOWN**, not "absent": a disabled-API or
-   permission outcome can never prove a resource does not exist.
-2. Whether `cloudkms.googleapis.com` is enabled in `ocg-pipeline`
-   itself is also unknown until the inventory runs — if it is disabled
-   there too, key-ring absence stays UNKNOWN until enablement is
-   separately authorized (Terraform's apply would surface an
-   ALREADY_EXISTS error if a ring somehow existed; the plan does not
-   depend on proven absence).
+**Proof instrument (falsifiable):**
+`infra/gcp/RENOVISION-KMS-ROUTING-DIAG.ps1` (SHA-256
+`b2d5a4fa13f17bc57bee9eb65e4dc7e3fe8f384795a7fafd6ef062c62b0dc938`)
+prints the ambient quota property, the related env vars, the ADC
+`quota_project_id`, the staging API-enablement table, and then runs
+the identical describe three ways: ambient, quota pinned to
+`ocg-pipeline` (session env only), core+quota pinned. **Prediction:**
+probe B/C return `SERVICE_DISABLED` naming `ocg-pipeline` — at which
+point routing is demonstrated, not asserted. If they still name
+`ocg-media-acceptance`, the transcript's ADC/quota lines identify the
+remaining layer. The root cause is recorded as CONFIRMED only when
+that transcript returns; until then it stands as the mechanism that
+fits every observed fact, with its test attached.
 
-**Resolution (script v2):** routing is pinned for the whole session
-(`CLOUDSDK_CORE_PROJECT=ocg-pipeline`) AND every call carries an
-explicit `--project`; prompts are disabled
-(`CLOUDSDK_CORE_DISABLE_PROMPTS=1`), so a disabled API fails closed
-with an error instead of offering enablement; a diagnostics section
-prints the ambient configuration/env state first, so any future
-mismatch explains itself in the transcript; probe outcomes are
-classified **PASS (absent) / FAIL (exists) / UNKNOWN (denied or
-disabled — proves nothing)**; every command's exit code is recorded.
+**Consequences, stated plainly:**
+1. Key-ring absence in `ocg-pipeline` stays **UNKNOWN** — and would
+   stay UNKNOWN even with perfect routing, because
+   `cloudkms.googleapis.com` is disabled in `ocg-pipeline` itself. A
+   disabled API proves nothing about existence.
+2. **Terraform apply would fail on the KMS resources** for the same
+   reason: `cloudkms.googleapis.com` must be enabled in
+   `ocg-pipeline` first. That enablement is a **separate, narrow
+   founder authorization** (per the founder's boundary: never bundled
+   with apply/deployment approval). The authenticated plan may still
+   complete (the offline plan required no live KMS reads); the desktop
+   run settles that empirically.
+3. The verify script (v2.2) now pins the quota project alongside the
+   core project for the whole session, so every future transcript
+   evaluates consumption against `ocg-pipeline` itself.
 
 ## The one command
 
