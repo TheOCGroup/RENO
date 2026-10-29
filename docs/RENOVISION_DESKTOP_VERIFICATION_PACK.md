@@ -58,12 +58,17 @@ disabled — proves nothing)**; every command's exit code is recorded.
 powershell -ExecutionPolicy Bypass -File .\infra\gcp\RENOVISION-DESKTOP-VERIFY.ps1
 ```
 
-Script: `infra/gcp/RENOVISION-DESKTOP-VERIFY.ps1` **v2**, SHA-256
-`df7350a42e31a9c2672fc842da2229d7ea0fc18212ab919ad4335bc932f0d260`
+Script: `infra/gcp/RENOVISION-DESKTOP-VERIFY.ps1` **v2.1**, SHA-256
+`ef3336ea932dea82e67e97d7a0de1c442f68e9400d293791e85d02c632cb4029`
 (pure ASCII; no dynamic command execution; workstation parser/execution
 status: NOT VERIFIED until the transcript returns). It aborts if the
 active account is not `gocasiorealtor@gmail.com` or the pinned project
-cannot be read.
+cannot be read. Review history: v2 (`df7350a4…`) received a QUINCEY
+delta PASS WITH NOTES (PR comment 6504316341) with one LOW note — the
+billing-account lookup's stdout could still reach the transcript;
+v2.1 closes it by capturing that single lookup with output withheld,
+so the billing identifier is never written anywhere, transcript
+included.
 
 ## Terraform on the desktop (install, §4 of the closeout order)
 

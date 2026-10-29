@@ -1,4 +1,4 @@
-# RENOVISION-DESKTOP-VERIFY.ps1 (v2)
+# RENOVISION-DESKTOP-VERIFY.ps1 (v2.1)
 # Strictly READ-ONLY verification for RENOVISION staging readiness.
 # Runs on the founder's authenticated Windows desktop (DESKTOP-5E83JLJ).
 # It never creates, modifies, or deletes any Google Cloud resource.
@@ -35,13 +35,13 @@ $script:Results = @()
 $script:ProbeOutcomes = @()
 
 Start-Transcript -Path $TranscriptPath -Force | Out-Null
-Write-Output "RENOVISION-VERIFY-BEGIN v2 $Stamp"
+Write-Output "RENOVISION-VERIFY-BEGIN v2.1 $Stamp"
 Write-Output "Machine: $env:COMPUTERNAME  User: $env:USERNAME"
 
 function Section($Name) { Write-Output ""; Write-Output "===== $Name =====" }
 
 function Invoke-Cap {
-    param([string]$Label, [string]$Exe, [string[]]$CmdArgs, [switch]$HideArgs)
+    param([string]$Label, [string]$Exe, [string[]]$CmdArgs, [switch]$HideArgs, [switch]$HideOutput)
     Write-Output ""
     Write-Output "--- $Label"
     if ($HideArgs) { Write-Output "CMD: $Exe (arguments withheld: billing scope)" }
@@ -49,7 +49,8 @@ function Invoke-Cap {
     $ErrFile = [System.IO.Path]::GetTempFileName()
     $Out = & $Exe @CmdArgs 2>$ErrFile
     $Code = $LASTEXITCODE
-    if ($Out) { $Out | ForEach-Object { Write-Output $_ } }
+    if ($HideOutput) { Write-Output "(output withheld: billing scope - the billing account identifier is never written to the transcript)" }
+    elseif ($Out) { $Out | ForEach-Object { Write-Output $_ } }
     $ErrText = ""
     if (Test-Path $ErrFile) {
         $ErrText = (Get-Content $ErrFile -Raw)
@@ -157,7 +158,7 @@ Probe "kms keyring renovision" @("kms","keyrings","describe","renovision","--pro
 
 # ---------- 11-12. Budgets ----------
 Section "11-12 BUDGETS (names and amounts only) AND REGION"
-$Bill = Invoke-Cap "billing account name lookup" "gcloud" @("billing","projects","describe",$ExpectedProject,"--format=value(billingAccountName)") -HideArgs
+$Bill = Invoke-Cap "billing account name lookup" "gcloud" @("billing","projects","describe",$ExpectedProject,"--format=value(billingAccountName)") -HideArgs -HideOutput
 $BillId = ($Bill.Text.Trim() -split "/")[-1]
 if ($BillId) {
     Invoke-Cap "billing budgets" "gcloud" @("billing","budgets","list","--billing-account=$BillId","--format=value(displayName,amount.specifiedAmount.units)") -HideArgs | Out-Null
