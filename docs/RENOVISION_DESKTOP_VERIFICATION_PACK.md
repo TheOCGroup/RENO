@@ -4,81 +4,118 @@
 credential (its only service-account key is revoked; founder rule: never
 reuse or repair it, no credentials through chat). All live GCP reads
 therefore run under the founder's own authenticated desktop session on
-`DESKTOP-5E83JLJ` (account `gocasiorealtor@gmail.com`, project
-`ocg-pipeline`, Cloud SDK 580.0.0) — the same pattern as the founder
-V1–V6 verification of 2026-10-25. Nothing in this pack creates, modifies,
-or deletes a cloud resource; there is no apply step.
+`DESKTOP-5E83JLJ` (account `gocasiorealtor@gmail.com`, Cloud SDK
+580.0.0) — the same pattern as the founder V1–V6 verification of
+2026-10-25. Nothing in this pack creates, modifies, or deletes a cloud
+resource, and nothing in it can enable an API.
 
 **Already verified by the founder desktop (comment 6503007807,
 2026-10-29):** active account `gocasiorealtor@gmail.com`; project
 `ocg-pipeline`; `billingEnabled: true` with a linked billing account
-(identifier intentionally not recorded). This supersedes the earlier
-"billing NOT VERIFIED" status in older documents.
+(identifier intentionally not recorded).
+
+## KMS project-mismatch — root cause and resolution (2026-10-29)
+
+**Observed:** three collision probes (Cloud Run service, evidence
+bucket, runtime service account) returned NOT FOUND for `ocg-pipeline`,
+but the KMS key-ring probe produced an interactive prompt offering to
+enable the Cloud KMS API in **`ocg-media-acceptance`** — a different
+project.
+
+**Root cause (evidence-based):** an API-enablement prompt names the
+project gcloud resolved for that command, and it only appears in an
+interactive shell when the API is disabled in the resolved project.
+`ocg-media-acceptance` is the OCG MEDIA acceptance project whose
+workstation execution ran on this same desktop on 2026-10-28 — the
+desktop's ambient gcloud routing (active configuration and/or a
+`CLOUDSDK_CORE_PROJECT`-style override in that shell) pointed at it when
+the KMS probe ran, outside the pinned context the other checks used.
+The prompt is therefore evidence of **command routing**, not of
+anything about `ocg-pipeline`. Two consequences, stated plainly:
+
+1. The KMS result is **UNKNOWN**, not "absent": a disabled-API or
+   permission outcome can never prove a resource does not exist.
+2. Whether `cloudkms.googleapis.com` is enabled in `ocg-pipeline`
+   itself is also unknown until the inventory runs — if it is disabled
+   there too, key-ring absence stays UNKNOWN until enablement is
+   separately authorized (Terraform's apply would surface an
+   ALREADY_EXISTS error if a ring somehow existed; the plan does not
+   depend on proven absence).
+
+**Resolution (script v2):** routing is pinned for the whole session
+(`CLOUDSDK_CORE_PROJECT=ocg-pipeline`) AND every call carries an
+explicit `--project`; prompts are disabled
+(`CLOUDSDK_CORE_DISABLE_PROMPTS=1`), so a disabled API fails closed
+with an error instead of offering enablement; a diagnostics section
+prints the ambient configuration/env state first, so any future
+mismatch explains itself in the transcript; probe outcomes are
+classified **PASS (absent) / FAIL (exists) / UNKNOWN (denied or
+disabled — proves nothing)**; every command's exit code is recorded.
 
 ## The one command
-
-From a clone of this repository on the desktop:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\infra\gcp\RENOVISION-DESKTOP-VERIFY.ps1
 ```
 
-Script: `infra/gcp/RENOVISION-DESKTOP-VERIFY.ps1`, SHA-256
-`6325cc85cc2f5f67abacda7758a7d43415c941377296a8b8de90ff2f9b67ccf8`
-(pure ASCII; workstation parser/execution status: NOT VERIFIED until
-the transcript returns). It aborts before any inventory command if the
-active account or project differs from the expected values. Prereq for
-the Terraform section: Terraform 1.9.8 on PATH and a local
-`staging.tfvars` (the script creates it from
-`infra/gcp/staging.tfvars.example` on first run).
+Script: `infra/gcp/RENOVISION-DESKTOP-VERIFY.ps1` **v2**, SHA-256
+`df7350a42e31a9c2672fc842da2229d7ea0fc18212ab919ad4335bc932f0d260`
+(pure ASCII; no dynamic command execution; workstation parser/execution
+status: NOT VERIFIED until the transcript returns). It aborts if the
+active account is not `gocasiorealtor@gmail.com` or the pinned project
+cannot be read.
 
-## What it collects (mission §3 items 1–12)
+## Terraform on the desktop (install, §4 of the closeout order)
 
-Active identity + project gate; project lifecycle state; billing
-enabled (the billing-account identifier is never printed); enabled
-APIs; Cloud Run services; bucket names/locations; Artifact Registry
-repositories; KMS key rings; service accounts + project IAM bindings;
-secret NAMES only (values are never read); budgets (names/amounts);
-and four RENOVISION collision probes where **NOT_FOUND is the expected,
-passing result**: Cloud Run service `renovision`, bucket
-`ocg-renovision-evidence-staging`, service account
-`renovision-runtime@`, KMS key ring `renovision` (all us-central1).
-It finishes with `terraform fmt -check`, `init -backend=false`,
-`validate`, and an **authenticated `terraform plan`** against
-`staging.tfvars`.
+The desktop lacks Terraform on PATH. Install is local developer
+tooling only: download `terraform_1.9.8_windows_amd64.zip` from
+`https://releases.hashicorp.com/terraform/1.9.8/`, verify
+**SHA-256 `2667de56106bc6707968286357e29c20f8dbbb2f429ef57099b04994f82d9684`**
+(official `terraform_1.9.8_SHA256SUMS`, retrieved first-hand
+2026-10-29) with `Get-FileHash`, extract, add to PATH. The script
+detects absence and reports TERRAFORM-NOT-FOUND without failing the
+inventory sections.
+
+## What the script collects
+
+Diagnostics; identity gate; billing enabled (identifier never
+printed); enabled APIs; Cloud Run services; bucket names/locations;
+Artifact Registry repositories; KMS key rings; service accounts +
+project IAM bindings; secret NAMES only; budgets (names/amounts); the
+four collision probes with classified outcomes; then
+`terraform fmt -check`, `init -backend=false`, `validate`, and an
+**authenticated `terraform plan`** against `staging.tfvars` (created
+from `infra/gcp/staging.tfvars.example` on first run).
 
 **Expected plan result (hard stop if different):**
-`Plan: 8 to add, 0 to change, 0 to destroy` — Cloud Run service, runtime
-service account, evidence bucket + its CMEK/IAM, KMS key ring + crypto
-key + storage service identity binding. Any destroy, any unexpected
-resource, or any plan error stops the run: return the transcript; do
-not attempt fixes under this authorization.
+`Plan: 8 to add, 0 to change, 0 to destroy`. Any destroy, unexpected
+resource, or plan error: return the transcript; attempt no fixes under
+this authorization.
 
-## Known inventory from prior verified records (to be reconciled
-against the live transcript; dated, may have changed)
+## Known inventory from prior verified records (to reconcile against
+the transcript; dated, may have changed)
 
 - Artifact Registry repo `cloud-run-source-deploy` exists (2026-10-23) —
-  the staging image path in `staging.tfvars.example` reuses it; the
-  Terraform creates no repository.
-- Service account `agent-workspace-staging@ocg-pipeline` and 7
+  the staging image path reuses it; Terraform creates no repository.
+- SA `agent-workspace-staging@ocg-pipeline` and 7
   `agent-workspace-staging-*` secrets exist (2026-10-23) — unrelated
-  product; RENOVISION adds its own SA, no overlap expected.
-- A Cloud SQL instance `agent-workspace-staging` existed STOPPED
+  product; no overlap expected.
+- Cloud SQL instance `agent-workspace-staging` existed STOPPED
   (2026-10-23) — unrelated; RENOVISION uses no Cloud SQL.
 - Budget "OCG GEO Dev — ocg-pipeline $25 monthly" exists (2026-10-25) —
-  it is a different product's alert and must be preserved untouched;
-  RENOVISION staging alerts (if any) are separate and are notifications,
-  not spending limits.
-- Identity Platform / Firebase Auth configuration state in
-  `ocg-pipeline`: NOT previously recorded — the enabled-APIs section of
-  the transcript settles whether `identitytoolkit.googleapis.com` is
-  already enabled; enabling it is NOT part of this read-only pack.
+  a different product's alert; preserve untouched. RENOVISION alerts,
+  if any, are separate and are notifications, not spending limits.
+- Founder-reported (2026-10-29 closeout order): RENOVISION Cloud Run
+  service, evidence bucket, and runtime SA = NOT FOUND in
+  `ocg-pipeline`; KMS key ring = **UNKNOWN** (see root cause above).
 
 ## Return evidence
 
-The transcript file `renovision-verify-<timestamp>.txt` in the desktop
-user's home directory. Return it (or its full text) to the requesting
-lane. Review checklist on receipt: gate PASS; billingEnabled true; all
-four collision probes NOT_FOUND; plan summary exactly 8/0/0; no ERROR
-lines unexplained. Until that review completes, live inventory and the
-authenticated plan are recorded as **PREPARED, NOT EXECUTED**.
+The transcript `renovision-verify-<timestamp>.txt` in the desktop
+user's home directory. Review checklist on receipt: gate PASS;
+diagnostics explain the ambient routing; billingEnabled true; probes
+classified (KMS may legitimately read UNKNOWN if the API is disabled —
+that is an honest result, not a failure of the pack); plan summary
+exactly 8/0/0; exit codes recorded for every command. Until that review
+completes, live inventory and the authenticated plan are recorded as
+**PREPARED, NOT EXECUTED**.
