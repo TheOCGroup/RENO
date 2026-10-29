@@ -123,6 +123,57 @@ normal staging month with headroom, does NOT cover a stress event
 Safeguards above (max instances, budget alerts, time-box, teardown) are
 the enforcement package for the cap.
 
+## 8a. Reconciliation against the exact Terraform (2026-10-29)
+
+The validated Terraform plans exactly **8 resources** (see
+`docs/RENOVISION_TERRAFORM_VALIDATION_REPORT.md`): Cloud Run service,
+evidence bucket, runtime service account + one bucket IAM binding, KMS
+key ring + key + one service-agent grant + storage service identity.
+Every estimate line maps to one of these: Cloud Run (service), GCS
+(bucket), KMS (key), Artifact Registry (image storage — created at build
+time, not in this Terraform), Secret Manager ($0 — no secrets are stored;
+identity is token verification), Logging/Monitoring (platform defaults),
+Identity Platform ($0 at test scale). No database, no load balancer, no
+VPC connector is in scope or in the estimate.
+
+**Bounded staging acceptance workload (the workload the $15 proposal is
+judged against):** apply → smoke checks → the full HTTP operator battery +
+negative security checks from the identity preparation doc → up to 3 days
+of intermittent team/device dry-run traffic at or below LOW intensity →
+export/backup verification → teardown, all inside a **14-day window**.
+
+**$15 adequacy verdict:** expected cost for that workload ≈ **$6–8**
+(run-rate at LOW ≈ $0.35/mo prorated, plus builds, KMS/secrets ≈ $0.30,
+headroom for NORMAL-intensity days ≈ $0.43/day). Worst credible case —
+the full 14 days at NORMAL intensity — ≈ **$13**, still inside $15.
+**$15 is sufficient for the bounded acceptance workload.** It is NOT
+sufficient for: a full month at NORMAL ($12.90 — marginal), any STRESS
+load (≈ $185/mo run-rate), or an un-torn-down environment left running
+(the run-rate continues until teardown).
+
+**Charges that could fall outside the estimate:** taxes; Cloud Logging
+beyond 50 GiB if request logging is verbose during debugging; egress
+spikes from repeated evidence downloads; KMS operations at load-test
+volume; any support plan; costs from a delayed teardown.
+
+**Budget alerts — limitation stated plainly:** Google Cloud budgets send
+notifications (and can trigger Pub/Sub) at threshold percentages of
+actual or forecasted spend. They are **not hard limits**: billing data
+lags by hours, alerts do not stop resources by themselves, and an
+automatic shutoff requires a separate budget→Pub/Sub→function automation
+that is **not** in this Terraform and would need its own founder
+approval. The real cost controls here are structural: max 2 instances,
+scale-to-zero, internal ingress, the 14-day time-box, and teardown.
+
+**Time-boxed shutdown + residual-charge verification:** at window end —
+traffic to zero (delete the Cloud Run service or `terraform destroy`),
+empty + delete the evidence bucket, delete Artifact Registry images,
+disable test IdP users, then verify for 7 days: (1) billing report for
+the project shows no new RENOVISION line items after teardown day;
+(2) console inventory shows zero of the 8 resources; (3) KMS key
+scheduled for destruction (30-day crypto-shredding window is free of
+storage charges once scheduled — confirm state in console).
+
 ## 8. Sources
 
 - Cloud Run pricing — cloud.google.com/run/pricing (Tier 1 request-based

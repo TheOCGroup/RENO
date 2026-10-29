@@ -110,6 +110,19 @@ The runner validates provenance, computes mean/max absolute error and
 within-tolerance results, and prints **Certification: NOT GRANTED**. Exit code
 2 means the inputs were invalid and no number may be quoted.
 
+## 5a. Execution readiness — exact kit, roles, and evidence bundle (prepared, NOT EXECUTED)
+
+**Hardware kit (founder supplies/approves):**
+- iPhone with LiDAR (Pro model, iOS current) — `ios-lidar` cases.
+- Android device with depth/ToF or ARCore depth support — `android-depth` cases.
+- Any current phone or laptop browser — `browser-camera` / `photo-only` / `manual` cases.
+- Laser distance meter with current calibration certificate (record instrument ID + certificate date), plus a steel tape as cross-check.
+- The test room: one ordinary furnished room, owner's consent recorded, with at least one door, one window, and one obstruction.
+
+**Roles (must be different people where the protocol requires):** reference measurer (never the capture operator), capture operator, evidence custodian (hashes + seals the evidence bundle), QUINCEY reviewer (independent scoring).
+
+**Evidence bundle per case/benchmark:** raw captures (unaltered), manifest JSON with SHA-256 digests, device model + OS + build commit, detected sensor support, permission outcomes, coverage gaps, failure log including rejected captures, reference measurement sheet (three repeats per dimension, instrument ID, calibration reference), and the runner report. Any case without a complete bundle is recorded as NOT EXECUTED, never as passed.
+
 ## 6. Evidence handling rules
 
 - Real capture media stays in private, tenant-isolated storage only — never in
