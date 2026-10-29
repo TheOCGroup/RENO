@@ -92,7 +92,10 @@ spatial accuracy.**
 
 ## 9. Exact remaining founder approvals
 
-1. **Decide the $15 staging cap** (bounded workload only) — not approved.
+1. ~~Decide the $15 staging cap~~ — **DECIDED 2026-10-29**: the founder
+   approved a $15 *planned spending limit* for the bounded workload
+   (PR #3 comment 6503007807). That approval is a budget boundary, NOT
+   authorization to spend, provision, or apply — those remain item 3.
 2. **Verify in Console:** `ocg-pipeline` billing linkage + intended
    staging home; choose the state backend; supply founder-session GCP
    access for a live plan.
