@@ -2,16 +2,15 @@
 
 **Repository:** TheOCGroup/RENO · **PR:** #3 (Draft — merge NOT authorized)
 **Certified baseline:** `75c94ff853522eb34548a98ac2ef2bf43213e46e`
-**Code head under final review:** `3162ce518b011687a92e25fc0589a9a7fc004ad8`
-**Final head (code + additive tests/docs):** recorded at commit time below in §1.
+**Code head certified by the QUINCEY delta verdict:** `3162ce518b011687a92e25fc0589a9a7fc004ad8`
+**Final head (certified code + additive tests/docs):** local `bcf3208f7c190750d48c718f7bf0f1d7f83aa835`, tree `18d9ecc58b6fc2c3750fb6d1899b094a4e8b61df` (published SHA differs — the Git Data API assigns its own commit ids; tree equality is asserted at publication and recorded in the final report).
 
 ## 1. Exact code state
 
 - Remediation delta commits (published): `8ef214da` (Q-OBS-1…4 code),
   `398f885d` (Q-OBS-5 Terraform), `e018039f` (staging/docs),
   `3162ce51` (google-beta provider fix found by Terraform validation).
-- Tree SHA of the final head: recorded in the closing commit message and
-  the final report (computed from the remote after publication).
+- Final head: local commit `bcf3208f`, tree `18d9ecc58b6fc2c3750fb6d1899b094a4e8b61df`.
 - Post-review additions are tests and documentation only
   (`tests/renovision-acceptance.test.mjs`, this package, validation /
   identity / staging documents). No product code changes after `3162ce51`.
