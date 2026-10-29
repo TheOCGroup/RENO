@@ -22,6 +22,11 @@ provider "google" {
   region  = var.region
 }
 
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 resource "google_service_account" "renovision_runtime" {
   account_id   = "renovision-runtime"
   display_name = "RENOVISION runtime (evidence bucket only)"
