@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {assessVisualClaim} from "../lib/renovision/visual-claim-policy.mjs";
+const base={mode:"renovate",sourceEvidenceRef:"source",generatedImageRef:"preview",geometryLocked:true,measuredDimensions:[{featureId:"width",meters:3,fieldVerified:true},{featureId:"depth",meters:4,fieldVerified:true}]};
+test("without benchmark accuracy claim is prohibited",()=>{const r=assessVisualClaim(base);assert.equal(r.previewAllowed,true);assert.equal(r.eligibleForAccuracyClaim,false);});
+test("even asserted benchmark does not certify model",()=>{const r=assessVisualClaim({...base,hasIndependentBenchmark:true});assert.equal(r.eligibleForAccuracyClaim,false);assert.equal(r.certified,false);});
+test("geometry unlock blocks preview",()=>assert.equal(assessVisualClaim({...base,geometryLocked:false}).previewAllowed,false));
+test("unverified dimension blocks preview",()=>assert.equal(assessVisualClaim({...base,measuredDimensions:[{...base.measuredDimensions[0],fieldVerified:false},base.measuredDimensions[1]]}).previewAllowed,false));
+test("missing generated evidence reference blocks preview",()=>assert.equal(assessVisualClaim({...base,generatedImageRef:""}).previewAllowed,false));
+test("unsupported mode blocked",()=>assert.equal(assessVisualClaim({...base,mode:"unknown"}).previewAllowed,false));

@@ -1,0 +1,34 @@
+# RENOVISION staging values for project ocg-pipeline (copy to
+# staging.tfvars on the operator workstation or shell; staging.tfvars
+# itself is operator-local and must not be committed with real
+# environment data).
+#
+# Variable names match infra/gcp/variables.tf exactly. CORRECTION
+# 2026-10-30: an earlier version of this example used names from a
+# design draft (image / identity_issuer / identity_audience /
+# identity_jwks_url / service_name / environment / kms_key_ring_name)
+# that variables.tf does not declare; a live authenticated plan
+# attempt in Cloud Shell failed on the four unset required variables
+# and the example was corrected. Service name ("renovision") and KMS
+# key ring name ("renovision") are literals in main.tf, not variables.
+#
+# Identity values assume Firebase Authentication / Google Identity
+# Platform in ocg-pipeline (see docs/RENOVISION_GCP_IDENTITY_PREP.md);
+# note identitytoolkit.googleapis.com was verified NOT ENABLED in
+# ocg-pipeline on 2026-10-30 - enabling it is a separate founder
+# decision, like cloudkms.googleapis.com. The plan does not require
+# the container image to exist yet; the image is built and pushed in
+# the authorized staging run before apply (see
+# docs/RENOVISION_STAGING_RUNBOOK.md).
+
+project_id           = "ocg-pipeline"
+region               = "us-central1"
+evidence_bucket_name = "ocg-renovision-evidence-staging"
+container_image      = "us-central1-docker.pkg.dev/ocg-pipeline/cloud-run-source-deploy/renovision:3162ce51"
+token_issuer         = "https://securetoken.google.com/ocg-pipeline"
+token_audience       = "ocg-pipeline"
+jwks_url             = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+
+# Defaults in variables.tf, stated explicitly for the operator:
+# run_ingress   = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"  # no public ingress; IAM still requires an authenticated invoker in every mode. Set "INGRESS_TRAFFIC_ALL" only as a deliberate founder choice for direct browser acceptance.
+# max_instances = 2                                          # hard cost ceiling for staging
