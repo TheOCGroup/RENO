@@ -46,10 +46,14 @@ each explicitly named tester account, and verify no `allUsers` /
 `allAuthenticatedUsers` binding exists:
 
 ```powershell
-gcloud run services add-iam-policy-binding renovision --region us-central1 `
+gcloud run services add-iam-policy-binding renovision --project ocg-pipeline --region us-central1 `
   --member "user:<founder-or-tester-email>" --role roles/run.invoker
-gcloud run services get-iam-policy renovision --region us-central1
+gcloud run services get-iam-policy renovision --project ocg-pipeline --region us-central1
 ```
+
+(The explicit `--project` on every call is deliberate: this project's
+workstation history includes quota/consumer-project routing surprises,
+so no command in this runbook relies on ambient session routing.)
 
 State note: staging uses a LOCAL state file on the operator workstation
 for this bounded run (no remote backend is configured in the Terraform;

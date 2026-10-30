@@ -83,7 +83,11 @@ covers only what the evidence shows.
 
 Defects are filed on the repository (issue or PR comment) with: beta
 build/commit, device + browser, steps, expected vs actual, and
-evidence (screenshot/export). Fixes land on the same branch; every fix
+evidence (screenshot/export). Testers without repository access file
+through the founder (or a single named intake the founder designates
+at onboarding) — the same fields are required either way, and the
+founder confirms each tester's filing route when their account is
+created. Fixes land on the same branch; every fix
 batch gets a QUINCEY delta review and a full-suite run; the founder
 retests the exact failing case before it closes. Severity-1/2 defects
 block founder acceptance until closed or explicitly waived by the
