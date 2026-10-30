@@ -40,6 +40,17 @@ terraform plan -var-file="staging.tfvars" -input=false   # must still read 8/0/0
 terraform apply -var-file="staging.tfvars"               # founder-authorized step
 ```
 
+Private-access grant (beta requirement — the service is never public):
+after apply, grant the Cloud Run invoker role ONLY to the founder and
+each explicitly named tester account, and verify no `allUsers` /
+`allAuthenticatedUsers` binding exists:
+
+```powershell
+gcloud run services add-iam-policy-binding renovision --region us-central1 `
+  --member "user:<founder-or-tester-email>" --role roles/run.invoker
+gcloud run services get-iam-policy renovision --region us-central1
+```
+
 State note: staging uses a LOCAL state file on the operator workstation
 for this bounded run (no remote backend is configured in the Terraform;
 a shared/remote backend is a production-hardening decision for the
