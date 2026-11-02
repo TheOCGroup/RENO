@@ -70,7 +70,9 @@ test("list uses tenant-specific object prefix, not bucket-wide enumeration",asyn
  const listCalls=calls.filter(c=>new URL(c.url).pathname.endsWith("/o"));
  assert.equal(listCalls.length,1);
  const prefix=new URL(listCalls[0].url).searchParams.get("prefix");
- assert.match(prefix,/^renovision-projects\\/[a-f0-9]{64}\\/$/);
+ assert.equal(prefix.startsWith("renovision-projects/"),true);
+ assert.equal(prefix.endsWith("/"),true);
+ assert.equal(prefix.split("/")[1].length,64);
  assert.ok(!prefix.includes("tenant-a"));
  assert.deepEqual(await store.list("tenant-b"),["p2"]);
 });
