@@ -12,6 +12,7 @@ import {createRenovisionServer, createMemoryApprovalRegistry} from "./renovision
 import {createDurableEvidenceStorage} from "../lib/renovision/durable-evidence-storage.mjs";
 import {createGcsEvidenceStorage} from "../lib/renovision/gcs-evidence-storage.mjs";
 import {createDurableSpatialEventStore} from "../lib/renovision/durable-spatial-event-store.mjs";
+import {createGcsSpatialEventStore} from "../lib/renovision/gcs-spatial-event-store.mjs";
 import {createFileProjectStore} from "../lib/renovision/project-store.mjs";
 import {createGcsProjectStore} from "../lib/renovision/gcs-project-store.mjs";
 import {createTokenAuthenticator} from "../lib/renovision/identity.mjs";
@@ -75,7 +76,10 @@ if (process.env.RENOVISION_GCS_BUCKET) {
  evidenceStorage = createDurableEvidenceStorage({rootDir: join(dataDir, "evidence"), authorize: authorizeStorage});
  console.log("RENOVISION evidence storage: durable filesystem at " + join(dataDir, "evidence"));
 }
-const eventStore = createDurableSpatialEventStore({rootDir: join(dataDir, "events"), authorize: async (scope) => authorizeStorage({actorId: scope?.actor?.id, tenantId: scope?.tenantId, propertyId: scope?.propertyId, roomId: scope?.roomId})});
+const authorizeEvent = async (scope) => authorizeStorage({actorId: scope?.actor?.id, tenantId: scope?.tenantId, propertyId: scope?.propertyId, roomId: scope?.roomId});
+const eventStore = process.env.RENOVISION_GCS_BUCKET
+ ? createGcsSpatialEventStore({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken, authorize: authorizeEvent})
+ : createDurableSpatialEventStore({rootDir: join(dataDir, "events"), authorize: authorizeEvent});
 const projectStore = process.env.RENOVISION_GCS_BUCKET
  ? createGcsProjectStore({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken})
  : createFileProjectStore({rootDir: join(dataDir, "projects")});
