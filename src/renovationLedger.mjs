@@ -112,7 +112,7 @@ export class RenovationLedger {
       else matched.push({reference:entry.reference,invoiceId:local.invoiceId,amount:local.amount});
     }
     for (const entry of this.payments) if (!bankByReference.has(entry.reference)) unmatchedLedger.push({reference:entry.reference,invoiceId:entry.invoiceId,amount:entry.amount});
-    return {matched,amountMismatches,unmatchedBank,unmatchedLedger,reconciledPaid:Math.round(matched.reduce((s,p)=>s+p.amount,0)*100)/100,verified:amountMismatches.length===0 && unmatchedBank.length===0 && unmatchedLedger.length===0};
+    return {matched,amountMismatches,unmatchedBank,unmatchedLedger,reconciledPaid:Math.round(matched.reduce((s,p)=>s+p.amount,0)*100)/100,verified:bank.length>0 && this.payments.length>0 && amountMismatches.length===0 && unmatchedBank.length===0 && unmatchedLedger.length===0};
   }  snapshot() {
     return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, payments:this.payments, drawAllocations:this.drawAllocations, inspections:this.inspections, tasks:this.tasks, events:this.events,
       financials:{ drawAllocated:Math.round(this.drawAllocations.reduce((s,a)=>s+a.amount,0)*100)/100, invoiced: Math.round(this.invoices.filter(i=>i.status!=='void').reduce((s,i)=>s+i.total,0)*100)/100,
