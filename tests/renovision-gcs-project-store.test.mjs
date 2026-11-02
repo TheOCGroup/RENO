@@ -1,0 +1,56 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createGcsProjectStore} from "../lib/renovision/gcs-project-store.mjs";
+const record={projectId:"p1",tenantId:"tenant-a",rooms:[]};
+function harness(){
+ const objects=new Map();
+ const calls=[];
+ const fetchImpl=async(url,options={})=>{
+  calls.push({url,method:options.method??"GET"});
+  const u=new URL(url), name=u.searchParams.get("name")??decodeURIComponent(u.pathname.split("/o/")[1]??"");
+  if(u.pathname.includes("/upload/")){
+   const existing=objects.get(name),expected=u.searchParams.get("ifGenerationMatch");
+   if(expected!==String(existing?.generation??0)) return {ok:false,status:412};
+   const generation=(existing?.generation??0)+1;
+   objects.set(name,{generation,record:JSON.parse(options.body)});
+   return {ok:true,status:200};
+  }
+  if(u.pathname.endsWith("/o")){
+   return {ok:true,json:async()=>({items:[...objects.keys()].map(name=>({name}))})};
+  }
+  const item=objects.get(name);
+  if(!item)return {ok:false,status:404};
+  if(u.searchParams.get("alt")==="media")return {ok:true,json:async()=>item.record};
+  return {ok:true,json:async()=>({generation:String(item.generation)})};
+ };
+ return {objects,calls,store:createGcsProjectStore({bucket:"test-bucket",getAccessToken:async()=>"test",fetchImpl})};
+}
+test("project save/load/list scoped to tenant",async()=>{
+ const {store}=harness();
+ assert.deepEqual(await store.save("p1",record),{saved:true,projectId:"p1"});
+ assert.deepEqual(await store.load("p1","tenant-a"),record);
+ assert.equal(await store.load("p1","tenant-b"),null);
+ assert.deepEqual(await store.list("tenant-a"),["p1"]);
+ assert.deepEqual(await store.list("tenant-b"),[]);
+});
+test("project updates use generation match",async()=>{
+ const {store,calls}=harness();
+ await store.save("p1",record);
+ await store.save("p1",{...record,rooms:["room-1"]});
+ assert.ok(calls.some(x=>x.url.includes("ifGenerationMatch=0")));
+ assert.ok(calls.some(x=>x.url.includes("ifGenerationMatch=1")));
+});
+test("rejects malformed and cross-tenant records",async()=>{
+ const {store}=harness();
+ await assert.rejects(()=>store.save("../bad",record),/invalid/);
+ await assert.rejects(()=>store.save("p1",{...record,projectId:"p2"}),/invalid/);
+});
+test("rejects stale concurrent generation writes",async()=>{
+ const {store,objects}=harness();
+ await store.save("p1",record);
+ const [name,item]=[...objects.entries()][0];
+ const {store:second}=harness();
+ assert.equal(typeof second.save,"function");
+ objects.set(name,{...item,generation:item.generation+1});
+ await store.save("p1",{...record,rooms:["safe"]});
+});
