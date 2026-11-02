@@ -59,3 +59,37 @@ test("two concurrent writers across store instances yield exactly one commit",as
  assert.equal(results.filter(r=>!r.committed).length,1);
  assert.deepEqual(await a.readFeatureEvents(scope),{revision:1,events:[event]});
 });
+
+test("simultaneous GCS writers using the same observed generation cannot both commit",async()=>{
+ const objects=new Map();
+ let uploads=0;
+ let release;
+ const bothReady=new Promise(resolve=>{release=resolve;});
+ const fetchImpl=async(url,options={})=>{
+  const u=new URL(url);
+  const n=u.searchParams.get("name")??decodeURIComponent(u.pathname.split("/o/")[1]??"");
+  if(u.pathname.includes("/upload/")){
+   uploads++;
+   if(uploads===2)release();
+   await bothReady;
+   const current=objects.get(n);
+   if(u.searchParams.get("ifGenerationMatch")!==String(current?.generation??0))return {ok:false,status:412};
+   objects.set(n,{generation:(current?.generation??0)+1,data:JSON.parse(options.body)});
+   return {ok:true,status:200};
+  }
+  const current=objects.get(n);
+  if(!current)return {ok:false,status:404};
+  if(u.searchParams.get("alt")==="media")return {ok:true,status:200,json:async()=>current.data};
+  return {ok:true,status:200,json:async()=>({generation:String(current.generation)})};
+ };
+ const create=()=>createGcsSpatialEventStore({bucket:"bucket",getAccessToken:async()=>"token",fetchImpl,authorize:async()=>true});
+ const [a,b]=[create(),create()];
+ const results=await Promise.all([
+  a.compareAndAppend({...scope,expectedRevision:0,event}),
+  b.compareAndAppend({...scope,expectedRevision:0,event})
+ ]);
+ assert.equal(uploads,2);
+ assert.equal(results.filter(x=>x.committed).length,1);
+ assert.equal(results.filter(x=>!x.committed).length,1);
+ assert.deepEqual(await a.readFeatureEvents(scope),{revision:1,events:[event]});
+});
