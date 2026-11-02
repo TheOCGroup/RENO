@@ -23,6 +23,15 @@ test('service enforces authorization, persists ledger actions and rejects stale 
   assert.equal(service.get({actor:operator,projectId:'p-1'}).version,2);
   store.close();
 });
+test('service rejects promise-valued and non-boolean authorization results', () => {
+  const store = new MissionControlStateStore({databasePath:':memory:',tenantId:'ocg'});
+  const actor={id:'staff'};
+  for (const authorize of [()=>Promise.resolve(false),()=>Promise.resolve(true),()=>({allowed:true}),()=>1]) {
+    const service=new MissionControlService({store,authorize});
+    assert.throws(()=>service.get({actor,projectId:'p1'}),/forbidden/);
+  }
+  store.close();
+});
 test('service refuses a missing authorization function and mismatched workflow', () => {
   const store = new MissionControlStateStore({databasePath:':memory:',tenantId:'ocg'});
   assert.throws(()=>new MissionControlService({store}),/service_configuration_required/);

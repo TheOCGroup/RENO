@@ -9,7 +9,9 @@ export class MissionControlService {
     this.authorize = authorize;
   }
   check({ actor, action, projectId }) {
-    if (!actor?.id || !this.authorize({ actor, action, projectId })) throw new Error('forbidden');
+    if (!actor?.id) throw new Error('forbidden');
+    const permitted = this.authorize({ actor, action, projectId });
+    if (permitted !== true) throw new Error('forbidden');
   }
   initialize({ actor, projectId, workflowSnapshot }) {
     this.check({actor,action:'project:create',projectId});
