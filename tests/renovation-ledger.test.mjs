@@ -12,7 +12,7 @@ test('contractor invoice approvals, partial payments and double-spend guard', ()
   assert.equal(ledger.recordPayment({invoiceId:invoice.id,amountPaid:200,paymentReference:'pay-1'}).status,'partially_paid');
   assert.throws(() => ledger.recordPayment({invoiceId:invoice.id,amountPaid:1100,paymentReference:'pay-2'}),/invalid_payment/);
   assert.equal(ledger.recordPayment({invoiceId:invoice.id,amountPaid:1000,paymentReference:'pay-2'}).status,'paid');
-  assert.deepEqual(ledger.snapshot().financials,{invoiced:1200,paid:1200});
+  assert.deepEqual(ledger.snapshot().financials,{drawAllocated:0,invoiced:1200,paid:1200});
 });
 test('inspection requires evidence before marking passed', () => {
   const ledger = new RenovationLedger({projectId:'p2'});
