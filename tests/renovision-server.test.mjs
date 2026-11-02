@@ -97,3 +97,20 @@ test("proposals fail closed when no approval exists", async (t) => {
  assert.equal(r.status, 422);
  assert.equal(r.body.ok, false);
 });
+
+test("durable project creation rejects storage failure without caching a phantom project", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-create-fail-"));
+ t.after(() => rm(dir, {recursive:true, force:true}));
+ const authenticate = async () => ({id:"operator-1",tenantId:"tenant-a",authenticated:true,roles:["admin"],propertyIds:["*"],roomIds:[]});
+ const evidenceStorage = createDurableEvidenceStorage({rootDir:join(dir,"evidence"),authorize:async()=>true});
+ const projectStore = {storageClass:"test-failing",load:async()=>null,save:async()=>{throw Error("simulated persistence failure");}};
+ const server = createRenovisionServer({authenticate,evidenceStorage,projectStore});
+ await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+ t.after(()=>server.close());
+ const base="http://127.0.0.1:"+server.address().port;
+ const response=await call(base,"POST","/api/renovision/projects",{projectId:"failure-case",propertyId:"property-1",roomId:"room-1"});
+ assert.notEqual(response.status,201);
+ assert.equal(server.renovisionProjects.size,0);
+ const lookup=await call(base,"GET","/api/renovision/projects/failure-case");
+ assert.equal(lookup.status,404);
+});
