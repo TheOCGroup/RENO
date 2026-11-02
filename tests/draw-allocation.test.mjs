@@ -18,6 +18,19 @@ test('draw approval rejects ambiguous invoice references across contractors', ()
   assert.equal(ledger.snapshot().drawApprovals.length,0);
 });
 
+test('approved draw binds invoice identity even if another contractor reuses reference', () => {
+  const ledger=new RenovationLedger({projectId:'identity'});
+  const a=ledger.addContractor({name:'A',trade:'roof'});
+  const first=ledger.addInvoice({contractorId:a.id,reference:'REF',total:100});
+  ledger.decideInvoice({invoiceId:first.id,decision:'approved',rationale:'Reviewed'});
+  ledger.registerApprovedDraw({drawId:'draw',approvedAmount:100,invoiceRefs:['REF']});
+  const b=ledger.addContractor({name:'B',trade:'paint'});
+  const second=ledger.addInvoice({contractorId:b.id,reference:'REF',total:100});
+  ledger.decideInvoice({invoiceId:second.id,decision:'approved',rationale:'Reviewed'});
+  assert.throws(()=>ledger.allocateDraw({drawId:'draw',invoiceId:second.id,amount:100}),/invoice_not_in_approved_draw/);
+  ledger.allocateDraw({drawId:'draw',invoiceId:first.id,amount:100});
+});
+
 test('approved draw authority persists and constrains invoice allocation', () => {
   const ledger=new RenovationLedger({projectId:'draw-persist'});
   const contractor=ledger.addContractor({name:'Contractor',trade:'roof'});

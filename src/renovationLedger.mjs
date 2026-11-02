@@ -95,7 +95,7 @@ export class RenovationLedger {
     if (invoices.some(i => !i)) throw new Error('invoice_not_found');
     if (invoices.some(i => i.status !== 'approved')) throw new Error('invoice_not_approved');
     if (this.drawApprovals.some(d => d.drawId === id)) throw new Error('draw_already_registered');
-    const record = { drawId:id, approvedAmount:value, allocatedAmount:0, invoiceRefs:refs, actor:required(actor,'actor_required'), approvedAt:new Date().toISOString() };
+    const record = { drawId:id, approvedAmount:value, allocatedAmount:0, invoiceRefs:refs, invoiceIds:invoices.map(i => i.id), actor:required(actor,'actor_required'), approvedAt:new Date().toISOString() };
     this.drawApprovals.push(record);
     this.event('draw_approved',actor,id);
     return structuredClone(record);
@@ -106,7 +106,7 @@ export class RenovationLedger {
     if (!approval) throw new Error('draw_not_approved');
     const invoice=this.invoices.find(i=>i.id===invoiceId);
     if (!invoice) throw new Error('invoice_not_found');
-    if (!approval.invoiceRefs.includes(invoice.reference)) throw new Error('invoice_not_in_approved_draw');
+    if (!approval.invoiceIds?.includes(invoice.id)) throw new Error('invoice_not_in_approved_draw');
     if (invoice.status !== 'approved') throw new Error('invoice_not_approved');
     const value=amount(allocationAmount);
     if (value<=0) throw new Error('invalid_draw_amount');
