@@ -107,7 +107,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
      const done = async (status, responseBody, type) => {
        if (req.method === "POST" && projectStore) {
-         try { await projectStore.save(project.projectId, project.serialize()); } catch { return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
+         try { await projectStore.save(project.projectId, project.serialize()); } catch (error) { if (error?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]}); return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
        }
        return send(res, status, responseBody, type);
      };
@@ -150,6 +150,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      return send(res, 404, {ok: false, errors: ["route_not_found"]});
    } catch (e) {
      const errors = Array.isArray(e?.errors) ? e.errors : [e?.message ?? "request_failed"];
+     if (e?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]});
      if (e?.code === "SPATIAL_EVENT_CONFLICT" || errors.includes("spatial_event_conflict")) return send(res, 409, {ok: false, conflict: true, errors: ["spatial_event_conflict"]});
      return send(res, 422, {ok: false, errors});
    }
