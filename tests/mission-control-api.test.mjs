@@ -31,5 +31,14 @@ test('HTTP API requires server-issued identity, enforces roles and versions', as
     assert.equal((await call('/operations','secure-token-operator','POST',{expectedVersion:1,operation:'addContractor',args:{name:'Y',trade:'paint'}})).status,409);
     assert.equal((await call('','secure-token-operator')).data.data.state.ledger.contractors.length,1);
     assert.equal((await call('/operations','secure-token-operator','POST',{expectedVersion:2,operation:'unknown',args:{}})).status,400);
+    assert.equal((await call('/payment-reconciliation',null,'POST',{bankRecords:[]})).status,401);
+    assert.equal((await call('/payment-reconciliation','secure-token-viewer','POST',{bankRecords:[]})).status,403);
+    assert.equal((await call('/payment-reconciliation','secure-token-operator','GET')).status,405);
+    const report=await call('/payment-reconciliation','secure-token-operator','POST',{bankRecords:[]});
+    assert.equal(report.status,200);
+    assert.equal(report.data.data.report.verified,false);
+    assert.equal(report.data.data.version,2);
+    assert.equal((await call('/payment-reconciliation','secure-token-operator','POST',{bankRecords:'invalid'})).status,422);
+    assert.equal((await call('','secure-token-operator')).data.data.version,2);
   } finally { server.close(); await once(server,'close'); store.close(); }
 });
