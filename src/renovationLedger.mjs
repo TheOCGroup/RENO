@@ -16,6 +16,7 @@ export class RenovationLedger {
     this.invoices = structuredClone(state?.invoices || []);
     this.payments = structuredClone(state?.payments || []);
     this.drawAllocations = structuredClone(state?.drawAllocations || []);
+    this.drawApprovals = structuredClone(state?.drawApprovals || []);
     this.inspections = structuredClone(state?.inspections || []);
     this.tasks = structuredClone(state?.tasks || []);
     this.events = structuredClone(state?.events || []);
@@ -80,18 +81,38 @@ export class RenovationLedger {
     if (status === 'completed') task.evidenceRef = required(evidenceRef,'completion_evidence_required');
     task.status = status; this.event('task_updated',actor,task.id); return structuredClone(task);
   }
+  registerApprovedDraw({ drawId, approvedAmount, invoiceRefs, actor = 'operator' }) {
+    const id = required(drawId,'draw_required');
+    const value = amount(approvedAmount);
+    if (value <= 0) throw new Error('invalid_draw_approval_amount');
+    if (!Array.isArray(invoiceRefs) || invoiceRefs.length === 0) throw new Error('draw_invoice_required');
+    const refs = [...new Set(invoiceRefs.map(ref => required(ref,'invoice_reference_required')))];
+    const invoices = refs.map(ref => this.invoices.find(i => i.reference === ref));
+    if (invoices.some(i => !i)) throw new Error('invoice_not_found');
+    if (invoices.some(i => i.status !== 'approved')) throw new Error('invoice_not_approved');
+    if (this.drawApprovals.some(d => d.drawId === id)) throw new Error('draw_already_registered');
+    const record = { drawId:id, approvedAmount:value, allocatedAmount:0, invoiceRefs:refs, actor:required(actor,'actor_required'), approvedAt:new Date().toISOString() };
+    this.drawApprovals.push(record);
+    this.event('draw_approved',actor,id);
+    return structuredClone(record);
+  }
   allocateDraw({drawId,invoiceId,amount:allocationAmount,actor='operator'}) {
     const draw=required(drawId,'draw_required');
+    const approval=this.drawApprovals.find(d=>d.drawId===draw);
+    if (!approval) throw new Error('draw_not_approved');
     const invoice=this.invoices.find(i=>i.id===invoiceId);
     if (!invoice) throw new Error('invoice_not_found');
-    if (!['approved','partially_paid','paid'].includes(invoice.status)) throw new Error('invoice_not_approved');
+    if (!approval.invoiceRefs.includes(invoice.reference)) throw new Error('invoice_not_in_approved_draw');
+    if (invoice.status !== 'approved') throw new Error('invoice_not_approved');
     const value=amount(allocationAmount);
     if (value<=0) throw new Error('invalid_draw_amount');
     if (this.drawAllocations.some(a=>a.drawId===draw && a.invoiceId===invoiceId)) throw new Error('duplicate_draw_allocation');
     const allocated=this.drawAllocations.filter(a=>a.invoiceId===invoiceId).reduce((s,a)=>s+a.amount,0);
     if (Math.round((allocated+value)*100)>Math.round(invoice.total*100)) throw new Error('draw_exceeds_invoice_balance');
+    if (Math.round((approval.allocatedAmount+value)*100)>Math.round(approval.approvedAmount*100)) throw new Error('draw_exceeds_approved_amount');
     const record={id:randomUUID(),drawId:draw,invoiceId,amount:value,actor:required(actor,'actor_required'),at:new Date().toISOString()};
     this.drawAllocations.push(record);
+    approval.allocatedAmount=Math.round((approval.allocatedAmount+value)*100)/100;
     this.event('draw_allocated',actor,invoiceId);
     return structuredClone(record);
   }  reconcilePayments({ bankRecords }) {
@@ -115,7 +136,7 @@ export class RenovationLedger {
     for (const entry of this.payments) if (!bankByReference.has(entry.reference)) unmatchedLedger.push({reference:entry.reference,invoiceId:entry.invoiceId,amount:entry.amount});
     return {matched,amountMismatches,unmatchedBank,unmatchedLedger,reconciledPaid:Math.round(matched.reduce((s,p)=>s+p.amount,0)*100)/100,verified:bank.length>0 && this.payments.length>0 && amountMismatches.length===0 && unmatchedBank.length===0 && unmatchedLedger.length===0};
   }  snapshot() {
-    return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, payments:this.payments, drawAllocations:this.drawAllocations, inspections:this.inspections, tasks:this.tasks, events:this.events,
+    return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, payments:this.payments, drawAllocations:this.drawAllocations, drawApprovals:this.drawApprovals, inspections:this.inspections, tasks:this.tasks, events:this.events,
       financials:{ drawAllocated:Math.round(this.drawAllocations.reduce((s,a)=>s+a.amount,0)*100)/100, invoiced: Math.round(this.invoices.filter(i=>i.status!=='void').reduce((s,i)=>s+i.total,0)*100)/100,
         paid: Math.round(this.invoices.reduce((s,i)=>s+i.paid,0)*100)/100 } });
   }
