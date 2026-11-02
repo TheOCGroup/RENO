@@ -56,6 +56,8 @@ export class RenovationOperations {
     if (!this.progressUpdates.length || pct > this.progressUpdates.at(-1).percentComplete) throw new Error('verified_progress_required');
     if (evidence.length === 0) throw new Error("draw_evidence_required");
     if (invoices.length === 0) throw new Error("draw_invoice_required");
+    const knownEvidence = new Set(this.progressUpdates.flatMap(p => p.evidenceRefs));
+    if (!evidence.every(ref => knownEvidence.has(ref))) throw new Error('draw_evidence_not_recorded');
     const committed = this.workflow.budgetSummary().committed;
     const maxEarned = committed * (pct / 100);
     const approvedPrior = this.drawRequests.filter(d => d.status === "approved").reduce((s,d) => s + d.approvedAmount, 0);

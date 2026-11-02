@@ -17,8 +17,8 @@ function buildInProgress() {
 test("draws require verified progress, invoices, evidence and retainage",()=>{
   const workflow=buildInProgress(), ops=new RenovationOperations(workflow);
   ops.recordProgress({ percentComplete:50, asOf:"2026-09-15T12:00:00Z", evidenceRefs:["photo://kitchen","photo://bath"] });
-  assert.throws(()=>ops.requestDraw({amount:13000,percentComplete:50,evidenceRefs:["photo://1"],invoiceRefs:["invoice://1"],reason:"First draw"}),/draw_exceeds_verified_progress/);
-  const draw=ops.requestDraw({amount:12000,percentComplete:50,evidenceRefs:["photo://1"],invoiceRefs:["invoice://1"],reason:"First draw"});
+  assert.throws(()=>ops.requestDraw({amount:13000,percentComplete:50,evidenceRefs:["photo://kitchen"],invoiceRefs:["invoice://1"],reason:"First draw"}),/draw_exceeds_verified_progress/);
+  const draw=ops.requestDraw({amount:12000,percentComplete:50,evidenceRefs:["photo://kitchen"],invoiceRefs:["invoice://1"],reason:"First draw"});
   const approved=ops.decideDraw({drawId:draw.id,decision:"approved",rationale:"Verified against completed work"});
   assert.equal(approved.approvedAmount,12000);
   assert.throws(()=>ops.decideDraw({drawId:draw.id,decision:"approved",rationale:"again"}),/draw_already_decided/);
@@ -54,6 +54,15 @@ test("draw approval refuses missing recorded progress after request",()=>{
   ops.progressUpdates=[];
   assert.throws(()=>ops.decideDraw({drawId:draw.id,decision:"approved",rationale:"Review"}),/verified_progress_required/);
   assert.equal(ops.drawRequests[0].status,"pending");
+});
+
+test("draw rejects evidence absent from recorded progress",()=>{
+  const ops=new RenovationOperations(buildInProgress());
+  ops.recordProgress({percentComplete:40,evidenceRefs:["photo://recorded"]});
+  const args={amount:1000,percentComplete:40,invoiceRefs:["invoice://1"],reason:"Draw"};
+  assert.throws(()=>ops.requestDraw({...args,evidenceRefs:["photo://unrelated"]}),/draw_evidence_not_recorded/);
+  assert.equal(ops.drawRequests.length,0);
+  assert.equal(ops.requestDraw({...args,evidenceRefs:["photo://recorded"]}).status,"pending");
 });
 
 test("risk report detects schedule slippage, budget pressure and weak contractor performance",()=>{
