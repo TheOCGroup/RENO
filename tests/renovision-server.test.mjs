@@ -149,9 +149,9 @@ test("durable project reads bypass stale per-instance cache",async(t)=>{
  const first=await call(b,"GET","/api/renovision/projects/shared-1");
  assert.equal(first.status,200);
  const changed=structuredClone(records.get("tenant-a/shared-1"));
- changed.createdBy="updated-in-shared-storage";
+ changed.stage="measurement_review";
  records.set("tenant-a/shared-1",changed);
  const fresh=await call(b,"GET","/api/renovision/projects/shared-1");
  assert.equal(fresh.status,200);
- assert.equal(fresh.body.project.createdBy,"updated-in-shared-storage");
+ assert.equal(fresh.body.project.stage,"measurement_review");
 });
