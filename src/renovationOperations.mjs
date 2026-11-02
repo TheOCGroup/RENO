@@ -80,6 +80,7 @@ export class RenovationOperations {
       const approvedPrior = this.drawRequests.filter(d => d.status === "approved").reduce((sum,d) => sum + d.approvedAmount, 0);
       const available = Math.max(0, this.workflow.budgetSummary().committed * (draw.percentComplete / 100) * (1 - draw.retainagePct / 100) - approvedPrior);
       if (amount > available + 0.001) throw new Error("draw_exceeds_verified_progress");
+      if (!this.progressUpdates.length || this.progressUpdates.at(-1).percentComplete < draw.percentComplete) throw new Error('verified_progress_required');
       draw.approvedAmount = amount;
     }
     draw.status = decision;
