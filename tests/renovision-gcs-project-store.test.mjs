@@ -16,7 +16,8 @@ function harness(){
    return {ok:true,status:200};
   }
   if(u.pathname.endsWith("/o")){
-   return {ok:true,json:async()=>({items:[...objects.keys()].map(name=>({name}))})};
+   const prefix=u.searchParams.get("prefix")??"";
+   return {ok:true,json:async()=>({items:[...objects.keys()].filter(name=>name.startsWith(prefix)).map(name=>({name}))})};
   }
   const item=objects.get(name);
   if(!item)return {ok:false,status:404};
@@ -59,4 +60,17 @@ test("rejects stale concurrent generation writes",async()=>{
  const racing=createGcsProjectStore({bucket:"test-bucket",getAccessToken:async()=>"test",fetchImpl:competingFetch});
  await assert.rejects(()=>racing.save("p1",{...record,rooms:["conflict"]}),/conflict/);
  assert.deepEqual(await store.load("p1","tenant-a"),record);
+});
+
+test("list uses tenant-specific object prefix, not bucket-wide enumeration",async()=>{
+ const {store,calls}=harness();
+ await store.save("p1",record);
+ await store.save("p2",{projectId:"p2",tenantId:"tenant-b"});
+ assert.deepEqual(await store.list("tenant-a"),["p1"]);
+ const listCalls=calls.filter(c=>new URL(c.url).pathname.endsWith("/o"));
+ assert.equal(listCalls.length,1);
+ const prefix=new URL(listCalls[0].url).searchParams.get("prefix");
+ assert.match(prefix,/^renovision-projects\\/[a-f0-9]{64}\\/$/);
+ assert.ok(!prefix.includes("tenant-a"));
+ assert.deepEqual(await store.list("tenant-b"),["p2"]);
 });
