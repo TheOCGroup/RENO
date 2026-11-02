@@ -129,3 +129,29 @@ test("HTTP project creation maps GCS generation conflict to 409",async(t)=>{
  assert.deepEqual(response.body.errors,["project_write_conflict"]);
  assert.equal(server.renovisionProjects.size,0);
 });
+
+test("durable project reads bypass stale per-instance cache",async(t)=>{
+ const dir=await mkdtemp(join(tmpdir(),"renovision-shared-store-"));
+ t.after(()=>rm(dir,{recursive:true,force:true}));
+ const authenticate=async()=>({id:"operator-1",tenantId:"tenant-a",authenticated:true,roles:["admin"],propertyIds:["*"],roomIds:[]});
+ const evidenceStorage=createDurableEvidenceStorage({rootDir:join(dir,"evidence"),authorize:async()=>true});
+ const records=new Map();
+ const projectStore={storageClass:"shared-test",load:async(id,tenant)=>structuredClone(records.get(tenant+"/"+id)??null),save:async(id,data)=>{records.set(data.tenantId+"/"+id,structuredClone(data));}};
+ const servers=await Promise.all([0,1].map(async()=>{
+  const server=createRenovisionServer({authenticate,evidenceStorage,projectStore});
+  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+  t.after(()=>server.close());
+  return "http://127.0.0.1:"+server.address().port;
+ }));
+ const [a,b]=servers;
+ const created=await call(a,"POST","/api/renovision/projects",{projectId:"shared-1",propertyId:"property-1",roomId:"room-1"});
+ assert.equal(created.status,201);
+ const first=await call(b,"GET","/api/renovision/projects/shared-1");
+ assert.equal(first.status,200);
+ const changed=structuredClone(records.get("tenant-a/shared-1"));
+ changed.createdBy="updated-in-shared-storage";
+ records.set("tenant-a/shared-1",changed);
+ const fresh=await call(b,"GET","/api/renovision/projects/shared-1");
+ assert.equal(fresh.status,200);
+ assert.equal(fresh.body.project.createdBy,"updated-in-shared-storage");
+});
