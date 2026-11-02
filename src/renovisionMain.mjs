@@ -27,6 +27,10 @@ const authorizeStorage = async ({actorId, tenantId, propertyId, roomId}) => {
  return authorizeAction(actor, {action: "project:read", tenantId, propertyId, roomId}).allowed;
 };
 let authenticate, identityMode;
+if (process.env.RENOVISION_DEMO_AUTH === "1" && (process.env.K_SERVICE || process.env.K_REVISION)) {
+ console.error("RENOVISION_DEMO_AUTH is forbidden in Cloud Run; refusing to start.");
+ process.exit(1);
+}
 if (process.env.RENOVISION_DEMO_AUTH === "1") {
  identityMode = "demo";
  authenticate = async (req) => {
