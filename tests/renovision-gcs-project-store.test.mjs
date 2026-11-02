@@ -76,3 +76,35 @@ test("list uses tenant-specific object prefix, not bucket-wide enumeration",asyn
  assert.ok(!prefix.includes("tenant-a"));
  assert.deepEqual(await store.list("tenant-b"),["p2"]);
 });
+
+test("simultaneous project updates with identical GCS generation reject one writer",async()=>{
+ const objects=new Map();
+ let uploads=0;
+ let release;
+ const bothReady=new Promise(resolve=>{release=resolve;});
+ const fetchImpl=async(url,options={})=>{
+  const u=new URL(url),name=u.searchParams.get("name")??decodeURIComponent(u.pathname.split("/o/")[1]??"");
+  if(u.pathname.includes("/upload/")){
+   uploads++;
+   if(uploads===2)release();
+   await bothReady;
+   const existing=objects.get(name);
+   if(u.searchParams.get("ifGenerationMatch")!==String(existing?.generation??0))return {ok:false,status:412};
+   objects.set(name,{generation:(existing?.generation??0)+1,record:JSON.parse(options.body)});
+   return {ok:true,status:200};
+  }
+  const existing=objects.get(name);
+  if(!existing)return {ok:false,status:404};
+  if(u.searchParams.get("alt")==="media")return {ok:true,json:async()=>existing.record};
+  return {ok:true,json:async()=>({generation:String(existing.generation)})};
+ };
+ const create=()=>createGcsProjectStore({bucket:"test-bucket",getAccessToken:async()=>"test",fetchImpl});
+ const a=create(),b=create();
+ const results=await Promise.allSettled([a.save("p1",record),b.save("p1",record)]);
+ assert.equal(uploads,2);
+ assert.equal(results.filter(x=>x.status==="fulfilled").length,1);
+ const rejected=results.filter(x=>x.status==="rejected");
+ assert.equal(rejected.length,1);
+ assert.equal(rejected[0].reason.code,"PROJECT_WRITE_CONFLICT");
+ assert.deepEqual(await a.load("p1","tenant-a"),record);
+});
