@@ -31,6 +31,18 @@ export class MissionControlService {
     const ledger = new RenovationLedger({projectId,state:current.state.ledger});
     return {version:current.version,report:ledger.reconcilePayments({bankRecords})};
   }
+  executeDrawAllocation({ actor, projectId, expectedVersion, drawId, invoiceId, amount }) {
+    if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new Error('expected_version_required');
+    this.check({actor,action:'draw:allocate',projectId});
+    const current = this.store.load(projectId);
+    if (!current) throw new Error('project_not_found');
+    if (current.version !== expectedVersion) throw new Error('state_version_conflict');
+    const ledger = new RenovationLedger({projectId,state:current.state.ledger});
+    const result = ledger.allocateDraw({drawId,invoiceId,amount,actor:actor.id});
+    const state = {...current.state,ledger:ledger.snapshot()};
+    const version = this.store.save({projectId,state,expectedVersion});
+    return {version,result,state};
+  }
   execute({ actor, projectId, expectedVersion, operation, args = {} }) {
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new Error('expected_version_required');
     const allowed = new Set(['addContractor','addInvoice','decideInvoice','recordPayment','addInspection','updateInspection','addTask','updateTask']);
