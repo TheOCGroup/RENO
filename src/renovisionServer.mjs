@@ -49,7 +49,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  });
  const resolveProject = async (id, actor) => {
    const key = keyFor(actor, id);
-   if (projects.has(key)) return projects.get(key);
+   if (!projectStore && projects.has(key)) return projects.get(key);
    if (projectStore) {
      const data = await projectStore.load(id, actor.tenantId);
      if (data) {
