@@ -13,6 +13,7 @@ export class RenovationLedger {
     this.projectId = required(projectId, 'project_required');
     this.contractors = structuredClone(state?.contractors || []);
     this.invoices = structuredClone(state?.invoices || []);
+    this.payments = structuredClone(state?.payments || []);
     this.inspections = structuredClone(state?.inspections || []);
     this.tasks = structuredClone(state?.tasks || []);
     this.events = structuredClone(state?.events || []);
@@ -38,7 +39,8 @@ export class RenovationLedger {
     invoice.status = decision; this.event('invoice_decided',actor,invoice.id); return structuredClone(invoice);
   }
   recordPayment({ invoiceId, amountPaid, actor = 'operator', paymentReference }) {
-    required(paymentReference,'payment_reference_required');
+    const reference = required(paymentReference,'payment_reference_required');
+    if (this.payments.some(p => p.reference === reference)) throw new Error('duplicate_payment_reference');
     const invoice = this.invoices.find(i => i.id === invoiceId);
     if (!invoice) throw new Error('invoice_not_found');
     if (!['approved','partially_paid'].includes(invoice.status)) throw new Error('invoice_not_approved');
@@ -46,6 +48,7 @@ export class RenovationLedger {
     if (value <= 0 || value > Math.round((invoice.total-invoice.paid)*100)/100) throw new Error('invalid_payment');
     invoice.paid = Math.round((invoice.paid + value)*100)/100;
     invoice.status = invoice.paid === invoice.total ? 'paid' : 'partially_paid';
+    this.payments.push({id:randomUUID(),invoiceId:invoice.id,reference,amount:value,actor:required(actor,'actor_required'),at:new Date().toISOString()});
     this.event('payment_recorded',actor,invoice.id);
     return structuredClone(invoice);
   }
@@ -76,7 +79,7 @@ export class RenovationLedger {
     task.status = status; this.event('task_updated',actor,task.id); return structuredClone(task);
   }
   snapshot() {
-    return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, inspections:this.inspections, tasks:this.tasks, events:this.events,
+    return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, payments:this.payments, inspections:this.inspections, tasks:this.tasks, events:this.events,
       financials:{ invoiced: Math.round(this.invoices.filter(i=>i.status!=='void').reduce((s,i)=>s+i.total,0)*100)/100,
         paid: Math.round(this.invoices.reduce((s,i)=>s+i.paid,0)*100)/100 } });
   }
