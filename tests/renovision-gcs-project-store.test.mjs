@@ -49,8 +49,14 @@ test("rejects stale concurrent generation writes",async()=>{
  const {store,objects}=harness();
  await store.save("p1",record);
  const [name,item]=[...objects.entries()][0];
- const {store:second}=harness();
- assert.equal(typeof second.save,"function");
- objects.set(name,{...item,generation:item.generation+1});
- await store.save("p1",{...record,rooms:["safe"]});
+ // Simulate a competing writer changing the generation after metadata GET.
+ const competingFetch=async(url,options={})=>{
+   const u=new URL(url);
+   if(u.pathname.includes("/upload/")) return {ok:false,status:412};
+   if(u.searchParams.get("alt")==="media") return {ok:true,json:async()=>item.record};
+   return {ok:true,status:200,json:async()=>({generation:String(item.generation)})};
+ };
+ const racing=createGcsProjectStore({bucket:"test-bucket",getAccessToken:async()=>"test",fetchImpl:competingFetch});
+ await assert.rejects(()=>racing.save("p1",{...record,rooms:["conflict"]}),/conflict/);
+ assert.deepEqual(await store.load("p1","tenant-a"),record);
 });
