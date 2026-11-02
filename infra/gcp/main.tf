@@ -56,7 +56,15 @@ resource "google_project_service_identity" "storage" {
 resource "google_kms_crypto_key_iam_member" "storage_cmek" {
   crypto_key_id = google_kms_crypto_key.evidence.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:${google_project_service_identity.storage.email}"
+  # CORRECTION 2026-11-02 (live-deployment finding): the previous value
+  # interpolated google_project_service_identity.storage.email, but that
+  # resource exports no email attribute, so the member was null at apply
+  # time and the first apply failed on this binding (bucket creation was
+  # then denied KMS permission). The literal below is the verified Cloud
+  # Storage service agent for project 438680341626 (confirmed live via
+  # `gcloud storage service-agent` during the 2026-11-01 deployment) and
+  # is byte-identical to the member the deployed state carries.
+  member = "serviceAccount:service-438680341626@gs-project-accounts.iam.gserviceaccount.com"
 }
 
 resource "google_storage_bucket" "evidence" {

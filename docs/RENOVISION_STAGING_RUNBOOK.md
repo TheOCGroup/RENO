@@ -25,11 +25,21 @@ the 14-day bounded acceptance window (staging plan §8a).
 ```powershell
 cd <repo>
 gcloud builds submit --project ocg-pipeline `
-  --tag us-central1-docker.pkg.dev/ocg-pipeline/cloud-run-source-deploy/renovision:3162ce51 .
+  --pack image=us-central1-docker.pkg.dev/ocg-pipeline/cloud-run-source-deploy/renovision:137ddc52,env=GOOGLE_ENTRYPOINT="node src/renovisionMain.mjs" .
 ```
 
-(Repository root Dockerfile builds the certified image. Record the
-build id and the resulting image digest in the run evidence.)
+(CORRECTION 2026-11-02: this repository contains NO Dockerfile and no
+cloudbuild configuration at the deployed head — an earlier version of
+this runbook wrongly stated that a repository-root Dockerfile builds
+the image, and `gcloud builds submit --tag` fails on this source for
+exactly that reason. The deployed image was built with Cloud
+Buildpacks (`--pack`) with GOOGLE_ENTRYPOINT set to the application's
+real entrypoint, because package.json defines no plain "start" script
+(only "start:renovision"). Buildpacks leaves the certified source
+untouched. Deployed build 061405fc-62d7-4bee-9f7f-cee2cb1e6272 produced
+digest sha256:6f6cd55029cf086f0afc24cc894fade6bd3203e30577dd3f4e16c0de925e8c4c.
+Record the build id and the resulting image digest in the run
+evidence.)
 
 ## 2. Provision (Terraform apply — the authorized moment)
 

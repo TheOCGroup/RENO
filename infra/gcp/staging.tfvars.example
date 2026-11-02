@@ -13,12 +13,14 @@
 # key ring name ("renovision") are literals in main.tf, not variables.
 #
 # Identity values assume Firebase Authentication / Google Identity
-# Platform in ocg-pipeline (see docs/RENOVISION_GCP_IDENTITY_PREP.md);
-# note identitytoolkit.googleapis.com was verified NOT ENABLED in
-# ocg-pipeline on 2026-10-30 - enabling it is a separate founder
-# decision, like cloudkms.googleapis.com. The plan does not require
-# the container image to exist yet; the image is built and pushed in
-# the authorized staging run before apply (see
+# Platform in ocg-pipeline (see docs/RENOVISION_GCP_IDENTITY_PREP.md).
+# CORRECTION 2026-11-02: cloudkms.googleapis.com and
+# identitytoolkit.googleapis.com were both ENABLED in ocg-pipeline on
+# 2026-11-01 under explicit founder authorization and verified in the
+# enabled-services list (an earlier note here said identitytoolkit was
+# not enabled; that was true on 2026-10-30 and is now stale). The plan
+# does not require the container image to exist yet; the image is built
+# and pushed in the authorized staging run before apply (see
 # docs/RENOVISION_STAGING_RUNBOOK.md).
 
 project_id           = "ocg-pipeline"
