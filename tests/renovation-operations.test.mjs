@@ -27,12 +27,24 @@ test("draws require verified progress, invoices, evidence and retainage",()=>{
 test("concurrent pending draws cannot be approved beyond earned authority",()=>{
   const ops=new RenovationOperations(buildInProgress());
   const args={amount:12000,percentComplete:50,evidenceRefs:["photo://progress"],invoiceRefs:["invoice://a"],reason:"Progress draw"};
+  ops.recordProgress({percentComplete:50,evidenceRefs:["photo://progress"]});
   const first=ops.requestDraw(args);
   const second=ops.requestDraw(args);
   ops.decideDraw({drawId:first.id,decision:"approved",rationale:"First approval"});
   assert.throws(()=>ops.decideDraw({drawId:second.id,decision:"approved",rationale:"Second approval"}),/draw_exceeds_verified_progress/);
   assert.equal(ops.drawRequests.find(d=>d.id===second.id).status,"pending");
   assert.equal(ops.drawRequests.filter(d=>d.status==="approved").reduce((s,d)=>s+d.approvedAmount,0),12000);
+});
+
+test("draw requests require recorded progress and reject overstated completion",()=>{
+  const ops=new RenovationOperations(buildInProgress());
+  const args={amount:1000,percentComplete:50,evidenceRefs:["photo://work"],invoiceRefs:["invoice://1"],reason:"Draw"};
+  assert.throws(()=>ops.requestDraw(args),/verified_progress_required/);
+  ops.recordProgress({percentComplete:40,evidenceRefs:["photo://work"]});
+  assert.throws(()=>ops.requestDraw(args),/verified_progress_required/);
+  assert.equal(ops.drawRequests.length,0);
+  const draw=ops.requestDraw({...args,percentComplete:40});
+  assert.equal(draw.status,"pending");
 });
 
 test("risk report detects schedule slippage, budget pressure and weak contractor performance",()=>{

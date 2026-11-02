@@ -53,6 +53,7 @@ export class RenovationOperations {
     if (pct < 0 || pct > 100) throw new Error("invalid_percent_complete");
     const evidence = Array.isArray(evidenceRefs) ? evidenceRefs.filter(Boolean) : [];
     const invoices = Array.isArray(invoiceRefs) ? invoiceRefs.filter(Boolean) : [];
+    if (!this.progressUpdates.length || pct > this.progressUpdates.at(-1).percentComplete) throw new Error('verified_progress_required');
     if (evidence.length === 0) throw new Error("draw_evidence_required");
     if (invoices.length === 0) throw new Error("draw_invoice_required");
     const committed = this.workflow.budgetSummary().committed;
