@@ -76,6 +76,9 @@ export class RenovationOperations {
     if (decision === "approved") {
       const amount = approvedAmount == null ? draw.requestedAmount : n(approvedAmount);
       if (!(amount > 0) || amount > draw.requestedAmount) throw new Error("invalid_draw_approval_amount");
+      const approvedPrior = this.drawRequests.filter(d => d.status === "approved").reduce((sum,d) => sum + d.approvedAmount, 0);
+      const available = Math.max(0, this.workflow.budgetSummary().committed * (draw.percentComplete / 100) * (1 - draw.retainagePct / 100) - approvedPrior);
+      if (amount > available + 0.001) throw new Error("draw_exceeds_verified_progress");
       draw.approvedAmount = amount;
     }
     draw.status = decision;

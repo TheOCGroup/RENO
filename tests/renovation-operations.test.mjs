@@ -24,6 +24,17 @@ test("draws require verified progress, invoices, evidence and retainage",()=>{
   assert.throws(()=>ops.decideDraw({drawId:draw.id,decision:"approved",rationale:"again"}),/draw_already_decided/);
 });
 
+test("concurrent pending draws cannot be approved beyond earned authority",()=>{
+  const ops=new RenovationOperations(buildInProgress());
+  const args={amount:12000,percentComplete:50,evidenceRefs:["photo://progress"],invoiceRefs:["invoice://a"],reason:"Progress draw"};
+  const first=ops.requestDraw(args);
+  const second=ops.requestDraw(args);
+  ops.decideDraw({drawId:first.id,decision:"approved",rationale:"First approval"});
+  assert.throws(()=>ops.decideDraw({drawId:second.id,decision:"approved",rationale:"Second approval"}),/draw_exceeds_verified_progress/);
+  assert.equal(ops.drawRequests.find(d=>d.id===second.id).status,"pending");
+  assert.equal(ops.drawRequests.filter(d=>d.status==="approved").reduce((s,d)=>s+d.approvedAmount,0),12000);
+});
+
 test("risk report detects schedule slippage, budget pressure and weak contractor performance",()=>{
   const workflow=buildInProgress(), ops=new RenovationOperations(workflow);
   ops.recordProgress({ percentComplete:30, asOf:"2026-09-25T12:00:00Z", evidenceRefs:["photo://progress"] });
