@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RenovationLedger } from '../src/renovationLedger.mjs';
 
+test('ledger rejects restoration from another project', () => {
+  const source = new RenovationLedger({projectId:'source'});
+  assert.throws(() => new RenovationLedger({projectId:'target',state:source.snapshot()}), /ledger_project_mismatch/);
+});
+
 test('draw reconciliation prevents unsupported and duplicate invoice allocations', () => {
   const ledger=new RenovationLedger({projectId:'draw-1'});
   const c=ledger.addContractor({name:'Contractor',trade:'roof'});

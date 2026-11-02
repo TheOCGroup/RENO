@@ -11,6 +11,7 @@ const date = v => { const d = new Date(v); if (!v || Number.isNaN(d.getTime())) 
 export class RenovationLedger {
   constructor({ projectId, state = null } = {}) {
     this.projectId = required(projectId, 'project_required');
+    if (state?.projectId && state.projectId !== this.projectId) throw new Error('ledger_project_mismatch');
     this.contractors = structuredClone(state?.contractors || []);
     this.invoices = structuredClone(state?.invoices || []);
     this.payments = structuredClone(state?.payments || []);
