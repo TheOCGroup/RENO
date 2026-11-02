@@ -114,3 +114,18 @@ test("durable project creation rejects storage failure without caching a phantom
  const lookup=await call(base,"GET","/api/renovision/projects/failure-case");
  assert.equal(lookup.status,404);
 });
+
+test("HTTP project creation maps GCS generation conflict to 409",async(t)=>{
+ const dir=await mkdtemp(join(tmpdir(),"renovision-http-conflict-"));
+ t.after(()=>rm(dir,{recursive:true,force:true}));
+ const authenticate=async()=>({id:"operator-1",tenantId:"tenant-a",authenticated:true,roles:["admin"],propertyIds:["*"],roomIds:[]});
+ const evidenceStorage=createDurableEvidenceStorage({rootDir:join(dir,"evidence"),authorize:async()=>true});
+ const projectStore={storageClass:"gcs-test",load:async()=>null,save:async()=>{const e=new Error("generation mismatch");e.code="PROJECT_WRITE_CONFLICT";throw e;}};
+ const server=createRenovisionServer({authenticate,evidenceStorage,projectStore});
+ await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+ t.after(()=>server.close());
+ const response=await call("http://127.0.0.1:"+server.address().port,"POST","/api/renovision/projects",{projectId:"conflict",propertyId:"property-1",roomId:"room-1"});
+ assert.equal(response.status,409);
+ assert.deepEqual(response.body.errors,["project_write_conflict"]);
+ assert.equal(server.renovisionProjects.size,0);
+});
