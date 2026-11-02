@@ -58,7 +58,7 @@ test("rejects stale concurrent generation writes",async()=>{
    return {ok:true,status:200,json:async()=>({generation:String(item.generation)})};
  };
  const racing=createGcsProjectStore({bucket:"test-bucket",getAccessToken:async()=>"test",fetchImpl:competingFetch});
- await assert.rejects(()=>racing.save("p1",{...record,rooms:["conflict"]}),/conflict/);
+ await assert.rejects(()=>racing.save("p1",{...record,rooms:["conflict"]}),error=>error.code==="PROJECT_WRITE_CONFLICT"&&/project_write_conflict/.test(error.message));
  assert.deepEqual(await store.load("p1","tenant-a"),record);
 });
 
