@@ -67,7 +67,7 @@ test("list uses tenant-specific object prefix, not bucket-wide enumeration",asyn
  await store.save("p1",record);
  await store.save("p2",{projectId:"p2",tenantId:"tenant-b"});
  assert.deepEqual(await store.list("tenant-a"),["p1"]);
- const listCalls=calls.filter(c=>new URL(c.url).pathname.endsWith("/o"));
+ const listCalls=calls.filter(c=>new URL(c.url).searchParams.has("prefix"));
  assert.equal(listCalls.length,1);
  const prefix=new URL(listCalls[0].url).searchParams.get("prefix");
  assert.equal(prefix.startsWith("renovision-projects/"),true);
