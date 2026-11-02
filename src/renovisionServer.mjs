@@ -82,10 +82,10 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && path === "/api/renovision/projects") {
        const check = guard("project:create", {propertyId: body.propertyId, roomId: body.roomId});
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
-       if (projects.has(keyFor(actor, body.projectId)) || (projectStore && await projectStore.load(body.projectId, actor.tenantId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
+       if ((!projectStore && projects.has(keyFor(actor, body.projectId))) || (projectStore && await projectStore.load(body.projectId, actor.tenantId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
        const project = new RenovisionProject({projectId: body.projectId, tenantId: actor.tenantId, propertyId: body.propertyId, roomId: body.roomId, createdBy: actor.id});
-       projects.set(keyFor(actor, project.projectId), project);
        if (projectStore) await projectStore.save(project.projectId, project.serialize());
+       else projects.set(keyFor(actor, project.projectId), project);
        return send(res, 201, {ok: true, project: project.snapshot()});
      }
      const match = path.match(/^\/api\/renovision\/projects\/([^/]+)(?:\/(.+))?$/);
