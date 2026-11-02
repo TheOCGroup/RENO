@@ -22,6 +22,13 @@ export class MissionControlService {
     this.check({actor,action:'project:read',projectId});
     return this.store.load(projectId);
   }
+  reconcilePayments({ actor, projectId, bankRecords }) {
+    this.check({actor,action:'payments:reconcile',projectId});
+    const current = this.store.load(projectId);
+    if (!current) throw new Error('project_not_found');
+    const ledger = new RenovationLedger({projectId,state:current.state.ledger});
+    return {version:current.version,report:ledger.reconcilePayments({bankRecords})};
+  }
   execute({ actor, projectId, expectedVersion, operation, args = {} }) {
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new Error('expected_version_required');
     const allowed = new Set(['addContractor','addInvoice','decideInvoice','recordPayment','addInspection','updateInspection','addTask','updateTask']);
