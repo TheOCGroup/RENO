@@ -47,3 +47,15 @@ test("GCS generation conflict fails closed",async()=>{
  objects.set(key,{...item,generation:item.generation+1});
  assert.deepEqual(await store.compareAndAppend({...scope,expectedRevision:0,event}),{committed:false});
 });
+
+test("two concurrent writers across store instances yield exactly one commit",async()=>{
+ const {create}=harness();
+ const a=create(),b=create();
+ const results=await Promise.all([
+  a.compareAndAppend({...scope,expectedRevision:0,event}),
+  b.compareAndAppend({...scope,expectedRevision:0,event})
+ ]);
+ assert.equal(results.filter(r=>r.committed).length,1);
+ assert.equal(results.filter(r=>!r.committed).length,1);
+ assert.deepEqual(await a.readFeatureEvents(scope),{revision:1,events:[event]});
+});
