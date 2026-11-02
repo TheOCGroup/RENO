@@ -25,18 +25,23 @@ export function createMissionControlApiHandler({ service, tokenRegistry }) {
   if (!service?.get || !service?.execute || !Array.isArray(tokenRegistry)) throw new Error('api_configuration_required');
   return async function handle(req,res) {
     const url = new URL(req.url,'http://mission-control.local');
-    const match = /^\/api\/v1\/mission-control\/projects\/([a-zA-Z0-9_-]{1,128})(?:\/operations)?$/.exec(url.pathname);
+    const match = /^\/api\/v1\/mission-control\/projects\/([a-zA-Z0-9_-]{1,128})(?:\/(?:operations|payment-reconciliation))?$/.exec(url.pathname);
     if (!match) return false;
     const header=String(req.headers.authorization||'');
     const token=header.startsWith('Bearer ') ? header.slice(7) : '';
     const principal=token ? tokenRegistry.find(entry => entry.token && tokenMatch(token,entry.token)) : null;
     if (!principal?.actor?.id) { send(res,401,{ok:false,error:'unauthorized'}); return true; }
     const projectId=match[1], isOperation=url.pathname.endsWith('/operations');
-    if ((!isOperation && req.method!=='GET') || (isOperation && req.method!=='POST')) {
+    const isReconciliation=url.pathname.endsWith('/payment-reconciliation');
+    if ((!isOperation && !isReconciliation && req.method!=='GET') || ((isOperation || isReconciliation) && req.method!=='POST')) {
       send(res,405,{ok:false,error:'method_not_allowed'}); return true;
     }
     try {
-      if (!isOperation) {
+      if (isReconciliation) {
+        const body=await readBody(req);
+        const result=service.reconcilePayments({actor:principal.actor,projectId,bankRecords:body?.bankRecords});
+        send(res,200,{ok:true,data:result});
+      } else if (!isOperation) {
         const result=service.get({actor:principal.actor,projectId});
         send(res,result?200:404,result?{ok:true,data:result}:{ok:false,error:'project_not_found'});
       } else {
