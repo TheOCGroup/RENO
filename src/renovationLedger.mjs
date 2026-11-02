@@ -87,7 +87,11 @@ export class RenovationLedger {
     if (value <= 0) throw new Error('invalid_draw_approval_amount');
     if (!Array.isArray(invoiceRefs) || invoiceRefs.length === 0) throw new Error('draw_invoice_required');
     const refs = [...new Set(invoiceRefs.map(ref => required(ref,'invoice_reference_required')))];
-    const invoices = refs.map(ref => this.invoices.find(i => i.reference === ref));
+    const invoices = refs.map(ref => {
+      const matches = this.invoices.filter(i => i.reference === ref);
+      if (matches.length > 1) throw new Error('ambiguous_invoice_reference');
+      return matches[0];
+    });
     if (invoices.some(i => !i)) throw new Error('invoice_not_found');
     if (invoices.some(i => i.status !== 'approved')) throw new Error('invoice_not_approved');
     if (this.drawApprovals.some(d => d.drawId === id)) throw new Error('draw_already_registered');

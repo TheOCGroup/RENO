@@ -7,6 +7,17 @@ test('ledger rejects restoration from another project', () => {
   assert.throws(() => new RenovationLedger({projectId:'target',state:source.snapshot()}), /ledger_project_mismatch/);
 });
 
+test('draw approval rejects ambiguous invoice references across contractors', () => {
+  const ledger = new RenovationLedger({projectId:'ambiguous'});
+  for (const name of ['Alpha','Beta']) {
+    const contractor=ledger.addContractor({name,trade:'roof'});
+    const invoice=ledger.addInvoice({contractorId:contractor.id,reference:'SAME-REF',total:100});
+    ledger.decideInvoice({invoiceId:invoice.id,decision:'approved',rationale:'Reviewed'});
+  }
+  assert.throws(()=>ledger.registerApprovedDraw({drawId:'draw-x',approvedAmount:100,invoiceRefs:['SAME-REF']}),/ambiguous_invoice_reference/);
+  assert.equal(ledger.snapshot().drawApprovals.length,0);
+});
+
 test('approved draw authority persists and constrains invoice allocation', () => {
   const ledger=new RenovationLedger({projectId:'draw-persist'});
   const contractor=ledger.addContractor({name:'Contractor',trade:'roof'});
