@@ -47,6 +47,15 @@ test("draw requests require recorded progress and reject overstated completion",
   assert.equal(draw.status,"pending");
 });
 
+test("draw approval refuses missing recorded progress after request",()=>{
+  const ops=new RenovationOperations(buildInProgress());
+  ops.recordProgress({percentComplete:50,evidenceRefs:["photo://work"]});
+  const draw=ops.requestDraw({amount:1000,percentComplete:50,evidenceRefs:["photo://work"],invoiceRefs:["invoice://1"],reason:"Draw"});
+  ops.progressUpdates=[];
+  assert.throws(()=>ops.decideDraw({drawId:draw.id,decision:"approved",rationale:"Review"}),/verified_progress_required/);
+  assert.equal(ops.drawRequests[0].status,"pending");
+});
+
 test("risk report detects schedule slippage, budget pressure and weak contractor performance",()=>{
   const workflow=buildInProgress(), ops=new RenovationOperations(workflow);
   ops.recordProgress({ percentComplete:30, asOf:"2026-09-25T12:00:00Z", evidenceRefs:["photo://progress"] });
