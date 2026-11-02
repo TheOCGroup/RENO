@@ -78,7 +78,27 @@ export class RenovationLedger {
     if (status === 'completed') task.evidenceRef = required(evidenceRef,'completion_evidence_required');
     task.status = status; this.event('task_updated',actor,task.id); return structuredClone(task);
   }
-  snapshot() {
+  reconcilePayments({ bankRecords }) {
+    if (!Array.isArray(bankRecords)) throw new Error('bank_records_required');
+    const seen = new Set();
+    const bank = bankRecords.map(item => {
+      const reference = required(item?.reference,'bank_reference_required');
+      if (seen.has(reference)) throw new Error('duplicate_bank_reference');
+      seen.add(reference);
+      return {reference, amount:amount(item.amount)};
+    });
+    const ledgerByReference = new Map(this.payments.map(item => [item.reference,item]));
+    const bankByReference = new Map(bank.map(item => [item.reference,item]));
+    const matched = [], amountMismatches = [], unmatchedBank = [], unmatchedLedger = [];
+    for (const entry of bank) {
+      const local = ledgerByReference.get(entry.reference);
+      if (!local) unmatchedBank.push(entry);
+      else if (Math.round(local.amount*100) !== Math.round(entry.amount*100)) amountMismatches.push({reference:entry.reference,ledgerAmount:local.amount,bankAmount:entry.amount});
+      else matched.push({reference:entry.reference,invoiceId:local.invoiceId,amount:local.amount});
+    }
+    for (const entry of this.payments) if (!bankByReference.has(entry.reference)) unmatchedLedger.push({reference:entry.reference,invoiceId:entry.invoiceId,amount:entry.amount});
+    return {matched,amountMismatches,unmatchedBank,unmatchedLedger,reconciledPaid:Math.round(matched.reduce((s,p)=>s+p.amount,0)*100)/100,verified:amountMismatches.length===0 && unmatchedBank.length===0 && unmatchedLedger.length===0};
+  }  snapshot() {
     return structuredClone({ projectId:this.projectId, contractors:this.contractors, invoices:this.invoices, payments:this.payments, inspections:this.inspections, tasks:this.tasks, events:this.events,
       financials:{ invoiced: Math.round(this.invoices.filter(i=>i.status!=='void').reduce((s,i)=>s+i.total,0)*100)/100,
         paid: Math.round(this.invoices.reduce((s,i)=>s+i.paid,0)*100)/100 } });
