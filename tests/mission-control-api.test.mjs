@@ -41,6 +41,8 @@ test('HTTP API requires server-issued identity, enforces roles and versions', as
     assert.equal((await call('/payment-reconciliation','secure-token-operator','POST',{bankRecords:'invalid'})).status,400);
     assert.equal((await call('/payment-reconciliation','secure-token-operator','POST',[])).status,400);
     assert.equal((await call('/operations','secure-token-operator','POST',[])).status,400);
+    assert.equal((await call('/operations','secure-token-operator','POST',{expectedVersion:2,operation:'addContractor',args:[]})).status,400);
+    assert.equal((await call('/operations','secure-token-operator','POST',{expectedVersion:2,operation:'addContractor',args:null})).status,400);
     assert.equal((await call('','secure-token-operator')).data.data.version,2);
   } finally { server.close(); await once(server,'close'); store.close(); }
 });

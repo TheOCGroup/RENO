@@ -47,6 +47,7 @@ export class MissionControlService {
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new Error('expected_version_required');
     const allowed = new Set(['addContractor','addInvoice','decideInvoice','recordPayment','addInspection','updateInspection','addTask','updateTask']);
     if (!allowed.has(operation)) throw new Error('operation_not_allowed');
+    if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('invalid_operation_args');
     this.check({actor,action:operation,projectId});
     const current = this.store.load(projectId);
     if (!current) throw new Error('project_not_found');

@@ -52,7 +52,7 @@ export function createMissionControlApiHandler({ service, tokenRegistry }) {
         send(res,200,{ok:true,data:result});
       }
     } catch (error) {
-      const status = error.message==='forbidden' ? 403 : error.message==='project_not_found' ? 404 : error.message==='state_version_conflict' ? 409 : ['invalid_json','invalid_request_body','body_too_large','expected_version_required','operation_not_allowed'].includes(error.message) ? 400 : 422;
+      const status = error.message==='forbidden' ? 403 : error.message==='project_not_found' ? 404 : error.message==='state_version_conflict' ? 409 : ['invalid_json','invalid_request_body','invalid_operation_args','body_too_large','expected_version_required','operation_not_allowed'].includes(error.message) ? 400 : 422;
       send(res,status,{ok:false,error:status===422?'operation_rejected':error.message});
     }
     return true;
