@@ -77,7 +77,9 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        const check = guard("approval:register", {propertyId: body.propertyId, roomId: body.roomId});
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
        if (typeof resolveApproval?.register !== "function") return send(res, 501, {ok: false, errors: ["approval_registry_not_configured"]});
-       const record = await resolveApproval.register({...body, tenantId: actor.tenantId});
+       let record;
+       try { record = await resolveApproval.register({...body, tenantId: actor.tenantId}); }
+       catch (error) { if (error?.code === "APPROVAL_REF_CONFLICT") return send(res, 409, {ok: false, errors: ["approval_ref_conflict"]}); throw error; }
        return send(res, 201, {ok: true, approval: record});
      }
      if (req.method === "POST" && path === "/api/renovision/projects") {
