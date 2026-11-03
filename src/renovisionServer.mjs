@@ -19,6 +19,7 @@ export function createMemoryApprovalRegistry() {
  return {
    register(record) {
      if (!record || !text(record.approvalRef)) throw new Error("approval_ref_required");
+     if (approvals.has(record.approvalRef)) throw Object.assign(new Error("approval_ref_conflict"), {code: "APPROVAL_REF_CONFLICT"});
      approvals.set(record.approvalRef, structuredClone(record));
      return structuredClone(record);
    },
@@ -76,7 +77,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        const check = guard("approval:register", {propertyId: body.propertyId, roomId: body.roomId});
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
        if (typeof resolveApproval?.register !== "function") return send(res, 501, {ok: false, errors: ["approval_registry_not_configured"]});
-       const record = resolveApproval.register({...body, tenantId: actor.tenantId});
+       const record = await resolveApproval.register({...body, tenantId: actor.tenantId});
        return send(res, 201, {ok: true, approval: record});
      }
      if (req.method === "POST" && path === "/api/renovision/projects") {
