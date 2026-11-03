@@ -181,3 +181,15 @@ test("approval references cannot be overwritten across tenants or by a second re
  const crossTenant=await call(base,"POST","/api/renovision/approvals",payload,{"x-actor-id":"other-actor","x-tenant-id":"tenant-b","content-type":"application/json"});
  assert.equal(crossTenant.status,409);
 });
+
+test("approval audit identity and time are server-owned, not caller-supplied",async(t)=>{
+ const base=await boot(t);
+ const result=await call(base,"POST","/api/renovision/approvals",{
+  approvalRef:"server-audit",propertyId:"property-1",roomId:"room-1",
+  status:"approved",approvedBy:"spoofed-founder",approvedAt:"2020-01-01T00:00:00Z"
+ });
+ assert.equal(result.status,201);
+ assert.equal(result.body.approval.approvedBy,"operator-1");
+ assert.notEqual(result.body.approval.approvedAt,"2020-01-01T00:00:00Z");
+ assert.ok(Math.abs(Date.parse(result.body.approval.approvedAt)-Date.now())<30000);
+});
