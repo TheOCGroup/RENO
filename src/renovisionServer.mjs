@@ -45,6 +45,21 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
  const keyFor = (actor, projectId) => actor.tenantId + "/" + projectId;
+ /** Bounded retry for transient store failures (a single GCS hiccup must not
+  * fail a request whose workflow already committed elsewhere). Typed
+  * generation conflicts are never retried — they are answers, not transients. */
+ const saveWithRetry = async (project) => {
+   let lastError;
+   for (let attempt = 0; attempt < 3; attempt++) {
+     try { await projectStore.save(project.projectId, project.serialize()); return; }
+     catch (error) {
+       if (error?.code === "PROJECT_WRITE_CONFLICT") throw error;
+       lastError = error;
+       if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+     }
+   }
+   throw lastError;
+ };
  const loadArtifact = async ({artifactId, actor}) => evidenceStorage.get({storageRef: artifactId, actorId: actor.id});
  const send = (res, status, body, type = "application/json") => {
    const payload = type === "application/json" ? JSON.stringify(body) : body;
@@ -63,7 +78,39 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    if (projectStore) {
      const data = await projectStore.load(id, actor.tenantId);
      if (data) {
-       try { const restored = RenovisionProject.restore(data); if (restored.tenantId !== actor.tenantId) return null; projects.set(key, restored); return restored; } catch { return null; }
+       try {
+         const restored = RenovisionProject.restore(data);
+         if (restored.tenantId !== actor.tenantId) return null;
+         // Heal the proposeChange two-store window: if the event store holds
+         // committed events this record never persisted, adopt them (and
+         // durably re-save the healed record) before serving the project.
+         // Candidate features come from the lock, the record's own event /
+         // proposal state, and any write-ahead pending markers — design
+         // features (e.g. floor-main) are not measurement features, so the
+         // lock list alone cannot enumerate them.
+         if (eventStore && typeof eventStore.readFeatureEvents === "function") {
+           const candidates = new Set([
+             ...(Array.isArray(restored.lock?.featureIds) ? restored.lock.featureIds : []),
+             ...Object.keys(restored.featureRevisions ?? {}),
+             ...restored.spatialEvents.map((e) => e.featureId),
+             ...[...restored.proposals.keys()],
+             ...restored.pendingSpatialFeatures
+           ].filter((f) => typeof f === "string" && f.length > 0));
+           if (candidates.size) {
+             const pendingBefore = [...restored.pendingSpatialFeatures];
+             const snapshots = [];
+             for (const featureId of candidates) {
+               const snap = await eventStore.readFeatureEvents({tenantId: actor.tenantId, propertyId: restored.propertyId, roomId: restored.roomId, featureId, actor});
+               snapshots.push({featureId, revision: snap.revision, events: snap.events});
+             }
+             const healed = restored.reconcileFeatureEvents({actor, snapshots});
+             const markersResolved = pendingBefore.length !== restored.pendingSpatialFeatures.length;
+             if (healed.length || markersResolved) { try { await saveWithRetry(restored); } catch { /* reconciliation is idempotent; it runs again on the next load */ } }
+           }
+         }
+         projects.set(key, restored);
+         return restored;
+       } catch { return null; }
      }
    }
    return null;
@@ -117,7 +164,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
        if ((!projectStore && projects.has(keyFor(actor, body.projectId))) || (projectStore && await projectStore.load(body.projectId, actor.tenantId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
        const project = new RenovisionProject({projectId: body.projectId, tenantId: actor.tenantId, propertyId: body.propertyId, roomId: body.roomId, createdBy: actor.id});
-       if (projectStore) await projectStore.save(project.projectId, project.serialize());
+       if (projectStore) await saveWithRetry(project);
        else projects.set(keyFor(actor, project.projectId), project);
        return send(res, 201, {ok: true, project: project.snapshot()});
      }
@@ -140,7 +187,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
      const done = async (status, responseBody, type) => {
        if (req.method === "POST" && projectStore) {
-         try { await projectStore.save(project.projectId, project.serialize()); } catch (error) { if (error?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]}); return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
+         try { await saveWithRetry(project); } catch (error) { if (error?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]}); return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
        }
        return send(res, status, responseBody, type);
      };
@@ -168,7 +215,20 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && sub === "measurements") return done(201, {ok: true, result: project.addMeasurement({actor, record: body.record})});
      if (req.method === "POST" && sub === "corrections") return done(200, {ok: true, result: project.correctMeasurement({actor, correction: body.correction})});
      if (req.method === "POST" && sub === "lock") return done(200, {ok: true, lock: project.lockGeometry({actor})});
-     if (req.method === "POST" && sub === "proposals") { const result = await project.proposeChange({actor, resolveApproval: typeof resolveApproval === "function" ? resolveApproval : resolveApproval?.resolveApproval, eventStore, change: body.change}); return done(201, {ok: true, result}); }
+     if (req.method === "POST" && sub === "proposals") {
+       // Write-ahead: persist the intent marker BEFORE the event commits, so
+       // a failure of the final save leaves a reconcilable record instead of
+       // a silent divergence. If the marker save itself fails, nothing has
+       // committed and the request fails cleanly.
+       if (projectStore && eventStore && typeof body.change?.featureId === "string" && body.change.featureId) {
+         project.notePendingSpatialEvent(body.change.featureId);
+         try { await saveWithRetry(project); }
+         catch (error) { if (error?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]}); return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
+       }
+       const result = await project.proposeChange({actor, resolveApproval: typeof resolveApproval === "function" ? resolveApproval : resolveApproval?.resolveApproval, eventStore, change: body.change});
+       project.clearPendingSpatialEvent(body.change?.featureId);
+       return done(201, {ok: true, result});
+     }
      if (req.method === "POST" && sub === "preview") {
        if (body.mode === "photoreal") {
          const rendered = renderProvider ? await renderProvider.render({project: project.snapshot()}) : {ok: false, errors: ["photorealistic rendering disabled"]};
