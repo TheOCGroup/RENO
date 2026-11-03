@@ -59,6 +59,10 @@ if (process.env.RENOVISION_DEMO_AUTH === "1") {
  authenticate = authenticator.authenticate;
  console.log("RENOVISION identity: verified ID tokens (issuer " + process.env.RENOVISION_TOKEN_ISSUER + ")");
 }
+if ((process.env.K_SERVICE || process.env.K_REVISION) && !process.env.RENOVISION_GCS_BUCKET) {
+ console.error("RENOVISION_GCS_BUCKET is required on Cloud Run; refusing ephemeral filesystem storage.");
+ process.exit(1);
+}
 let evidenceStorage, getGcsAccessToken;
 if (process.env.RENOVISION_GCS_BUCKET) {
  const tokenUrl = process.env.RENOVISION_GCS_TOKEN_URL || "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
