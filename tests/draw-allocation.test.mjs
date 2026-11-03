@@ -28,6 +28,18 @@ test('overlapping draw approvals cannot reserve more than invoice total', () => 
   assert.equal(ledger.snapshot().drawApprovals.length,1);
 });
 
+test('outstanding draw reservation survives ledger restoration', () => {
+  const ledger=new RenovationLedger({projectId:'reservation-restart'});
+  const contractor=ledger.addContractor({name:'Builder',trade:'roof'});
+  const invoice=ledger.addInvoice({contractorId:contractor.id,reference:'RESTART-1',total:100});
+  ledger.decideInvoice({invoiceId:invoice.id,decision:'approved',rationale:'Reviewed'});
+  ledger.registerApprovedDraw({drawId:'first',approvedAmount:80,invoiceRefs:['RESTART-1']});
+  const restored=new RenovationLedger({projectId:'reservation-restart',state:ledger.snapshot()});
+  assert.throws(()=>restored.registerApprovedDraw({drawId:'second',approvedAmount:30,invoiceRefs:['RESTART-1']}),/draw_exceeds_invoice_authority/);
+  restored.registerApprovedDraw({drawId:'remaining',approvedAmount:20,invoiceRefs:['RESTART-1']});
+  assert.equal(restored.snapshot().drawApprovals.length,2);
+});
+
 test('draw approval cannot exceed total remaining invoice authority', () => {
   const ledger=new RenovationLedger({projectId:'invoice-cap'});
   const contractor=ledger.addContractor({name:'Contractor',trade:'roof'});
