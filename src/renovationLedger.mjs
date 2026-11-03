@@ -95,7 +95,8 @@ export class RenovationLedger {
     if (invoices.some(i => !i)) throw new Error('invoice_not_found');
     if (invoices.some(i => i.status !== 'approved')) throw new Error('invoice_not_approved');
     const invoiceAuthority = invoices.reduce((sum, invoice) => sum + invoice.total - this.drawAllocations.filter(a => a.invoiceId === invoice.id).reduce((allocated, a) => allocated + a.amount, 0), 0);
-    if (Math.round(value * 100) > Math.round(invoiceAuthority * 100)) throw new Error('draw_exceeds_invoice_authority');
+    const outstandingApprovals = this.drawApprovals.reduce((sum, draw) => sum + (draw.invoiceIds?.some(id => invoices.some(invoice => invoice.id === id)) ? draw.approvedAmount - draw.allocatedAmount : 0), 0);
+    if (Math.round(value * 100) > Math.round((invoiceAuthority - outstandingApprovals) * 100)) throw new Error('draw_exceeds_invoice_authority');
     if (this.drawApprovals.some(d => d.drawId === id)) throw new Error('draw_already_registered');
     const record = { drawId:id, approvedAmount:value, allocatedAmount:0, invoiceRefs:refs, invoiceIds:invoices.map(i => i.id), actor:required(actor,'actor_required'), approvedAt:new Date().toISOString() };
     this.drawApprovals.push(record);

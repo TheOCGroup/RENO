@@ -18,6 +18,16 @@ test('draw approval rejects ambiguous invoice references across contractors', ()
   assert.equal(ledger.snapshot().drawApprovals.length,0);
 });
 
+test('overlapping draw approvals cannot reserve more than invoice total', () => {
+  const ledger=new RenovationLedger({projectId:'reservation-test'});
+  const contractor=ledger.addContractor({name:'Builder',trade:'roof'});
+  const invoice=ledger.addInvoice({contractorId:contractor.id,reference:'RES-1',total:100});
+  ledger.decideInvoice({invoiceId:invoice.id,decision:'approved',rationale:'Reviewed'});
+  ledger.registerApprovedDraw({drawId:'first',approvedAmount:80,invoiceRefs:['RES-1']});
+  assert.throws(()=>ledger.registerApprovedDraw({drawId:'second',approvedAmount:30,invoiceRefs:['RES-1']}),/draw_exceeds_invoice_authority/);
+  assert.equal(ledger.snapshot().drawApprovals.length,1);
+});
+
 test('draw approval cannot exceed total remaining invoice authority', () => {
   const ledger=new RenovationLedger({projectId:'invoice-cap'});
   const contractor=ledger.addContractor({name:'Contractor',trade:'roof'});
