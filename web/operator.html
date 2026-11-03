@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission Control — Operator</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1b1e23; background: #f4f5f7; line-height: 1.45; }
+  .demo-banner { background: #7c2d12; color: #ffffff; padding: 10px 16px; font-weight: 700; letter-spacing: 0.02em; }
+  .app-header { background: #14202e; color: #ffffff; padding: 14px 16px; }
+  .app-header h1 { font-size: 20px; margin: 0 0 10px; }
+  .token-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .token-form .field { display: grid; gap: 3px; }
+  .token-form label { font-weight: 600; font-size: 13px; }
+  .token-form input { padding: 7px 9px; border: 1px solid #5b6b7c; border-radius: 4px; min-width: 150px; max-width: 100%; }
+  button { padding: 7px 14px; border: 1px solid #0b5cad; background: #0f6cbd; color: #ffffff; border-radius: 4px; cursor: pointer; font-weight: 600; }
+  button:hover { background: #0b5cad; }
+  button:disabled { background: #8aa5bd; border-color: #8aa5bd; cursor: wait; }
+  button.secondary { background: #ffffff; color: #0b5cad; border-color: #0b5cad; }
+  button.secondary:hover { background: #eef3f9; }
+  :focus-visible { outline: 3px solid #ffb900; outline-offset: 2px; }
+  #connection-status { font-size: 14px; align-self: center; }
+  .session-note { margin: 10px 0 0; font-size: 13px; color: #c8d2dd; max-width: 900px; }
+  .session-note strong { color: #ffffff; }
+  .layout { display: grid; grid-template-columns: minmax(250px, 330px) minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; align-items: start; }
+  #project-list { background: #ffffff; border: 1px solid #d6dae0; border-radius: 6px; padding: 12px; }
+  #project-list h2 { margin: 0 0 10px; font-size: 16px; }
+  #project-list-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .project-row { width: 100%; text-align: left; background: #ffffff; color: #1b1e23; border: 1px solid #c3c9d1; border-radius: 6px; padding: 10px; display: grid; gap: 4px; font-weight: 400; }
+  .project-row:hover { background: #eef3f9; }
+  .project-row[aria-current="true"] { border-color: #0f6cbd; box-shadow: 0 0 0 2px #0f6cbd inset; }
+  .project-row .addr { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+  .project-row .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+  .project-row .row-next { font-size: 13px; color: #424a54; overflow-wrap: anywhere; }
+  .badge { display: inline-block; background: #33404f; color: #ffffff; border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; text-transform: capitalize; }
+  .badge.stage-in_progress { background: #0f6cbd; }
+  .badge.stage-complete, .badge.stage-exit_ready { background: #107c10; }
+  .badge.stage-punch_list { background: #986f0b; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; border: 1px solid #6b7280; background: #9ca3af; flex: none; }
+  .dot.risk-clear, .dot.risk-low { background: #107c10; border-color: #0b5c0b; }
+  .dot.risk-medium { background: #e8a33d; border-color: #986f0b; }
+  .dot.risk-high, .dot.risk-critical { background: #c50f1f; border-color: #7c0a14; }
+  #project-detail { background: #ffffff; border: 1px solid #d6dae0; border-radius: 6px; padding: 16px; min-width: 0; }
+  #project-detail h2 { margin: 0 0 4px; font-size: 22px; overflow-wrap: anywhere; }
+  .next-action { background: #fff4ce; border: 1px solid #986f0b; border-left: 6px solid #986f0b; border-radius: 4px; padding: 10px 12px; margin: 12px 0; font-size: 16px; }
+  .next-action strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #5c4405; }
+  .action-status { font-weight: 600; color: #0b5c0b; min-height: 1.2em; margin: 8px 0 0; }
+  #project-detail section { border-top: 1px solid #e2e5ea; padding: 12px 0 4px; margin-top: 12px; }
+  #project-detail section h3 { margin: 0 0 8px; font-size: 16px; }
+  .money-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .money-grid .figure { background: #f4f5f7; border: 1px solid #d6dae0; border-radius: 4px; padding: 8px 10px; }
+  .money-grid .figure .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #424a54; }
+  .money-grid .figure .value { font-size: 19px; font-weight: 700; }
+  .bar { height: 10px; background: #e2e5ea; border-radius: 5px; margin-top: 10px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; }
+  .bar.allocated > span { background: #0f6cbd; }
+  .bar.paid > span { background: #107c10; }
+  .bar-label { font-size: 13px; color: #424a54; margin-top: 6px; }
+  .item { border: 1px solid #d6dae0; border-radius: 4px; padding: 9px 11px; margin-bottom: 8px; }
+  .item .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+  .item .title { font-weight: 700; overflow-wrap: anywhere; }
+  .item .sub { font-size: 13px; color: #424a54; overflow-wrap: anywhere; }
+  .sub-list { margin-top: 8px; display: grid; gap: 6px; }
+  .sub-item { border: 1px solid #e2e5ea; border-left: 4px solid #c3c9d1; border-radius: 4px; padding: 7px 9px; }
+  .sub-item .title { font-weight: 600; font-size: 14px; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 600; color: #0b5cad; }
+  pre { background: #f4f5f7; border: 1px solid #d6dae0; border-radius: 4px; padding: 8px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .finding { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed #e2e5ea; }
+  .severity { font-weight: 700; text-transform: uppercase; font-size: 12px; min-width: 64px; }
+  .severity.critical, .severity.high { color: #a4262c; }
+  .severity.medium { color: #986f0b; }
+  .severity.low { color: #424a54; }
+  .muted { color: #424a54; font-size: 14px; }
+  .error { color: #a4262c; font-weight: 600; }
+  .caller-label { display: inline-block; background: #fff4ce; border: 1px solid #986f0b; color: #5c4405; border-radius: 4px; padding: 1px 8px; font-size: 12px; font-weight: 700; }
+  .write-zone { margin-top: 8px; }
+  .write-form { border: 1px solid #c3c9d1; border-radius: 6px; padding: 10px 12px; margin-top: 8px; background: #fbfdfe; max-width: 640px; }
+  .write-form .wf-title { font-weight: 700; margin: 0 0 8px; font-size: 14px; }
+  .write-form .field { display: grid; gap: 3px; margin-bottom: 8px; }
+  .write-form label { font-weight: 600; font-size: 13px; }
+  .write-form input, .write-form select, .write-form textarea { padding: 7px 9px; border: 1px solid #8a94a1; border-radius: 4px; width: 100%; min-width: 0; font: inherit; }
+  .write-form .hint { font-size: 12px; color: #424a54; }
+  .write-form .check-list { display: grid; gap: 4px; }
+  .write-form .check-list label { font-weight: 400; display: flex; gap: 7px; align-items: baseline; }
+  .write-form .check-list input { width: auto; }
+  .line-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 6px; margin-bottom: 6px; }
+  .line-row input { min-width: 0; }
+  .form-feedback { margin: 8px 0 0; font-size: 14px; min-height: 1.2em; }
+  .form-feedback.ok { color: #0b5c0b; font-weight: 600; }
+  .form-feedback.err { color: #a4262c; font-weight: 600; }
+  .wf-total { font-weight: 700; margin: 4px 0 8px; }
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: minmax(0, 1fr); padding: 10px; }
+    .app-header h1 { font-size: 18px; }
+    #project-detail h2 { font-size: 19px; }
+    .token-form input { min-width: 120px; }
+    .line-row { grid-template-columns: minmax(0, 1fr) 96px auto; }
+  }
+</style>
+</head>
+<body>
+<div id="demo-banner" class="demo-banner" role="alert" hidden>DEMO MODE — synthetic data only. Every project on this page is a demonstration fixture, not a real project.</div>
+
+<header class="app-header">
+  <h1>Mission Control — Operator</h1>
+  <form id="token-form" class="token-form">
+    <span class="field">
+      <label for="token-input">Operator token</label>
+      <input id="token-input" name="token" type="password" autocomplete="off" placeholder="Operator token">
+    </span>
+    <span class="field">
+      <label for="actor-input">Actor ID</label>
+      <input id="actor-input" name="actor" type="text" autocomplete="off" placeholder="e.g. demo-pm">
+    </span>
+    <span class="field">
+      <label for="actor-role-input">Actor role (optional)</label>
+      <input id="actor-role-input" name="actorRole" type="text" autocomplete="off" placeholder="As recorded in the store">
+    </span>
+    <button type="submit">Connect</button>
+    <span id="connection-status" role="status" aria-live="polite"></span>
+  </form>
+  <p class="session-note" id="session-note">Writes are recorded under your actor ID. Your authority is the role <strong>recorded for that actor ID in the store</strong> — leave the role blank to act under the recorded role. If you enter a role, the server rejects the write when it does not match the record. The token and session fields stay in this browser tab only.</p>
+</header>
+
+<div class="layout">
+  <nav id="project-list" aria-label="Projects">
+    <h2>Projects</h2>
+    <ul id="project-list-items"></ul>
+    <p id="project-list-empty" class="muted">No projects loaded. Connect with the operator token to load projects.</p>
+  </nav>
+
+  <main id="project-detail" aria-label="Project detail">
+    <p id="detail-placeholder" class="muted">Select a project to see its stage, budget, risks, and next action.</p>
+    <div id="detail-body" hidden>
+      <h2 id="detail-address"></h2>
+      <p class="meta-line">
+        <span id="detail-stage" class="badge"></span>
+        <span id="detail-scope" class="muted"></span>
+      </p>
+      <div id="next-action" class="next-action" aria-label="Next action">
+        <strong>Next action</strong>
+        <span id="next-action-text">Select a project.</span>
+      </div>
+      <p id="action-status" class="action-status" role="status" aria-live="polite"></p>
+
+      <section id="budget-summary" aria-label="Budget summary">
+        <h3>Budget</h3>
+        <div class="money-grid">
+          <div class="figure"><div class="label">Authority</div><div class="value" id="budget-authority">—</div></div>
+          <div class="figure"><div class="label">Allocated</div><div class="value" id="budget-allocated">—</div></div>
+          <div class="figure"><div class="label">Paid</div><div class="value" id="budget-paid">—</div></div>
+          <div class="figure"><div class="label">Reconciled (caller-reported)</div><div class="value" id="budget-reconciled">—</div></div>
+        </div>
+        <div class="bar allocated" aria-hidden="true"><span id="bar-allocated"></span></div>
+        <div class="bar-label">Allocated against authority</div>
+        <div class="bar paid" aria-hidden="true"><span id="bar-paid"></span></div>
+        <div class="bar-label">Paid against authority</div>
+      </section>
+
+      <section id="section-draws" aria-label="Draws and payments">
+        <h3>Draws &amp; Payments</h3>
+        <div id="draws-list"></div>
+        <div id="draws-write"></div>
+      </section>
+
+      <section id="section-invoices" aria-label="Invoices">
+        <h3>Invoices</h3>
+        <div id="invoices-list"></div>
+        <div id="invoices-write"></div>
+      </section>
+
+      <section id="section-inspections" aria-label="Inspections">
+        <h3>Inspections</h3>
+        <div id="inspections-list"></div>
+        <div id="inspections-write"></div>
+      </section>
+
+      <section id="section-tasks" aria-label="Tasks">
+        <h3>Tasks</h3>
+        <p id="tasks-health" class="muted"></p>
+        <div id="tasks-list"></div>
+        <div id="tasks-write"></div>
+      </section>
+
+      <section id="section-risks" aria-label="Risks">
+        <h3>Risks</h3>
+        <div id="risks-list"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+var TOKEN_KEY = "mcOperatorToken";
+var ACTOR_KEY = "mcOperatorActorId";
+var ROLE_KEY = "mcOperatorActorRole";
+var state = {
+  token: sessionStorage.getItem(TOKEN_KEY) || "",
+  actorId: sessionStorage.getItem(ACTOR_KEY) || "",
+  actorRole: sessionStorage.getItem(ROLE_KEY) || "",
+  projects: [], selectedId: null, demo: false
+};
+
+function el(tag, className, text) {
+  var node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+function money(value) {
+  var n = Number(value || 0);
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+function pct(part, whole) {
+  var w = Number(whole || 0);
+  if (!w) return 0;
+  return Math.max(0, Math.min(100, (Number(part || 0) / w) * 100));
+}
+function splitRefs(text) {
+  return String(text || "").split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+}
+function idemKey(kind) {
+  return "ui-" + kind + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+function syncSessionFromInputs() {
+  state.token = document.getElementById("token-input").value.trim();
+  state.actorId = document.getElementById("actor-input").value.trim();
+  state.actorRole = document.getElementById("actor-role-input").value.trim();
+  sessionStorage.setItem(TOKEN_KEY, state.token);
+  sessionStorage.setItem(ACTOR_KEY, state.actorId);
+  sessionStorage.setItem(ROLE_KEY, state.actorRole);
+}
+function api(path, options) {
+  syncSessionFromInputs();
+  var opts = options || {};
+  var headers = { "authorization": "Bearer " + state.token };
+  if (opts.method === "POST") {
+    headers["content-type"] = "application/json";
+    if (state.actorId) headers["x-actor-id"] = state.actorId;
+    if (state.actorRole) headers["x-actor-role"] = state.actorRole;
+  }
+  return fetch(path, Object.assign({}, opts, { headers: headers })).then(function (res) {
+    return res.json().then(function (body) { return { status: res.status, body: body }; });
+  });
+}
+function post(path, body) {
+  return api(path, { method: "POST", body: JSON.stringify(body || {}) });
+}
+function setStatus(text, isError) {
+  var node = document.getElementById("connection-status");
+  node.textContent = text;
+  node.className = isError ? "error" : "";
+}
+
+var ERROR_TEXT = {
+  actor_id_required: "Enter your actor ID in the session bar before submitting.",
+  actor_role_mismatch: "The role you entered does not match the role recorded for this actor in the store.",
+  self_approval_forbidden: "You cannot decide a draw that you requested. A different approver must decide it.",
+  self_review_forbidden: "You cannot review an invoice that you submitted. A different actor must review it.",
+  approver_role_required: "This actor does not hold an approver role recorded in the store.",
+  duplicate_invoice_number: "An invoice with this number already exists for this contractor on this project.",
+  contractor_required: "Enter the contractor name.",
+  invoice_number_required: "Enter the invoice number.",
+  line_items_required: "Add at least one line item.",
+  line_item_description_required: "Every line item needs a description.",
+  line_item_sum_mismatch: "The line items do not add up to the invoice total.",
+  invoice_evidence_required: "At least one evidence reference is required.",
+  invoice_not_found: "That invoice no longer exists on this project.",
+  invoice_already_reviewed: "This invoice has already been reviewed.",
+  invalid_invoice_decision: "Choose a valid review decision.",
+  review_rationale_required: "A rationale is required to reject an invoice.",
+  invoice_not_approved: "A draw can only reference approved invoices.",
+  invoice_project_mismatch: "One of the selected invoices belongs to a different project.",
+  allocation_exceeds_invoice: "The approved amount exceeds what the referenced invoices can cover.",
+  allocation_exceeds_authority: "The approved amount exceeds the project's budget authority.",
+  draw_already_decided: "This draw has already been decided.",
+  draw_rationale_required: "A rationale is required for the decision.",
+  invalid_draw_approval_amount: "The approved amount must be more than zero and no more than the requested amount.",
+  invalid_draw_decision: "Choose a valid decision.",
+  draw_not_found: "That draw no longer exists on this project.",
+  draw_not_approved: "Payments can only be recorded against an approved draw.",
+  payment_exceeds_approved: "The payment exceeds the approved amount still unpaid on this draw.",
+  duplicate_payment_ref: "A payment with this reference already exists for this tenant.",
+  payment_ref_required: "A payment reference is required.",
+  invalid_amount: "Enter a valid amount greater than zero.",
+  payment_not_found: "That payment no longer exists on this project.",
+  invalid_bank_record: "The bank record needs at least an amount.",
+  inspection_not_found: "That inspection no longer exists on this project.",
+  inspection_not_scheduled: "This inspection is not in a scheduled state.",
+  invalid_inspection_outcome: "Choose a valid inspection outcome.",
+  inspection_evidence_required: "An evidence reference is required to record the outcome.",
+  correction_items_required: "A failed inspection needs at least one correction item.",
+  correction_not_found: "That correction item no longer exists.",
+  correction_already_complete: "This correction item is already complete.",
+  correction_evidence_required: "An evidence reference is required to complete a correction item.",
+  task_not_found: "That task no longer exists on this project.",
+  invalid_task_status: "Choose a valid task status.",
+  invalid_task_window: "The due date cannot be before the start date.",
+  dependency_incomplete: "A task cannot be marked done while one of its dependencies is not done.",
+  dependency_cycle: "These dependencies would create a cycle.",
+  task_dependency_not_found: "One of the selected dependencies does not exist on this project.",
+  version_conflict: "This record changed since the page loaded. The latest state is now shown; review it and retry.",
+  unauthorized: "The operator token was refused. Reconnect with the correct token.",
+  operator_auth_not_configured: "The operator API is not configured on the server.",
+  invalid_json: "The server could not read the submission.",
+  project_not_found: "This project no longer exists."
+};
+function translateError(code) {
+  return ERROR_TEXT[code] || "The server refused this action.";
+}
+
+// --- governed write-form framework -------------------------------------------
+// Forms start collapsed behind a toggle button so the read workflow stays
+// uncluttered. The server stays the authority: the form only collects fields
+// and surfaces the service's error code in plain language plus the raw code.
+function collapsibleForm(toggleLabel, formId, routeLabel) {
+  var zone = el("div", "write-zone");
+  var toggle = el("button", "secondary", toggleLabel);
+  toggle.type = "button";
+  toggle.setAttribute("aria-expanded", "false");
+  var form = document.createElement("form");
+  form.className = "write-form";
+  form.id = formId;
+  form.setAttribute("data-route", routeLabel);
+  form.hidden = true;
+  form.noValidate = true;
+  toggle.addEventListener("click", function () {
+    form.hidden = !form.hidden;
+    toggle.setAttribute("aria-expanded", form.hidden ? "false" : "true");
+    if (!form.hidden) {
+      var first = form.querySelector("input, select, textarea");
+      if (first) first.focus();
+    }
+  });
+  zone.appendChild(toggle);
+  zone.appendChild(form);
+  return { zone: zone, form: form };
+}
+function fieldWrap(labelText, input, hint) {
+  var wrap = el("div", "field");
+  var label = document.createElement("label");
+  label.textContent = labelText;
+  if (input.id) label.htmlFor = input.id;
+  wrap.appendChild(label);
+  wrap.appendChild(input);
+  if (hint) wrap.appendChild(el("span", "hint", hint));
+  return wrap;
+}
+function makeInput(id, type, placeholder) {
+  var input = document.createElement("input");
+  input.id = id;
+  input.type = type;
+  if (placeholder) input.placeholder = placeholder;
+  return input;
+}
+function makeSelect(id, values) {
+  var select = document.createElement("select");
+  select.id = id;
+  values.forEach(function (v) {
+    var opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v.replace(/_/g, " ");
+    select.appendChild(opt);
+  });
+  return select;
+}
+function makeTextarea(id, placeholder) {
+  var area = document.createElement("textarea");
+  area.id = id;
+  area.rows = 2;
+  if (placeholder) area.placeholder = placeholder;
+  return area;
+}
+var formCounter = 0;
+function uniqueId(base) { formCounter += 1; return base + "-" + formCounter; }
+
+function wireSubmit(form, feedback, submitLabel, doSubmit, successText) {
+  var submit = el("button", null, submitLabel);
+  submit.type = "submit";
+  form.appendChild(submit);
+  form.appendChild(feedback);
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    submit.disabled = true;
+    feedback.className = "form-feedback";
+    feedback.textContent = "Working…";
+    doSubmit().then(function (result) {
+      if (result.status === 200 || result.status === 201) {
+        feedback.className = "form-feedback ok";
+        feedback.textContent = successText;
+        refreshAfterWrite(successText);
+      } else {
+        submit.disabled = false;
+        var code = (result.body && result.body.error) || ("http_" + result.status);
+        feedback.className = "form-feedback err";
+        feedback.textContent = translateError(code) + " (" + code + ")";
+      }
+    }).catch(function () {
+      submit.disabled = false;
+      feedback.className = "form-feedback err";
+      feedback.textContent = "Could not reach the server. (network_error)";
+    });
+  });
+}
+function newFeedback() { return el("p", "form-feedback"); }
+function refreshAfterWrite(message) {
+  var node = document.getElementById("action-status");
+  if (node) node.textContent = message;
+  loadProjects(true);
+}
+
+// --- the eleven governed write forms -----------------------------------------
+
+function buildSubmitInvoiceForm(d) {
+  var parts = collapsibleForm("Submit invoice", uniqueId("form-submit-invoice"), "POST /api/projects/:id/invoices");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Submit invoice"));
+  var contractor = makeInput(uniqueId("inv-contractor"), "text", "Contractor name");
+  var number = makeInput(uniqueId("inv-number"), "text", "e.g. INV-1042");
+  form.appendChild(fieldWrap("Contractor", contractor));
+  form.appendChild(fieldWrap("Invoice number", number, "Unique for this contractor on this project."));
+  form.appendChild(el("label", null, "Line items"));
+  var rows = el("div", null);
+  var totalLine = el("p", "wf-total", "Total: $0");
+  function updateTotal() {
+    var sum = 0;
+    rows.querySelectorAll(".li-amount").forEach(function (input) { sum += Number(input.value || 0); });
+    totalLine.textContent = "Total: " + money(sum);
+  }
+  function addRow() {
+    var row = el("div", "line-row");
+    var desc = makeInput("", "text", "Description");
+    desc.className = "li-desc";
+    var amount = makeInput("", "number", "Amount");
+    amount.className = "li-amount";
+    amount.min = "0"; amount.step = "0.01";
+    amount.addEventListener("input", updateTotal);
+    var remove = el("button", "secondary", "Remove");
+    remove.type = "button";
+    remove.addEventListener("click", function () { row.remove(); updateTotal(); });
+    row.appendChild(desc); row.appendChild(amount); row.appendChild(remove);
+    rows.appendChild(row);
+  }
+  addRow();
+  form.appendChild(rows);
+  var addBtn = el("button", "secondary", "Add line item");
+  addBtn.type = "button";
+  addBtn.addEventListener("click", addRow);
+  form.appendChild(addBtn);
+  form.appendChild(totalLine);
+  var evidence = makeTextarea(uniqueId("inv-evidence"), "One evidence reference per line");
+  form.appendChild(fieldWrap("Evidence references", evidence, "At least one is required."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Submit invoice", function () {
+    var lineItems = [];
+    rows.querySelectorAll(".line-row").forEach(function (row) {
+      var desc = row.querySelector(".li-desc").value.trim();
+      var amount = Number(row.querySelector(".li-amount").value || 0);
+      if (desc || amount) lineItems.push({ description: desc, amount: amount });
+    });
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/invoices", {
+      contractor: contractor.value.trim(),
+      externalNumber: number.value.trim(),
+      lineItems: lineItems,
+      evidenceRefs: splitRefs(evidence.value)
+    });
+  }, "Invoice submitted. It now needs review by a different actor.");
+  return parts.zone;
+}
+
+function buildReviewInvoiceForm(d, inv) {
+  var parts = collapsibleForm("Review invoice", uniqueId("form-review-invoice"), "POST /api/projects/:id/invoices/:invoiceId/review");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Review invoice " + inv.externalNumber));
+  var decision = makeSelect(uniqueId("review-decision"), ["approved", "under_review", "rejected"]);
+  var rationale = makeInput(uniqueId("review-rationale"), "text", "Why — required to reject");
+  form.appendChild(fieldWrap("Decision", decision));
+  form.appendChild(fieldWrap("Rationale", rationale));
+  form.appendChild(el("p", "hint", "You cannot review an invoice you submitted yourself; the server enforces this."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Record review", function () {
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/invoices/" + encodeURIComponent(inv.id) + "/review", {
+      decision: decision.value,
+      rationale: rationale.value.trim() || null
+    });
+  }, "Invoice review recorded.");
+  return parts.zone;
+}
+
+function buildRequestDrawForm(d) {
+  var approved = (d.invoices || []).filter(function (inv) { return inv.status === "approved"; });
+  if (!approved.length) {
+    return el("p", "muted", "Draws can only reference approved invoices — none are approved yet.");
+  }
+  var parts = collapsibleForm("Request draw", uniqueId("form-request-draw"), "POST /api/projects/:id/draws");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Request draw"));
+  form.appendChild(el("label", null, "Approved invoices covered by this draw"));
+  var checks = el("div", "check-list");
+  approved.forEach(function (inv) {
+    var label = document.createElement("label");
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.className = "draw-invoice";
+    box.value = inv.id;
+    label.appendChild(box);
+    label.appendChild(document.createTextNode(inv.contractor + " · " + inv.externalNumber + " — " + money(inv.total)));
+    checks.appendChild(label);
+  });
+  form.appendChild(checks);
+  var amount = makeInput(uniqueId("draw-amount"), "number", "Amount requested");
+  amount.min = "0"; amount.step = "0.01";
+  var percent = makeInput(uniqueId("draw-percent"), "number", "Percent complete (0–100)");
+  percent.min = "0"; percent.max = "100"; percent.step = "0.01";
+  var retainage = makeInput(uniqueId("draw-retainage"), "number", "Blank = default 10");
+  retainage.min = "0"; retainage.max = "100"; retainage.step = "0.01";
+  var reason = makeInput(uniqueId("draw-reason"), "text", "Reason for the draw");
+  var evidence = makeTextarea(uniqueId("draw-evidence"), "One progress-evidence reference per line");
+  form.appendChild(fieldWrap("Amount", amount));
+  form.appendChild(fieldWrap("Percent complete", percent));
+  form.appendChild(fieldWrap("Retainage % (optional)", retainage));
+  form.appendChild(fieldWrap("Reason", reason));
+  form.appendChild(fieldWrap("Progress evidence references", evidence, "At least one is required."));
+  var key = idemKey("draw");
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Request draw", function () {
+    var invoiceIds = [];
+    checks.querySelectorAll(".draw-invoice:checked").forEach(function (box) { invoiceIds.push(box.value); });
+    var body = {
+      amount: Number(amount.value || 0),
+      percentComplete: Number(percent.value || 0),
+      evidenceRefs: splitRefs(evidence.value),
+      invoiceIds: invoiceIds,
+      reason: reason.value.trim(),
+      idempotencyKey: key
+    };
+    if (retainage.value !== "") body.retainagePct = Number(retainage.value);
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/draws", body);
+  }, "Draw requested. It now needs a decision by a different approver.");
+  return parts.zone;
+}
+
+function buildDecideDrawForm(d, draw) {
+  var parts = collapsibleForm("Decide draw", uniqueId("form-decide-draw"), "POST /api/projects/:id/draws/:drawId/decide");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Decide draw — requested " + money(draw.requestedAmount)));
+  var decision = makeSelect(uniqueId("decide-decision"), ["approved", "rejected"]);
+  var amount = makeInput(uniqueId("decide-amount"), "number", "Blank = full requested amount");
+  amount.min = "0"; amount.step = "0.01";
+  var rationale = makeInput(uniqueId("decide-rationale"), "text", "Rationale — required");
+  form.appendChild(fieldWrap("Decision", decision));
+  form.appendChild(fieldWrap("Approved amount (optional)", amount));
+  form.appendChild(fieldWrap("Rationale", rationale));
+  form.appendChild(el("p", "hint", "The requester cannot decide their own draw, and the decider must hold an approver role recorded in the store. The server enforces both."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Record decision", function () {
+    var body = { decision: decision.value, rationale: rationale.value.trim() };
+    if (amount.value !== "") body.approvedAmount = Number(amount.value);
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/draws/" + encodeURIComponent(draw.id) + "/decide", body);
+  }, "Draw decision recorded.");
+  return parts.zone;
+}
+
+function buildRecordPaymentForm(d, draw) {
+  var parts = collapsibleForm("Record payment", uniqueId("form-record-payment"), "POST /api/projects/:id/draws/:drawId/payments");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Record payment against this draw"));
+  var amount = makeInput(uniqueId("pay-amount"), "number", "Amount paid");
+  amount.min = "0"; amount.step = "0.01";
+  var ref = makeInput(uniqueId("pay-ref"), "text", "Unique payment reference");
+  var method = makeInput(uniqueId("pay-method"), "text", "wire / check / ACH / …");
+  var paidAt = makeInput(uniqueId("pay-date"), "date", "");
+  form.appendChild(fieldWrap("Amount", amount));
+  form.appendChild(fieldWrap("Payment reference", ref));
+  form.appendChild(fieldWrap("Method (optional)", method));
+  form.appendChild(fieldWrap("Paid on (optional)", paidAt));
+  form.appendChild(el("p", "hint", "Recording only — this system never moves money. Partial payments are allowed; overpayment is refused."));
+  var key = idemKey("payment");
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Record payment", function () {
+    var body = { amount: Number(amount.value || 0), paymentRef: ref.value.trim(), idempotencyKey: key };
+    if (method.value.trim()) body.method = method.value.trim();
+    if (paidAt.value) body.paidAt = paidAt.value;
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/draws/" + encodeURIComponent(draw.id) + "/payments", body);
+  }, "Payment recorded.");
+  return parts.zone;
+}
+
+function buildReconciliationForm(d, payment) {
+  var parts = collapsibleForm("Record reconciliation", uniqueId("form-record-reconciliation"), "POST /api/projects/:id/payments/:paymentId/reconciliation");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Record reconciliation for payment " + payment.paymentRef));
+  form.appendChild(el("p", null)).appendChild(el("span", "caller-label", "Caller-reported — not bank-verified"));
+  var amount = makeInput(uniqueId("recon-amount"), "number", "Amount shown on the bank record");
+  amount.min = "0"; amount.step = "0.01";
+  var reference = makeInput(uniqueId("recon-ref"), "text", "e.g. statement line reference");
+  var stmtDate = makeInput(uniqueId("recon-date"), "date", "");
+  form.appendChild(fieldWrap("Bank record amount", amount));
+  form.appendChild(fieldWrap("Bank record reference", reference));
+  form.appendChild(fieldWrap("Statement date (optional)", stmtDate));
+  form.appendChild(el("p", "hint", "The bank record is stored exactly as you enter it and stays labeled caller-reported. A different amount is kept as a mismatch — it is never forced to match the payment."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Record reconciliation", function () {
+    var bankRecord = { amount: Number(amount.value || 0), reference: reference.value.trim() };
+    if (stmtDate.value) bankRecord.statementDate = stmtDate.value;
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/payments/" + encodeURIComponent(payment.id) + "/reconciliation", { bankRecord: bankRecord });
+  }, "Reconciliation recorded — caller-reported, not bank-verified.");
+  return parts.zone;
+}
+
+function buildScheduleInspectionForm(d) {
+  var parts = collapsibleForm("Schedule inspection", uniqueId("form-schedule-inspection"), "POST /api/projects/:id/inspections");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Schedule inspection"));
+  var type = makeInput(uniqueId("insp-type"), "text", "framing / electrical / plumbing / final / …");
+  var when = makeInput(uniqueId("insp-when"), "datetime-local", "");
+  var inspector = makeInput(uniqueId("insp-inspector"), "text", "Inspector name or reference, as recorded");
+  form.appendChild(fieldWrap("Type", type));
+  form.appendChild(fieldWrap("Scheduled for", when));
+  form.appendChild(fieldWrap("Inspector (as recorded)", inspector, "Recorded as entered — not independently verified."));
+  var ready = (d.inspections || []).filter(function (i) { return i.status === "corrections_complete"; });
+  var supersedes = null;
+  if (ready.length) {
+    supersedes = makeSelect(uniqueId("insp-supersedes"), [""]);
+    supersedes.options[0].textContent = "— none —";
+    ready.forEach(function (i) {
+      var opt = document.createElement("option");
+      opt.value = i.id;
+      opt.textContent = i.type + " — " + (i.scheduledFor || "");
+      supersedes.appendChild(opt);
+    });
+    form.appendChild(fieldWrap("Re-inspection of (corrections complete)", supersedes));
+  }
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Schedule inspection", function () {
+    var scheduledFor = when.value;
+    if (scheduledFor && scheduledFor.length === 16) scheduledFor += ":00Z";
+    else if (scheduledFor) scheduledFor += "Z";
+    var body = { type: type.value.trim(), scheduledFor: scheduledFor, inspectorRef: inspector.value.trim() };
+    if (supersedes && supersedes.value) body.supersedesId = supersedes.value;
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/inspections", body);
+  }, "Inspection scheduled.");
+  return parts.zone;
+}
+
+function buildInspectionOutcomeForm(d, insp) {
+  var parts = collapsibleForm("Record outcome", uniqueId("form-inspection-outcome"), "POST /api/projects/:id/inspections/:inspectionId/outcome");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Record outcome — " + insp.type));
+  var outcome = makeSelect(uniqueId("outcome-value"), ["passed", "failed"]);
+  var evidence = makeInput(uniqueId("outcome-evidence"), "text", "Evidence reference — required");
+  var corrections = makeTextarea(uniqueId("outcome-corrections"), "One correction item per line");
+  form.appendChild(fieldWrap("Outcome", outcome));
+  form.appendChild(fieldWrap("Evidence reference", evidence));
+  form.appendChild(fieldWrap("Correction items", corrections, "Required when the outcome is failed — one per line."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Record outcome", function () {
+    var body = { outcome: outcome.value, evidenceRef: evidence.value.trim() || null };
+    var items = splitRefs(corrections.value);
+    if (items.length) body.correctionItems = items;
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/inspections/" + encodeURIComponent(insp.id) + "/outcome", body);
+  }, "Inspection outcome recorded.");
+  return parts.zone;
+}
+
+function buildCompleteCorrectionForm(d, correction) {
+  var parts = collapsibleForm("Complete correction", uniqueId("form-complete-correction"), "POST /api/projects/:id/corrections/:correctionId/complete");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Complete correction"));
+  var evidence = makeInput(uniqueId("correction-evidence"), "text", "Evidence reference — required");
+  form.appendChild(fieldWrap("Evidence reference", evidence));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Mark correction complete", function () {
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/corrections/" + encodeURIComponent(correction.id) + "/complete", {
+      evidenceRef: evidence.value.trim()
+    });
+  }, "Correction marked complete.");
+  return parts.zone;
+}
+
+function buildAddTaskForm(d) {
+  var parts = collapsibleForm("Add task", uniqueId("form-add-task"), "POST /api/projects/:id/tasks");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Add task"));
+  var title = makeInput(uniqueId("task-title"), "text", "Task title");
+  var stage = makeInput(uniqueId("task-stage"), "text", "Optional stage name");
+  var starts = makeInput(uniqueId("task-starts"), "date", "");
+  var due = makeInput(uniqueId("task-due"), "date", "");
+  form.appendChild(fieldWrap("Title", title));
+  form.appendChild(fieldWrap("Stage (optional)", stage));
+  form.appendChild(fieldWrap("Starts on", starts));
+  form.appendChild(fieldWrap("Due on", due));
+  var checks = null;
+  if ((d.tasks || []).length) {
+    form.appendChild(el("label", null, "Depends on (must be done first)"));
+    checks = el("div", "check-list");
+    d.tasks.forEach(function (task) {
+      var label = document.createElement("label");
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.className = "task-dep";
+      box.value = task.id;
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(task.title + " — " + task.status));
+      checks.appendChild(label);
+    });
+    form.appendChild(checks);
+  }
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Add task", function () {
+    var dependsOn = [];
+    if (checks) checks.querySelectorAll(".task-dep:checked").forEach(function (box) { dependsOn.push(box.value); });
+    var body = { title: title.value.trim(), startsOn: starts.value, dueOn: due.value, dependsOn: dependsOn };
+    if (stage.value.trim()) body.stage = stage.value.trim();
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/tasks", body);
+  }, "Task added.");
+  return parts.zone;
+}
+
+function buildTaskStatusForm(d, task) {
+  var parts = collapsibleForm("Update status", uniqueId("form-task-status"), "POST /api/projects/:id/tasks/:taskId/status");
+  var form = parts.form;
+  form.appendChild(el("p", "wf-title", "Update task status"));
+  var status = makeSelect(uniqueId("task-status"), ["open", "in_progress", "blocked", "done"]);
+  status.value = task.status;
+  form.appendChild(fieldWrap("Status", status, "A task cannot be done while a dependency is not done."));
+  var feedback = newFeedback();
+  wireSubmit(form, feedback, "Save status", function () {
+    return post("/api/projects/" + encodeURIComponent(d.id) + "/tasks/" + encodeURIComponent(task.id) + "/status", {
+      status: status.value,
+      expectedVersion: task.version != null ? task.version : null
+    });
+  }, "Task status updated.");
+  return parts.zone;
+}
+
+// --- rendering ---------------------------------------------------------------
+
+function renderProjectList() {
+  var list = document.getElementById("project-list-items");
+  list.textContent = "";
+  document.getElementById("project-list-empty").hidden = state.projects.length > 0;
+  state.projects.forEach(function (project) {
+    var item = document.createElement("li");
+    var button = el("button", "project-row");
+    button.type = "button";
+    button.setAttribute("aria-current", project.id === state.selectedId ? "true" : "false");
+    var addr = el("span", "addr", project.address || "(address not recorded)");
+    var meta = el("span", "meta");
+    var dot = el("span", "dot risk-" + ((project.health && project.health.riskLevel) || "unknown"));
+    dot.title = "Risk: " + ((project.health && project.health.riskLevel) || "unknown");
+    meta.appendChild(dot);
+    meta.appendChild(el("span", "badge stage-" + project.stage, String(project.stage || "").replace(/_/g, " ")));
+    meta.appendChild(el("span", null, "Allocated " + money(project.financials && project.financials.allocated) + " · Paid " + money(project.financials && project.financials.paid)));
+    button.appendChild(addr);
+    button.appendChild(meta);
+    button.appendChild(el("span", "row-next", "Next: " + (project.nextAction || "—")));
+    button.addEventListener("click", function () { selectProject(project.id); });
+    item.appendChild(button);
+    list.appendChild(item);
+  });
+}
+
+function detailRow(title, subText) {
+  var wrap = el("div", "item");
+  var head = el("div", "head");
+  head.appendChild(el("span", "title", title));
+  wrap.appendChild(head);
+  if (subText) wrap.appendChild(el("div", "sub", subText));
+  return wrap;
+}
+function evidenceDetails(label, lines) {
+  var details = document.createElement("details");
+  var summary = document.createElement("summary");
+  summary.textContent = label;
+  details.appendChild(summary);
+  var pre = document.createElement("pre");
+  pre.textContent = lines.join("\n");
+  details.appendChild(pre);
+  return details;
+}
+
+function renderDetail(d) {
+  document.getElementById("detail-placeholder").hidden = true;
+  document.getElementById("detail-body").hidden = false;
+  document.getElementById("detail-address").textContent = d.address || "(address not recorded)";
+  var stage = document.getElementById("detail-stage");
+  stage.textContent = String(d.stage || "").replace(/_/g, " ");
+  stage.className = "badge stage-" + d.stage;
+  document.getElementById("detail-scope").textContent = "Scope: " + (d.scopeStatus || "unknown") + " · Budget: " + (d.budgetStatus || "unknown");
+  document.getElementById("next-action-text").textContent = d.nextAction || "No action recorded.";
+
+  var authority = d.budget ? d.budget.authority : 0;
+  document.getElementById("budget-authority").textContent = money(authority);
+  document.getElementById("budget-allocated").textContent = money(d.financials.allocated);
+  document.getElementById("budget-paid").textContent = money(d.financials.paid);
+  document.getElementById("budget-reconciled").textContent = money(d.financials.reconciled);
+  document.getElementById("bar-allocated").style.width = pct(d.financials.allocated, authority) + "%";
+  document.getElementById("bar-paid").style.width = pct(d.financials.paid, authority) + "%";
+
+  var reconciliationsByPayment = {};
+  (d.reconciliations || []).forEach(function (r) {
+    (reconciliationsByPayment[r.paymentId] = reconciliationsByPayment[r.paymentId] || []).push(r);
+  });
+
+  var draws = document.getElementById("draws-list");
+  draws.textContent = "";
+  if (!d.draws.length) draws.appendChild(el("p", "muted", "No draws yet."));
+  d.draws.forEach(function (draw) {
+    var fin = draw.financials || {};
+    var row = detailRow(
+      "Draw — requested " + money(draw.requestedAmount) + " · " + draw.status,
+      "Approved " + money(fin.approved) + " · Allocated " + money(fin.allocated) + " · Paid " + money(fin.paid) + " · Reconciled " + money(fin.reconciled) + " (caller-reported, never bank-verified)"
+    );
+    var lines = [];
+    (draw.decisions || []).forEach(function (dec) { lines.push("Decision: " + dec.decision + " by " + dec.actor + (dec.approvedAmount != null ? " — " + money(dec.approvedAmount) : "")); });
+    (draw.evidenceRefs || []).forEach(function (ref) { lines.push("Evidence: " + ref); });
+    if (lines.length) row.appendChild(evidenceDetails("Decisions and evidence", lines));
+    var drawPayments = (d.payments || []).filter(function (p) { return p.drawId === draw.id; });
+    if (drawPayments.length) {
+      var payList = el("div", "sub-list");
+      drawPayments.forEach(function (payment) {
+        var payItem = el("div", "sub-item");
+        payItem.appendChild(el("div", "title", "Payment " + money(payment.amount) + " · ref " + payment.paymentRef));
+        payItem.appendChild(el("div", "sub", "Recorded by " + payment.recordedBy + (payment.method ? " · " + payment.method : "") + (payment.paidAt ? " · " + payment.paidAt : "")));
+        (reconciliationsByPayment[payment.id] || []).forEach(function (r) {
+          var recLine = el("div", "sub");
+          recLine.appendChild(document.createTextNode("Reconciliation: " + r.state + " · bank record " + money(r.callerAmount) + " vs payment " + money(r.paymentAmount) + " · "));
+          recLine.appendChild(el("span", "caller-label", "Caller-reported — not bank-verified"));
+          payItem.appendChild(recLine);
+        });
+        payItem.appendChild(buildReconciliationForm(d, payment));
+        payList.appendChild(payItem);
+      });
+      row.appendChild(payList);
+    }
+    if (draw.status === "pending") row.appendChild(buildDecideDrawForm(d, draw));
+    if (draw.status === "approved") {
+      row.appendChild(buildRecordPaymentForm(d, draw));
+      var pkgButton = el("button", "secondary", "Lender package");
+      pkgButton.type = "button";
+      pkgButton.addEventListener("click", function () { loadPackage(d.id, draw.id, row); });
+      row.appendChild(pkgButton);
+    }
+    draws.appendChild(row);
+  });
+  var drawsWrite = document.getElementById("draws-write");
+  drawsWrite.textContent = "";
+  drawsWrite.appendChild(buildRequestDrawForm(d));
+
+  var invoices = document.getElementById("invoices-list");
+  invoices.textContent = "";
+  if (!d.invoices.length) invoices.appendChild(el("p", "muted", "No invoices yet."));
+  d.invoices.forEach(function (inv) {
+    var row = detailRow(inv.contractor + " · " + inv.externalNumber + " — " + money(inv.total) + " · " + inv.status,
+      "Submitted by " + inv.submittedBy + (inv.reviewedBy ? " · Reviewed by " + inv.reviewedBy : ""));
+    if ((inv.evidenceRefs || []).length) row.appendChild(evidenceDetails("Evidence", inv.evidenceRefs));
+    if (inv.status === "submitted" || inv.status === "under_review") row.appendChild(buildReviewInvoiceForm(d, inv));
+    invoices.appendChild(row);
+  });
+  var invoicesWrite = document.getElementById("invoices-write");
+  invoicesWrite.textContent = "";
+  invoicesWrite.appendChild(buildSubmitInvoiceForm(d));
+
+  var inspections = document.getElementById("inspections-list");
+  inspections.textContent = "";
+  if (!d.inspections.length) inspections.appendChild(el("p", "muted", "No inspections scheduled."));
+  d.inspections.forEach(function (insp) {
+    var open = (insp.corrections || []).filter(function (c) { return c.status === "open"; }).length;
+    var row = detailRow(insp.type + " — " + insp.status,
+      "Scheduled " + (insp.scheduledFor || "—") + " · Inspector (as recorded): " + (insp.inspectorRef || "not recorded") + (open ? " · " + open + " correction item(s) open" : ""));
+    if ((insp.corrections || []).length) {
+      var corrList = el("div", "sub-list");
+      insp.corrections.forEach(function (c) {
+        var corrItem = el("div", "sub-item");
+        corrItem.appendChild(el("div", "title", "Correction — " + c.status));
+        corrItem.appendChild(el("div", "sub", c.description));
+        if (c.status === "open") corrItem.appendChild(buildCompleteCorrectionForm(d, c));
+        corrList.appendChild(corrItem);
+      });
+      row.appendChild(corrList);
+    }
+    if (insp.status === "scheduled") row.appendChild(buildInspectionOutcomeForm(d, insp));
+    inspections.appendChild(row);
+  });
+  var inspectionsWrite = document.getElementById("inspections-write");
+  inspectionsWrite.textContent = "";
+  inspectionsWrite.appendChild(buildScheduleInspectionForm(d));
+
+  var health = d.scheduleHealth || {};
+  document.getElementById("tasks-health").textContent =
+    "Open " + (health.openCount != null ? health.openCount : "—") + " · Done " + (health.doneCount != null ? health.doneCount : "—") +
+    " · Overdue " + ((health.overdue || []).length) + " · Blocked " + ((health.blocked || []).length) +
+    " · Critical chain " + (health.criticalChainLength != null ? health.criticalChainLength : "—");
+  var taskTitles = {};
+  (d.tasks || []).forEach(function (task) { taskTitles[task.id] = task.title; });
+  var tasks = document.getElementById("tasks-list");
+  tasks.textContent = "";
+  if (!d.tasks.length) tasks.appendChild(el("p", "muted", "No tasks yet."));
+  d.tasks.forEach(function (task) {
+    var deps = (task.dependsOn || []).map(function (id) { return taskTitles[id] || id; });
+    var row = detailRow(task.title + " — " + task.status,
+      "Starts " + (task.startsOn || "—") + " · Due " + (task.dueOn || "—") + (deps.length ? " · Depends on: " + deps.join(", ") : ""));
+    if (task.status !== "done") row.appendChild(buildTaskStatusForm(d, task));
+    tasks.appendChild(row);
+  });
+  var tasksWrite = document.getElementById("tasks-write");
+  tasksWrite.textContent = "";
+  tasksWrite.appendChild(buildAddTaskForm(d));
+
+  var risks = document.getElementById("risks-list");
+  risks.textContent = "";
+  var findings = (d.health && d.health.findings) || [];
+  if (!findings.length) risks.appendChild(el("p", "muted", "No findings. Risk level: " + ((d.health && d.health.riskLevel) || "unknown") + "."));
+  findings.forEach(function (f) {
+    var row = el("div", "finding");
+    row.appendChild(el("span", "severity " + f.severity, f.severity || ""));
+    row.appendChild(el("span", null, String(f.kind || "").replace(/_/g, " ") + (f.count != null ? " — count " + f.count : "") + (f.amount != null ? " — " + money(f.amount) : "")));
+    risks.appendChild(row);
+  });
+}
+
+function loadPackage(projectId, drawId, container) {
+  api("/api/projects/" + encodeURIComponent(projectId) + "/draws/" + encodeURIComponent(drawId) + "/package").then(function (result) {
+    if (result.status !== 200) { container.appendChild(el("p", "error", "Package failed: " + (result.body.error || result.status))); return; }
+    var pkg = result.body.data;
+    container.appendChild(evidenceDetails("Lender package — digest " + pkg.packageDigest,
+      ["bankVerified: " + pkg.bankVerified, "Digest: " + pkg.packageDigest, JSON.stringify(pkg, null, 2)]));
+  });
+}
+
+function selectProject(id, keepStatus) {
+  var changed = state.selectedId !== id;
+  state.selectedId = id;
+  if (changed && !keepStatus) {
+    var statusNode = document.getElementById("action-status");
+    if (statusNode) statusNode.textContent = "";
+  }
+  renderProjectList();
+  api("/api/projects/" + encodeURIComponent(id)).then(function (result) {
+    if (result.status !== 200) { setStatus("Project failed to load: " + (result.body.error || result.status), true); return; }
+    renderDetail(result.body.data);
+  });
+}
+
+function loadProjects(keepSelection) {
+  if (!state.token) { setStatus("Enter the operator token to connect.", true); return; }
+  api("/api/projects").then(function (result) {
+    if (result.status === 401) { setStatus("Unauthorized — check the operator token.", true); return; }
+    if (result.status === 503) { setStatus("Operator API is not configured on the server.", true); return; }
+    if (result.status !== 200) { setStatus("Load failed: " + (result.body.error || result.status), true); return; }
+    state.demo = result.body.demo === true;
+    document.getElementById("demo-banner").hidden = !state.demo;
+    state.projects = result.body.data.projects || [];
+    var acting = state.actorId ? " · Acting as " + state.actorId : " · No actor ID set — writes will be refused until you enter one";
+    setStatus("Connected — " + state.projects.length + " project(s)" + (state.demo ? " · DEMO" : "") + acting + ".", false);
+    renderProjectList();
+    if (keepSelection && state.selectedId && state.projects.some(function (p) { return p.id === state.selectedId; })) selectProject(state.selectedId, true);
+    else if (state.projects.length && !state.selectedId) selectProject(state.projects[0].id);
+    else if (state.selectedId) selectProject(state.selectedId, true);
+  }).catch(function () { setStatus("Could not reach the server.", true); });
+}
+
+document.getElementById("token-form").addEventListener("submit", function (event) {
+  event.preventDefault();
+  syncSessionFromInputs();
+  state.selectedId = null;
+  loadProjects(false);
+});
+["token-input", "actor-input", "actor-role-input"].forEach(function (id) {
+  document.getElementById(id).addEventListener("change", syncSessionFromInputs);
+});
+if (state.token) {
+  document.getElementById("token-input").value = state.token;
+  document.getElementById("actor-input").value = state.actorId;
+  document.getElementById("actor-role-input").value = state.actorRole;
+  loadProjects(false);
+}
+</script>
+</body>
+</html>
