@@ -22,7 +22,7 @@ async function readBody(req) {
   catch { throw new Error('invalid_json'); }
 }
 export function createMissionControlApiHandler({ service, tokenRegistry }) {
-  if (!service?.get || !service?.execute || !Array.isArray(tokenRegistry)) throw new Error('api_configuration_required');
+  if (typeof service?.get !== 'function' || typeof service?.execute !== 'function' || typeof service?.reconcilePayments !== 'function' || !Array.isArray(tokenRegistry)) throw new Error('api_configuration_required');
   return async function handle(req,res) {
     const url = new URL(req.url,'http://mission-control.local');
     const match = /^\/api\/v1\/mission-control\/projects\/([a-zA-Z0-9_-]{1,128})(?:\/(?:operations|payment-reconciliation))?$/.exec(url.pathname);
@@ -39,18 +39,20 @@ export function createMissionControlApiHandler({ service, tokenRegistry }) {
     try {
       if (isReconciliation) {
         const body=await readBody(req);
-        const result=service.reconcilePayments({actor:principal.actor,projectId,bankRecords:body?.bankRecords});
+        if (!body || typeof body !== 'object' || Array.isArray(body) || !Array.isArray(body.bankRecords)) throw new Error('invalid_request_body');
+        const result=service.reconcilePayments({actor:principal.actor,projectId,bankRecords:body.bankRecords});
         send(res,200,{ok:true,data:result});
       } else if (!isOperation) {
         const result=service.get({actor:principal.actor,projectId});
         send(res,result?200:404,result?{ok:true,data:result}:{ok:false,error:'project_not_found'});
       } else {
         const body=await readBody(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('invalid_request_body');
         const result=service.execute({actor:principal.actor,projectId,expectedVersion:body.expectedVersion,operation:body.operation,args:body.args});
         send(res,200,{ok:true,data:result});
       }
     } catch (error) {
-      const status = error.message==='forbidden' ? 403 : error.message==='project_not_found' ? 404 : error.message==='state_version_conflict' ? 409 : ['invalid_json','body_too_large','expected_version_required','operation_not_allowed'].includes(error.message) ? 400 : 422;
+      const status = error.message==='forbidden' ? 403 : error.message==='project_not_found' ? 404 : error.message==='state_version_conflict' ? 409 : ['invalid_json','invalid_request_body','body_too_large','expected_version_required','operation_not_allowed'].includes(error.message) ? 400 : 422;
       send(res,status,{ok:false,error:status===422?'operation_rejected':error.message});
     }
     return true;
