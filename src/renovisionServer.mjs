@@ -25,13 +25,22 @@ export function createMemoryApprovalRegistry() {
    },
    async resolveApproval({approvalRef, tenantId, propertyId}) {
      const record = approvals.get(approvalRef);
-     if (!record || record.tenantId !== tenantId || record.propertyId !== propertyId) return null;
+     if (!record || record.tenantId !== tenantId || (propertyId !== undefined && record.propertyId !== propertyId)) return null;
      return structuredClone(record);
    },
-   get size() { return approvals.size; }
+   async revoke({approvalRef, tenantId, revokedBy, reason}) {
+     const record = approvals.get(approvalRef);
+     if (!record || record.tenantId !== tenantId) return null;
+     if (record.revoked === true) return structuredClone(record);
+     const revoked = {...record, status: "revoked", revoked: true, revokedBy, revokedAt: new Date().toISOString(), ...(typeof reason === "string" && reason.trim() ? {revokeReason: reason} : {})};
+     approvals.set(approvalRef, revoked);
+     return structuredClone(revoked);
+   },
+   get size() { return approvals.size; },
+   get storageClass() { return "in-memory"; }
  };
 }
-export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, identityMode = "custom", cryptoApi = webcrypto} = {}) {
+export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
  if (typeof authenticate !== "function") throw new TypeError("authenticate function required");
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
@@ -63,7 +72,16 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    const url = new URL(req.url, "http://localhost");
    const path = url.pathname;
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
-   if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
+   if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
+   if (req.method === "GET" && path === "/auth-config") {
+     // Public browser sign-in configuration. The Identity Platform web API key
+     // is a client identifier, not a credential; it is exposed only when the
+     // deployment configured one. Access control is enforced by Identity
+     // Platform rules and this service's verified-token authentication.
+     const apiKey = text(webAuthConfig?.apiKey) ? webAuthConfig.apiKey : null;
+     const projectId = text(webAuthConfig?.projectId) ? webAuthConfig.projectId : null;
+     return send(res, 200, {ok: true, identityMode, signIn: {provider: "google-identity-platform", configured: Boolean(apiKey && projectId), apiKey, projectId}});
+   }
    if (!path.startsWith("/api/renovision")) return send(res, 404, {ok: false, errors: ["not_found"]});
    const actor = await authenticate(req);
    if (!actor || actor.authenticated !== true || !text(actor.id) || !text(actor.tenantId)) return send(res, 401, {ok: false, errors: ["authenticated_actor_required"]});
@@ -81,6 +99,18 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        try { record = await resolveApproval.register({...body, tenantId: actor.tenantId, approvedBy: actor.id, approvedAt: new Date().toISOString()}); }
        catch (error) { if (error?.code === "APPROVAL_REF_CONFLICT") return send(res, 409, {ok: false, errors: ["approval_ref_conflict"]}); throw error; }
        return send(res, 201, {ok: true, approval: record});
+     }
+     if (req.method === "POST" && path === "/api/renovision/approvals/revoke") {
+       if (typeof resolveApproval?.revoke !== "function" || typeof resolveApproval?.resolveApproval !== "function") return send(res, 501, {ok: false, errors: ["approval_registry_not_configured"]});
+       const existing = await resolveApproval.resolveApproval({approvalRef: body.approvalRef, tenantId: actor.tenantId});
+       if (!existing) return send(res, 404, {ok: false, errors: ["approval_not_found"]});
+       const check = guard("approval:register", {propertyId: existing.propertyId, roomId: existing.roomId});
+       if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
+       let record;
+       try { record = await resolveApproval.revoke({approvalRef: body.approvalRef, tenantId: actor.tenantId, revokedBy: actor.id, reason: body.reason}); }
+       catch (error) { if (error?.code === "APPROVAL_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["approval_write_conflict"]}); throw error; }
+       if (!record) return send(res, 404, {ok: false, errors: ["approval_not_found"]});
+       return send(res, 200, {ok: true, approval: record});
      }
      if (req.method === "POST" && path === "/api/renovision/projects") {
        const check = guard("project:create", {propertyId: body.propertyId, roomId: body.roomId});
