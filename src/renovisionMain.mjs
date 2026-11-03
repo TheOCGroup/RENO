@@ -87,7 +87,9 @@ const eventStore = process.env.RENOVISION_GCS_BUCKET
 const projectStore = process.env.RENOVISION_GCS_BUCKET
  ? createGcsProjectStore({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken})
  : createFileProjectStore({rootDir: join(dataDir, "projects")});
-const approvals = createMemoryApprovalRegistry();
+// Cloud Run must not treat process-local approval records as trusted durable authority.
+// Until a shared approval authority is integrated, registration and proposal authorization fail closed.
+const approvals = (process.env.K_SERVICE || process.env.K_REVISION) ? null : createMemoryApprovalRegistry();
 const renderProvider = createRenderProvider({enabled: process.env.RENOVISION_PHOTOREAL_ENABLED === "1", founderApproved: process.env.RENOVISION_PHOTOREAL_FOUNDER_APPROVED === "1"});
 const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, renderProvider, identityMode});
 const port = Number(process.env.PORT || 8787);
