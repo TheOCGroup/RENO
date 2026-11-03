@@ -11,7 +11,8 @@ import { createHash, randomUUID } from "node:crypto";
  * requirements and pending-only decision rules are the domain's own.
  * Governance adds what the domain never had:
  *
- * - an invoice entity with a review lifecycle (no self-review),
+ * - an invoice entity with a review lifecycle (no self-review;
+ *   final approval/rejection requires an approver/admin — Phase C),
  * - per-tenant actor roles; draw approval requires an approver/admin
  *   who is not the requester (no self-approval),
  * - allocation of approved draws against approved invoices and the
@@ -60,6 +61,36 @@ import { createHash, randomUUID } from "node:crypto";
  * orphanedFinancialRows(). The draw-request boundary also refuses
  * non-number exotics (booleans, arrays, objects) that the domain's
  * Number() helper would coerce into plausible figures.
+ *
+ * Phase C (founder design ruling 2026-11-03, directive §4): final
+ * invoice approval/rejection now requires the reviewer's recorded
+ * tenant role to be approver or admin — the same tenant_roles model
+ * and APPROVER_ROLES set that govern draw decisions; no parallel role
+ * system was created. An operator or roleless actor attempting a
+ * final decision is refused with approver_role_required before any
+ * write; the submitter check still runs first, so an approver who
+ * submitted the invoice is refused with self_review_forbidden. The
+ * intermediate under_review claim grants no final authority and is
+ * open to any actor with a recorded tenant role who is not the
+ * submitter. Review events now record reviewerRole in the audit
+ * payload, so the trail shows the authority that was exercised;
+ * isGovernedApprovedInvoice corroboration (decision + reviewer
+ * identity) is unchanged, and previously approved invoices keep
+ * corroborating exactly as before.
+ *
+ * Phase G (defect F-1, battery finding 2026-11-03): the Phase C note
+ * above held only for events the service can write. A forged,
+ * chain-consistent `invoice_reviewed` event whose payload attests
+ * reviewerRole 'operator' also matched decision + reviewer identity,
+ * laundering the role gate — the recorded role is itself the
+ * disqualifying fact. isGovernedApprovedInvoice now refuses
+ * corroboration whenever a present reviewerRole is not approver or
+ * admin; absent (legacy) reviewerRole corroborates as before. There
+ * is no governed-REJECTION derivation to mirror this onto: rejection
+ * is consumed only by the submitInvoice resubmission gate on the
+ * status column, which confers no funds (a resubmission must still
+ * pass the full governed review), so no rejection corroboration path
+ * exists or was changed.
  *
  * Tenant discipline matches the store: every row carries tenant_id and
  * every query filters by tenant + project. A cross-tenant or
@@ -283,7 +314,10 @@ export class MissionControlFinance {
    * invoice row names as its reviewer. A status (or reviewer) written
    * outside reviewInvoice has no corroborating audit event and
    * confers nothing — the exact mirror of #governedApprovedAmount
-   * for draws.
+   * for draws. Phase G (defect F-1) adds: when the event records a
+   * reviewerRole, it must be approver/admin — a recorded non-approver
+   * role disqualifies the event. Roleless (pre-Phase-C) events are
+   * unaffected.
    */
   isGovernedApprovedInvoice(invoice, tenantId = this.#store.defaultTenantId) {
     if (!invoice || invoice.status !== "approved" || !invoice.reviewedBy) return false;
@@ -291,7 +325,17 @@ export class MissionControlFinance {
     return rows.some(row => {
       let payload;
       try { payload = JSON.parse(row.payload_json); } catch { return false; }
-      return payload.decision === "approved" && payload.actor === invoice.reviewedBy && row.actor === invoice.reviewedBy;
+      if (payload.decision !== "approved" || payload.actor !== invoice.reviewedBy || row.actor !== invoice.reviewedBy) return false;
+      // Phase G (defect F-1): when the corroborating event records the
+      // reviewer's role, the recorded role must itself hold final-
+      // approval authority — an event attesting an operator's (or any
+      // non-approver's) final approval records the very fact that
+      // disqualifies it, and confers nothing. Events written before
+      // Phase C carry no reviewerRole; they corroborate on decision +
+      // reviewer identity exactly as before (legacy approvals verify
+      // unchanged — battery probe F2-3 pins that behavior).
+      if (payload.reviewerRole !== undefined && !APPROVER_ROLES.includes(payload.reviewerRole)) return false;
+      return true;
     });
   }
 
@@ -301,6 +345,22 @@ export class MissionControlFinance {
     if (!invoice || invoice.projectId !== projectId) throw new Error("invoice_not_found");
     if (actor === invoice.submittedBy) throw new Error("self_review_forbidden");
     if (!["under_review", "approved", "rejected"].includes(decision)) throw new Error("invalid_invoice_decision");
+    // Phase C (founder ruling 2026-11-03, directive §4): the reviewer's
+    // RECORDED tenant role gates the decision. Final approval/rejection
+    // requires approver/admin — an operator, or an actor with no
+    // recorded role, is refused with approver_role_required and nothing
+    // is written. The intermediate under_review transition grants no
+    // final authority (it records only that a reviewer has claimed the
+    // invoice), so it is open to any actor holding a recorded tenant
+    // role; a roleless actor is refused there too (fail closed). The
+    // self check above runs first, mirroring decideDraw: a submitter
+    // holding an approver role still cannot review their own invoice.
+    const reviewerRole = this.actorRole(tenantId, actor);
+    if (decision === "under_review") {
+      if (!ACTOR_ROLES.includes(reviewerRole)) throw new Error("approver_role_required");
+    } else if (!APPROVER_ROLES.includes(reviewerRole)) {
+      throw new Error("approver_role_required");
+    }
     if (invoice.status === "approved" || invoice.status === "rejected") throw new Error("invoice_already_reviewed");
     if (decision === "under_review" && invoice.status !== "submitted") throw new Error("invoice_already_reviewed");
     if (decision === "rejected" && !String(rationale || "").trim()) throw new Error("review_rationale_required");
@@ -309,7 +369,7 @@ export class MissionControlFinance {
     this.#tx(() => {
       this.#db.prepare("UPDATE invoices SET status = ?, reviewed_by = ?, review_rationale = ?, reviewed_at = ?, updated_at = ? WHERE id = ? AND tenant_id = ?")
         .run(decision, terminal ? actor : invoice.reviewedBy, terminal ? (rationale ? String(rationale).trim() : null) : invoice.reviewRationale, terminal ? now : invoice.reviewedAt, now, invoiceId, tenantId);
-      this.#recordEvent(tenantId, projectId, { eventType: "invoice_reviewed", actor, entityType: "invoice", entityId: invoiceId, detail: { decision, fromStatus: invoice.status } });
+      this.#recordEvent(tenantId, projectId, { eventType: "invoice_reviewed", actor, entityType: "invoice", entityId: invoiceId, detail: { decision, fromStatus: invoice.status, reviewerRole } });
     });
     return this.getInvoice(invoiceId, tenantId);
   }
