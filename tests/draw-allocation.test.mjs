@@ -18,6 +18,15 @@ test('draw approval rejects ambiguous invoice references across contractors', ()
   assert.equal(ledger.snapshot().drawApprovals.length,0);
 });
 
+test('draw approval cannot exceed total remaining invoice authority', () => {
+  const ledger=new RenovationLedger({projectId:'invoice-cap'});
+  const contractor=ledger.addContractor({name:'Contractor',trade:'roof'});
+  const invoice=ledger.addInvoice({contractorId:contractor.id,reference:'CAP-1',total:100});
+  ledger.decideInvoice({invoiceId:invoice.id,decision:'approved',rationale:'Reviewed'});
+  assert.throws(()=>ledger.registerApprovedDraw({drawId:'too-large',approvedAmount:101,invoiceRefs:['CAP-1']}),/draw_exceeds_invoice_authority/);
+  assert.equal(ledger.snapshot().drawApprovals.length,0);
+});
+
 test('approved draw binds invoice identity even if another contractor reuses reference', () => {
   const ledger=new RenovationLedger({projectId:'identity'});
   const a=ledger.addContractor({name:'A',trade:'roof'});
@@ -53,8 +62,7 @@ test('draw reconciliation prevents unsupported and duplicate invoice allocations
   ledger.registerApprovedDraw({drawId:'draw-1',approvedAmount:600,invoiceRefs:['INV-1']});
   assert.throws(()=>ledger.allocateDraw({drawId:'draw-1',invoiceId:invoice.id,amount:1200}),/draw_exceeds_invoice_balance/);
   ledger.allocateDraw({drawId:'draw-1',invoiceId:invoice.id,amount:600});
-  ledger.registerApprovedDraw({drawId:'draw-over',approvedAmount:500,invoiceRefs:['INV-1']});
-  assert.throws(()=>ledger.allocateDraw({drawId:'draw-over',invoiceId:invoice.id,amount:500}),/draw_exceeds_invoice_balance/);
+  assert.throws(()=>ledger.registerApprovedDraw({drawId:'draw-over',approvedAmount:500,invoiceRefs:['INV-1']}),/draw_exceeds_invoice_authority/);
   assert.throws(()=>ledger.allocateDraw({drawId:'draw-1',invoiceId:invoice.id,amount:100}),/duplicate_draw_allocation/);
   ledger.registerApprovedDraw({drawId:'draw-2',approvedAmount:400,invoiceRefs:['INV-1']});
   ledger.allocateDraw({drawId:'draw-2',invoiceId:invoice.id,amount:400});
