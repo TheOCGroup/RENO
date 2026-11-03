@@ -155,3 +155,17 @@ test("durable project reads bypass stale per-instance cache",async(t)=>{
  assert.equal(fresh.status,200);
  assert.equal(fresh.body.project.stage,"measurement_review");
 });
+
+test("approval registration fails closed without a durable approval authority",async(t)=>{
+ const dir=await mkdtemp(join(tmpdir(),"renovision-no-approval-"));
+ t.after(()=>rm(dir,{recursive:true,force:true}));
+ const authenticate=async()=>({id:"operator-1",tenantId:"tenant-a",authenticated:true,roles:["admin"],propertyIds:["*"],roomIds:[]});
+ const evidenceStorage=createDurableEvidenceStorage({rootDir:join(dir,"evidence"),authorize:async()=>true});
+ const server=createRenovisionServer({authenticate,evidenceStorage,resolveApproval:null});
+ await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+ t.after(()=>server.close());
+ const base="http://127.0.0.1:"+server.address().port;
+ const response=await call(base,"POST","/api/renovision/approvals",{approvalRef:"untrusted",propertyId:"property-1",roomId:"room-1"});
+ assert.equal(response.status,501);
+ assert.deepEqual(response.body.errors,["approval_registry_not_configured"]);
+});
