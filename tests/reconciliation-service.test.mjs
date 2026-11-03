@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MissionControlStateStore } from '../src/missionControlStateStore.mjs';
 import { MissionControlService } from '../src/missionControlService.mjs';
 import { RenovationWorkflow } from '../src/renovationWorkflow.mjs';
@@ -36,6 +39,36 @@ test('authorized allocation persists and stale replay is rejected', () => {
   assert.equal(service.get({actor,projectId}).state.ledger.drawAllocations[0].amount,150);
   assert.throws(()=>service.executeDrawAllocation(request),/state_version_conflict/);
   store.close();
+});
+
+test('draw reservations persist through SQLite close and reopen with version protection', () => {
+  const dir=mkdtempSync(join(tmpdir(),'draw-recovery-'));
+  const databasePath=join(dir,'state.sqlite');
+  const projectId='durable-draw', actor={id:'operator',role:'operator'};
+  const authorize=({actor})=>actor.role==='operator';
+  try {
+    const store=new MissionControlStateStore({databasePath,tenantId:'ocg'});
+    const service=new MissionControlService({store,authorize});
+    const initial=service.initialize({actor,projectId,workflowSnapshot:new RenovationWorkflow({id:projectId}).snapshot()});
+    const ledger=new RenovationLedger({projectId,state:initial.state.ledger});
+    const contractor=ledger.addContractor({name:'Roof Co',trade:'roof'});
+    const invoice=ledger.addInvoice({contractorId:contractor.id,reference:'REC-1',total:100});
+    ledger.decideInvoice({invoiceId:invoice.id,decision:'approved',rationale:'Reviewed'});
+    ledger.registerApprovedDraw({drawId:'first',approvedAmount:80,invoiceRefs:['REC-1']});
+    const version=store.save({projectId,expectedVersion:1,state:{...initial.state,ledger:ledger.snapshot()}});
+    store.close();
+    const reopened=new MissionControlStateStore({databasePath,tenantId:'ocg'});
+    try {
+      const resumed=new MissionControlService({store:reopened,authorize});
+      assert.equal(resumed.get({actor,projectId}).version,version);
+      const persisted=new RenovationLedger({projectId,state:reopened.load(projectId).state.ledger});
+      assert.throws(()=>persisted.registerApprovedDraw({drawId:'excess',approvedAmount:30,invoiceRefs:['REC-1']}),/draw_exceeds_invoice_authority/);
+      assert.throws(()=>resumed.executeDrawAllocation({actor,projectId,expectedVersion:1,drawId:'first',invoiceId:invoice.id,amount:30}),/state_version_conflict/);
+      const result=resumed.executeDrawAllocation({actor,projectId,expectedVersion:version,drawId:'first',invoiceId:invoice.id,amount:30});
+      assert.equal(result.version,version+1);
+      assert.equal(reopened.load(projectId).state.ledger.drawApprovals[0].allocatedAmount,30);
+    } finally { reopened.close(); }
+  } finally { rmSync(dir,{recursive:true,force:true}); }
 });
 
 test('reconciliation is authorized, read-only and refuses draw allocation without approval integration', () => {
