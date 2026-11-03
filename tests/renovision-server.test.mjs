@@ -169,3 +169,15 @@ test("approval registration fails closed without a durable approval authority",a
  assert.equal(response.status,501);
  assert.deepEqual(response.body.errors,["approval_registry_not_configured"]);
 });
+
+test("approval references cannot be overwritten across tenants or by a second registration",async(t)=>{
+ const base=await boot(t);
+ const payload={approvalRef:"immutable-ref",propertyId:"property-1",roomId:"room-1",status:"approved",approvedBy:"founder"};
+ const first=await call(base,"POST","/api/renovision/approvals",payload);
+ assert.equal(first.status,201);
+ const duplicate=await call(base,"POST","/api/renovision/approvals",{...payload,status:"rejected"});
+ assert.equal(duplicate.status,409);
+ assert.deepEqual(duplicate.body.errors,["approval_ref_conflict"]);
+ const crossTenant=await call(base,"POST","/api/renovision/approvals",payload,{"x-actor-id":"other-actor","x-tenant-id":"tenant-b","content-type":"application/json"});
+ assert.equal(crossTenant.status,409);
+});
