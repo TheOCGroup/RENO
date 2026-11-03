@@ -71,6 +71,20 @@ test('draw reservations persist through SQLite close and reopen with version pro
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
 
+test('tenant cannot allocate a draw from another tenant', () => {
+  const storeA=new MissionControlStateStore({databasePath:':memory:',tenantId:'a'});
+  const storeB=new MissionControlStateStore({databasePath:':memory:',tenantId:'b'});
+  const actor={id:'operator',role:'operator'},projectId='shared';
+  const authorize=({actor})=>actor.role==='operator';
+  try {
+    const a=new MissionControlService({store:storeA,authorize});
+    const b=new MissionControlService({store:storeB,authorize});
+    a.initialize({actor,projectId,workflowSnapshot:new RenovationWorkflow({id:projectId}).snapshot()});
+    assert.equal(b.get({actor,projectId}),null);
+    assert.throws(()=>b.executeDrawAllocation({actor,projectId,expectedVersion:1,drawId:'x',invoiceId:'y',amount:1}),/project_not_found/);
+  } finally {storeA.close();storeB.close();}
+});
+
 test('reconciliation is authorized, read-only and refuses draw allocation without approval integration', () => {
   const store=new MissionControlStateStore({databasePath:':memory:',tenantId:'ocg'});
   const service=new MissionControlService({store,authorize:({actor,action})=>actor.role==='operator' && action!=='allocateDraw'});
