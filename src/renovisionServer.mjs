@@ -216,17 +216,29 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && sub === "corrections") return done(200, {ok: true, result: project.correctMeasurement({actor, correction: body.correction})});
      if (req.method === "POST" && sub === "lock") return done(200, {ok: true, lock: project.lockGeometry({actor})});
      if (req.method === "POST" && sub === "proposals") {
+       const targetFeature = typeof body.change?.featureId === "string" && body.change.featureId ? body.change.featureId : null;
+       // Reconcile the target feature first. The event stream is keyed by
+       // (tenant, property, room, feature) — not by project — so it may hold
+       // committed events this record has never seen, including wedges left
+       // before write-ahead markers existed. Load-time reconciliation cannot
+       // enumerate design features (they are not in the lock's feature list);
+       // the proposal request itself names the one feature that must be
+       // reconciled before its expected revision is computed.
+       if (eventStore && typeof eventStore.readFeatureEvents === "function" && targetFeature) {
+         const snap = await eventStore.readFeatureEvents({tenantId: actor.tenantId, propertyId: project.propertyId, roomId: project.roomId, featureId: targetFeature, actor});
+         project.reconcileFeatureEvents({actor, snapshots: [{featureId: targetFeature, revision: snap.revision, events: snap.events}]});
+       }
        // Write-ahead: persist the intent marker BEFORE the event commits, so
        // a failure of the final save leaves a reconcilable record instead of
        // a silent divergence. If the marker save itself fails, nothing has
        // committed and the request fails cleanly.
-       if (projectStore && eventStore && typeof body.change?.featureId === "string" && body.change.featureId) {
-         project.notePendingSpatialEvent(body.change.featureId);
+       if (projectStore && eventStore && targetFeature) {
+         project.notePendingSpatialEvent(targetFeature);
          try { await saveWithRetry(project); }
          catch (error) { if (error?.code === "PROJECT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["project_write_conflict"]}); return send(res, 500, {ok: false, errors: ["project_persistence_failed"]}); }
        }
        const result = await project.proposeChange({actor, resolveApproval: typeof resolveApproval === "function" ? resolveApproval : resolveApproval?.resolveApproval, eventStore, change: body.change});
-       project.clearPendingSpatialEvent(body.change?.featureId);
+       project.clearPendingSpatialEvent(targetFeature);
        return done(201, {ok: true, result});
      }
      if (req.method === "POST" && sub === "preview") {

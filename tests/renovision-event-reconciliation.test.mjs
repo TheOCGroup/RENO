@@ -6,18 +6,19 @@ import {join} from "node:path";
 import {createRenovisionServer, createMemoryApprovalRegistry} from "../src/renovisionServer.mjs";
 import {createDurableEvidenceStorage} from "../lib/renovision/durable-evidence-storage.mjs";
 import {createMemorySpatialEventStore} from "../lib/renovision/memory-spatial-event-store.mjs";
+import {commitSpatialEvent} from "../lib/renovision/transactional-change-log.mjs";
 
 /** Regression suite for the live 2026-11-03 proposal wedge: the spatial
  * event committed to the event store, the project-record save then failed
  * (HTTP 500), and every later proposal failed with a revision conflict
  * because the record's feature revision had diverged from the store. */
 const ACTOR = {id: "operator-1", tenantId: "tenant-a", authenticated: true, roles: ["admin"], propertyIds: ["*"], roomIds: []};
-async function boot(t, {projectStore, eventStore}) {
+async function boot(t, {projectStore, eventStore, registry = createMemoryApprovalRegistry()}) {
   const dir = await mkdtemp(join(tmpdir(), "renovision-reconcile-"));
   t.after(() => rm(dir, {recursive: true, force: true}));
   const server = createRenovisionServer({
     authenticate: async () => ACTOR,
-    resolveApproval: createMemoryApprovalRegistry(),
+    resolveApproval: registry,
     evidenceStorage: createDurableEvidenceStorage({rootDir: join(dir, "evidence"), authorize: async () => true}),
     eventStore,
     projectStore
@@ -151,6 +152,54 @@ test("reconciliation is a no-op when the record and the event store agree", asyn
   assert.equal(r.status, 200);
   assert.equal(projectStore.saveAttempts, before);
   assert.equal(projectStore.stored("noop-1").audit.length, auditBefore);
+});
+
+test("a proposal adopts events another project committed on the same room feature stream", async (t) => {
+  const projectStore = mapProjectStore();
+  const eventStore = createMemorySpatialEventStore({authorize: async () => true});
+  const base = await boot(t, {projectStore, eventStore});
+  await lockedProject(base, "stream-a");
+  let r = await call(base, "POST", "/api/renovision/approvals", {approvalRef: "approval-1", propertyId: "property-1", roomId: "room-1", featureId: "floor-main", scopeItemId: "scope-floor-1", status: "approved", allowedActorIds: ["operator-1"]});
+  assert.equal(r.status, 201);
+  r = await call(base, "POST", "/api/renovision/projects/stream-a/proposals", {change: CHANGE});
+  assert.equal(r.status, 201);
+  // A second project on the SAME room: its record has never seen evt-1, and
+  // floor-main is not among its lock's measurement features, so load-time
+  // reconciliation cannot discover the stream. The proposal itself must.
+  await lockedProject(base, "stream-b");
+  r = await call(base, "POST", "/api/renovision/projects/stream-b/proposals", {change: {...CHANGE, approvalRef: "approval-1", eventId: "evt-b1"}});
+  assert.equal(r.status, 201);
+  const storedB = projectStore.stored("stream-b");
+  assert.equal(storedB.featureRevisions["floor-main"], 2);
+  assert.deepEqual(storedB.spatialEvents.map((e) => e.eventId), ["evt-1", "evt-b1"]);
+});
+
+test("a legacy wedge (event committed with no marker and no record trace) heals through the next proposal", async (t) => {
+  const projectStore = mapProjectStore();
+  const eventStore = createMemorySpatialEventStore({authorize: async () => true});
+  const registry = createMemoryApprovalRegistry();
+  const base = await boot(t, {projectStore, eventStore, registry});
+  await lockedProject(base, "legacy-1");
+  let r = await call(base, "POST", "/api/renovision/approvals", {approvalRef: "approval-1", propertyId: "property-1", roomId: "room-1", featureId: "floor-main", scopeItemId: "scope-floor-1", status: "approved", allowedActorIds: ["operator-1"]});
+  assert.equal(r.status, 201);
+  // The pre-fix incident, replayed exactly: the event commits straight to
+  // the store while the project record is never updated and carries no
+  // pending marker (old code wrote none).
+  const orphan = {eventId: "evt-orphan", propertyId: "property-1", roomId: "room-1", featureId: "floor-main", actorId: "operator-1", occurredAt: "2026-10-26T12:00:00Z", reason: "orphaned by a failed persist", fromState: "EXISTING", toState: "PROPOSED", scopeItemId: "scope-floor-1", approvalRef: "approval-1"};
+  const committed = await commitSpatialEvent({store: eventStore, actor: ACTOR, resolveApproval: (q) => registry.resolveApproval(q), event: orphan, expectedRevision: 0});
+  assert.equal(committed.committed, true);
+  assert.equal(projectStore.stored("legacy-1").spatialEvents.length, 0);
+  assert.deepEqual(projectStore.stored("legacy-1").pendingSpatialFeatures ?? [], []);
+  // Before the route-level reconciliation this proposal returned 409.
+  r = await call(base, "POST", "/api/renovision/projects/legacy-1/proposals", {change: {...CHANGE, eventId: "evt-after-orphan"}});
+  assert.equal(r.status, 201);
+  r = await call(base, "GET", "/api/renovision/projects/legacy-1");
+  assert.equal(r.body.project.stage, "design_proposed");
+  assert.equal(r.body.project.spatialEventCount, 2);
+  const stored = projectStore.stored("legacy-1");
+  assert.equal(stored.featureRevisions["floor-main"], 2);
+  assert.deepEqual(stored.spatialEvents.map((e) => e.eventId), ["evt-orphan", "evt-after-orphan"]);
+  assert.ok(stored.audit.some((a) => a.action === "spatial_events_reconciled"));
 });
 
 test("a divergent event history fails closed instead of being merged", async (t) => {
