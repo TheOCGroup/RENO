@@ -111,11 +111,17 @@ test("the routes the forms target answer through the governed service layer (dem
   assert.equal(detail.draws.length, 1);
   assert.equal(detail.draws[0].status, "pending");
 
+  // Port P2 fixture change (recorded in PORT-P2-RECORD): demo mode now
+  // runs in the bound posture, so the demo PM's writes present demo-pm's
+  // seeded per-actor token instead of the shared token + asserted actor
+  // header. The assertions below are unchanged.
+  const pmHeaders = { authorization: "Bearer demo-token-pm", "content-type": "application/json" };
+
   // The decide form's target refuses the requester's own decision with the
   // exact code the page translates.
   const res = await fetch(`${base}/api/projects/${project.id}/draws/${detail.draws[0].id}/decide`, {
     method: "POST",
-    headers: { ...headers, "content-type": "application/json", "x-actor-id": "demo-pm" },
+    headers: pmHeaders,
     body: JSON.stringify({ decision: "approved", rationale: "Mine" }),
   });
   assert.equal(res.status, 400);
@@ -124,7 +130,7 @@ test("the routes the forms target answer through the governed service layer (dem
   // The invoice form's target accepts a submission as the demo PM.
   const inv = await fetch(`${base}/api/projects/${project.id}/invoices`, {
     method: "POST",
-    headers: { ...headers, "content-type": "application/json", "x-actor-id": "demo-pm" },
+    headers: pmHeaders,
     body: JSON.stringify({ contractor: "DEMO Drive Builders", externalNumber: "DRIVE-1", lineItems: [{ description: "Drive test work", amount: 1000 }], evidenceRefs: ["evidence://drive-1"] }),
   });
   assert.equal(inv.status, 201);

@@ -58,7 +58,11 @@ function setupProject(store, { handoffId = "handoff-fin", tenantId } = {}) {
   workflow.startWork({ startedAt: "2026-10-01T08:05:00Z" });
   store.persistWorkflow(workflow, tenantId ? { tenantId } : {});
   const operations = store.restoreOperations(workflow, tenantId ? { tenantId } : {});
-  operations.recordProgress({ percentComplete: 50, evidenceRefs: ["evidence://progress-50"], note: "Roof done, kitchen framed" });
+  // PORT P1 fixture adjustment (2026-11-04): the recorded progress
+  // carries BOTH evidence refs the tests below cite on draws
+  // ("evidence://progress-50" and "evidence://p") — the P-6.2 gate
+  // refuses draw evidence that was never recorded with progress.
+  operations.recordProgress({ percentComplete: 50, evidenceRefs: ["evidence://progress-50", "evidence://p"], note: "Roof done, kitchen framed" });
   store.persistOperations(operations, tenantId ? { tenantId } : {});
   return { project, workflow, scopeItems: workflow.scopeItems };
 }
@@ -285,6 +289,13 @@ test("allocation: cumulative allocation above budget authority is refused even w
   loaded.state.project.contingencyPct = 0;
   store.saveWorkflowState(project.id, loaded.state, loaded.version);
   assert.equal(workflow.project.id, project.id);
+  // PORT P1 fixture adjustment (2026-11-04): the draw below claims
+  // 100% completion citing "evidence://p" — recorded progress must
+  // genuinely reach 100% with that evidence, or the P-6.1/P-6.2
+  // gates refuse the request before the authority guard is reached.
+  const ops = store.restoreOperations(workflow);
+  ops.recordProgress({ percentComplete: 100, evidenceRefs: ["evidence://p"] });
+  store.persistOperations(ops);
   const invoice = submitAndApproveInvoice(finance, { projectId: project.id, number: "INV-900", total: 40000 });
   // at 100% the domain cap allows 48000 * 1.0 * (1 - 10%) = 43200 >= 30000,
   // so only the authority guard (20000) can refuse this approval

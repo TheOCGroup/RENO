@@ -95,6 +95,34 @@ import { createHash, randomUUID } from "node:crypto";
  * Tenant discipline matches the store: every row carries tenant_id and
  * every query filters by tenant + project. A cross-tenant or
  * cross-project reference resolves to not-found — never to data.
+ *
+ * Reconciliation ports (founder directive 2026-11-04 §4; MATRIX-A rows
+ * 5.2/6.1/6.2/6.3, MATRIX-B PRESERVE-1/PRESERVE-3): the desktop build's
+ * verified-progress draw guards and its set-based reconciliation
+ * breakdown, ported into THIS layer (the domain classes stay
+ * byte-identical to the certified tree):
+ * - requestDraw refuses a draw whose claimed percentComplete exceeds
+ *   the latest RECORDED progress percent — or when no progress was
+ *   ever recorded — with draw_exceeds_verified_progress, and refuses
+ *   any evidence ref that was never recorded on a progress update
+ *   with draw_evidence_not_recorded. The gates run after the domain
+ *   has validated the request on the restored instance and before
+ *   anything is persisted, so the domain's own error precedence is
+ *   preserved and a refusal writes nothing.
+ * - decideDraw re-derives the earned-value ceiling at decision time
+ *   (committed × the draw's percentComplete × (1 − retainage) −
+ *   governed-approved priors) after the invoice-headroom and
+ *   budget-authority checks; an approval past the remaining ceiling
+ *   is refused atomically with draw_exceeds_verified_progress.
+ * - invoice duplicate detection keys on a NORMALIZED contractor
+ *   identity (trim, case-fold, collapsed whitespace); the stored
+ *   contractor display string stays verbatim.
+ * - reconciliationBreakdown is a READ-ONLY set comparison of governed
+ *   payments against caller-supplied bank records: matched /
+ *   amount_mismatch / unmatched_bank / unmatched_ledger, every
+ *   bank-side figure labeled caller_reported, bankVerified false.
+ *   (The desktop report's `verified: true` semantics are NOT ported —
+ *   MATRIX-B row 14.2: caller evidence is never "verified" here.)
  */
 
 const isoNow = () => new Date().toISOString();
@@ -133,6 +161,22 @@ function sha256(text) {
 
 function refList(refs) {
   return Array.isArray(refs) ? refs.filter(Boolean) : [];
+}
+
+/**
+ * Contractor identity key (reconciliation port P-5.2, MATRIX-A row
+ * 5.2): duplicate detection binds the contractor's identity, not the
+ * raw spelling — the key trims, case-folds, and collapses internal
+ * whitespace, so "Acme Builders", "acme  builders" and "ACME
+ * BUILDERS" are one identity for uniqueness. The stored contractor
+ * string is never rewritten; only the comparison key is normalized.
+ * (Full registry-identity binding — submitting a contractor directory
+ * id — would close respellings that change the words themselves,
+ * e.g. "Acme Bldrs"; that is a submission-contract change and is
+ * deliberately NOT ported here.)
+ */
+function contractorIdentityKey(contractor) {
+  return String(contractor || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export class MissionControlFinance {
@@ -279,14 +323,20 @@ export class MissionControlFinance {
       if (!prior || prior.projectId !== projectId) throw new Error("invoice_not_found");
       if (prior.status !== "rejected") throw new Error("resubmission_requires_rejected");
       if (prior.externalNumber !== String(externalNumber).trim()) throw new Error("resubmission_number_mismatch");
-      if (prior.contractor !== String(contractor).trim()) throw new Error("resubmission_contractor_mismatch");
+      if (contractorIdentityKey(prior.contractor) !== contractorIdentityKey(contractor)) throw new Error("resubmission_contractor_mismatch");
       const newer = this.#db.prepare("SELECT id FROM invoices WHERE prior_invoice_id = ?").get(prior.id);
       if (newer) throw new Error("duplicate_invoice_number");
       version = prior.version + 1;
       priorInvoiceId = prior.id;
     } else {
-      const clash = this.#db.prepare("SELECT id FROM invoices WHERE tenant_id = ? AND project_id = ? AND contractor = ? AND external_number = ?")
-        .get(tenantId, projectId, String(contractor).trim(), String(externalNumber).trim());
+      // P-5.2: the duplicate key is (project, NORMALIZED contractor
+      // identity, external number) — a respelled submission of the
+      // same contractor + number is the same invoice, not a parallel
+      // namespace.
+      const key = contractorIdentityKey(contractor);
+      const number = String(externalNumber).trim();
+      const clash = this.listInvoices(projectId, tenantId)
+        .find(inv => inv.externalNumber === number && contractorIdentityKey(inv.contractor) === key);
       if (clash) throw new Error("duplicate_invoice_number");
     }
 
@@ -446,6 +496,22 @@ export class MissionControlFinance {
     const workflow = this.#store.restoreWorkflow(projectId, { tenantId });
     const operations = this.#store.restoreOperations(workflow, { tenantId });
     const domainDraw = operations.requestDraw({ actor, amount, percentComplete, evidenceRefs, invoiceRefs: ids, retainagePct, reason });
+    // Reconciliation ports P-6.1 / P-6.2 (MATRIX-A rows 6.1–6.2,
+    // MATRIX-B PRESERVE-1): the draw must be backed by VERIFIED,
+    // RECORDED progress. The domain computed its request-time cap
+    // from the caller's CLAIMED percentComplete; governance binds the
+    // claim to the project's recorded progress before anything is
+    // persisted — a refusal here discards the in-memory domain draw
+    // and writes nothing.
+    //   P-6.1: claimed percent may not exceed the latest recorded
+    //   progress percent; no recorded progress → no draw at all.
+    //   P-6.2: every cited evidence ref must be evidence actually
+    //   recorded on the project's progress updates.
+    const progressUpdates = operations.progressUpdates;
+    const latestProgress = progressUpdates.at(-1);
+    if (!latestProgress || domainDraw.percentComplete > latestProgress.percentComplete) throw new Error("draw_exceeds_verified_progress");
+    const recordedEvidence = new Set(progressUpdates.flatMap(update => update.evidenceRefs || []));
+    if (!domainDraw.evidenceRefs.every(ref => recordedEvidence.has(ref))) throw new Error("draw_evidence_not_recorded");
     this.#store.persistOperations(operations, { tenantId });
     const row = {
       id: domainDraw.id, tenantId, projectId, requestedBy: actor,
@@ -502,6 +568,27 @@ export class MissionControlFinance {
       const project = workflowState.state.project;
       const authority = cents(Number(project.approvedBudget || 0) * (1 + Number(project.contingencyPct || 0) / 100));
       if (cents(this.#projectAllocated(projectId, tenantId) + approved) > authority) throw new Error("allocation_exceeds_authority");
+      // Reconciliation port P-6.3 (MATRIX-A row 6.3, MATRIX-B row
+      // 11.3): the earned-value ceiling is re-derived HERE, at
+      // decision time, from current state — committed × this draw's
+      // percentComplete × (1 − its retainage), minus the amounts of
+      // the project's OTHER governed-approved draws. The request-time
+      // domain cap counted only draws approved at request time, so
+      // two draws requested while both were pending each saw the full
+      // ceiling; without this re-derivation both could be approved
+      // past verified earned value while every other check passed.
+      // This runs after the invoice-headroom and authority checks
+      // (their refusal precedence is battery-pinned) and before any
+      // write — a refusal is atomic: no decision, no allocation.
+      const ceilingWorkflow = this.#store.restoreWorkflow(projectId, { tenantId });
+      const committed = Number(ceilingWorkflow.budgetSummary().committed || 0);
+      const retainage = Math.max(0, Math.min(100, Number(draw.retainagePct || 0)));
+      let governedPrior = 0;
+      for (const other of this.listDraws(projectId, tenantId)) {
+        if (other.id !== draw.id) governedPrior = cents(governedPrior + this.#governedApprovedAmount(other, tenantId));
+      }
+      const earnedCeiling = cents(committed * (draw.percentComplete / 100) * (1 - retainage / 100));
+      if (cents(governedPrior + approved) > earnedCeiling) throw new Error("draw_exceeds_verified_progress");
     }
 
     // The domain renders the decision (its own pending/amount rules);
@@ -790,6 +877,85 @@ export class MissionControlFinance {
         paymentAmount: row.payment_amount, state: row.state, source: row.source,
         bankVerified: row.bank_verified === 1, recordedBy: row.recorded_by, createdAt: row.created_at,
       }));
+  }
+
+  /**
+   * Set-based reconciliation breakdown (reconciliation port P-B3,
+   * MATRIX-B PRESERVE-3 / row 14.1; the desktop build's
+   * RenovationLedger.reconcilePayments, re-expressed under PR #4's
+   * labeling discipline). READ-ONLY: a pure comparison of the
+   * project's GOVERNED payments against a caller-supplied set of bank
+   * records [{paymentRef, amount}] — it writes nothing, records
+   * nothing, and can be re-run with an identical result. Its purpose
+   * is the one report recordReconciliation cannot produce: bank-side
+   * entries the ledger lacks (unmatched_bank) and ledger payments no
+   * bank record mentions (unmatched_ledger), alongside matched and
+   * amount_mismatch pairs with both amounts preserved.
+   *
+   * Honesty discipline (MATRIX-B row 14.2): the bank side is
+   * caller-supplied evidence, so the envelope carries
+   * bankRecordsSource 'caller_reported' and bankVerified false, and
+   * every bank-derived row is labeled bankSource 'caller_reported'.
+   * The desktop report's `verified: true` flag — computed from the
+   * caller's own records — is deliberately NOT reproduced: nothing
+   * here is, or can be serialized as, independently bank-verified.
+   * A matched row's `reconciled` flag reports only whether the
+   * payment already carries a governed reconciled record (the
+   * persisted per-payment state), kept distinct from the match.
+   *
+   * Input discipline mirrors the desktop's: a non-array is refused
+   * (bank_records_required), a blank reference is refused
+   * (bank_reference_required), a reference repeated inside one batch
+   * is refused (duplicate_bank_reference — MATRIX-B row 10.6), and
+   * amounts pass the same strictCents boundary as every other
+   * caller-supplied money value in this module (no string coercion).
+   */
+  reconciliationBreakdown(projectId, callerBankRecords, tenantId = this.#store.defaultTenantId) {
+    this.#requireProject(projectId, tenantId);
+    if (!Array.isArray(callerBankRecords)) throw new Error("bank_records_required");
+    const seen = new Set();
+    const bank = callerBankRecords.map(record => {
+      const paymentRef = String(record?.paymentRef || "").trim();
+      if (!paymentRef) throw new Error("bank_reference_required");
+      if (seen.has(paymentRef)) throw new Error("duplicate_bank_reference");
+      seen.add(paymentRef);
+      return { paymentRef, amount: strictCents(record.amount) };
+    });
+    // Classification runs against GOVERNED payments only (U5R): a
+    // payment row the audit chain cannot corroborate is not a ledger
+    // payment for reporting either — it is surfaced by
+    // orphanedFinancialRows(), never matched against bank evidence.
+    const governed = this.#governedPayments(projectId, tenantId);
+    const reconciledIds = this.#governedReconciledPaymentIds(projectId, tenantId);
+    const ledgerByRef = new Map(governed.map(payment => [payment.paymentRef, payment]));
+    const matched = [];
+    const amount_mismatch = [];
+    const unmatched_bank = [];
+    const unmatched_ledger = [];
+    for (const entry of bank) {
+      const payment = ledgerByRef.get(entry.paymentRef);
+      if (!payment) {
+        unmatched_bank.push({ paymentRef: entry.paymentRef, bankAmount: entry.amount, bankSource: "caller_reported" });
+      } else if (cents(payment.amount) !== cents(entry.amount)) {
+        amount_mismatch.push({ paymentRef: entry.paymentRef, paymentId: payment.id, ledgerAmount: payment.amount, bankAmount: entry.amount, bankSource: "caller_reported" });
+      } else {
+        matched.push({ paymentRef: entry.paymentRef, paymentId: payment.id, amount: payment.amount, reconciled: reconciledIds.has(payment.id), bankSource: "caller_reported" });
+      }
+    }
+    for (const payment of governed) {
+      if (!seen.has(payment.paymentRef)) {
+        unmatched_ledger.push({ paymentRef: payment.paymentRef, paymentId: payment.id, amount: payment.amount });
+      }
+    }
+    return {
+      projectId,
+      bankRecordsSource: "caller_reported",
+      bankVerified: false,
+      matched,
+      amount_mismatch,
+      unmatched_bank,
+      unmatched_ledger,
+    };
   }
 
   // --- distinct financial states (never conflated) --------------------------

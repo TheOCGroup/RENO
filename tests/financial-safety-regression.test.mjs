@@ -207,6 +207,13 @@ test("F8: cumulative allocation landing EXACTLY on contingency-derived authority
   // (43200 at 100%) sits above it, so only the authority guard can
   // refuse the final cent — the contingency term is what is measured.
   setAuthority(store, project.id, 20000, 50);
+  // PORT P1 fixture adjustment (2026-11-04): the draws below claim
+  // 100% completion citing "evidence://p" — recorded progress must
+  // genuinely reach 100% with that evidence, or the P-6.1/P-6.2
+  // gates refuse the requests before authority is measured.
+  const f8ops = store.restoreOperations(store.restoreWorkflow(project.id));
+  f8ops.recordProgress({ percentComplete: 100, evidenceRefs: ["evidence://p"] });
+  store.persistOperations(f8ops);
   const invoice = finance.submitInvoice({ projectId: project.id, actor: PM, contractor: "Acme Builders", externalNumber: "INV-F8", lineItems: [{ description: "Roofing and kitchen", amount: 40000 }], evidenceRefs: ["evidence://inv-f8"] });
   finance.reviewInvoice({ projectId: project.id, actor: BOSS, invoiceId: invoice.id, decision: "approved", rationale: "Verified against scope" });
   const draw1 = finance.requestDraw({ projectId: project.id, actor: PM, amount: 20000, percentComplete: 100, evidenceRefs: ["evidence://p"], invoiceIds: [invoice.id], reason: "Progress" }).draw;
@@ -236,6 +243,12 @@ test("F13: a reversal frees authority and invoice headroom for re-use up to EXAC
   // stays above every figure below, so governance arithmetic is what
   // is measured.
   setAuthority(store, project.id, 20000, 0);
+  // PORT P1 fixture adjustment (2026-11-04): same as F8 — the draws
+  // below claim 100% citing "evidence://p"; recorded progress must
+  // genuinely reach 100% with that evidence (P-6.1/P-6.2).
+  const f13ops = store.restoreOperations(store.restoreWorkflow(project.id));
+  f13ops.recordProgress({ percentComplete: 100, evidenceRefs: ["evidence://p"] });
+  store.persistOperations(f13ops);
   const invoice = finance.submitInvoice({ projectId: project.id, actor: PM, contractor: "Acme Builders", externalNumber: "INV-F13", lineItems: [{ description: "Roofing and kitchen", amount: 30000 }], evidenceRefs: ["evidence://inv-f13"] });
   finance.reviewInvoice({ projectId: project.id, actor: BOSS, invoiceId: invoice.id, decision: "approved", rationale: "Verified against scope" });
   const draw1 = finance.requestDraw({ projectId: project.id, actor: PM, amount: 15000, percentComplete: 100, evidenceRefs: ["evidence://p"], invoiceIds: [invoice.id], reason: "Progress" }).draw;

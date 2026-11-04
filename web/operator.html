@@ -121,7 +121,7 @@
     <button type="submit">Connect</button>
     <span id="connection-status" role="status" aria-live="polite"></span>
   </form>
-  <p class="session-note" id="session-note">Writes are recorded under your actor ID. Your authority is the role <strong>recorded for that actor ID in the store</strong> — leave the role blank to act under the recorded role. If you enter a role, the server rejects the write when it does not match the record. The token and session fields stay in this browser tab only.</p>
+  <p class="session-note" id="session-note">Writes are recorded under your actor ID. On servers that issue per-actor tokens, <strong>the token determines who you act as</strong>: the write is recorded under the actor the token was issued to, and an actor ID that disagrees with the token is rejected — the shared operator token can read but cannot write on those servers. Your authority is the role <strong>recorded for that actor ID in the store</strong> — leave the role blank to act under the recorded role. If you enter a role, the server rejects the write when it does not match the record. The token and session fields stay in this browser tab only.</p>
 </header>
 
 <div class="layout">
@@ -257,6 +257,8 @@ function setStatus(text, isError) {
 
 var ERROR_TEXT = {
   actor_id_required: "Enter your actor ID in the session bar before submitting.",
+  actor_token_mismatch: "The token in the session bar was issued to a different actor than the actor ID entered. Writes act as the actor the token was issued to — enter that actor's token, or clear the actor ID and let the token speak for itself.",
+  actor_token_required: "This server requires a per-actor token for writes. Enter the token issued to your actor ID in the session bar; the shared operator token can read but cannot write here.",
   actor_role_mismatch: "The role you entered does not match the role recorded for this actor in the store.",
   self_approval_forbidden: "You cannot decide a draw that you requested. A different approver must decide it.",
   self_review_forbidden: "You cannot review an invoice that you submitted. A different actor must review it.",
@@ -282,6 +284,7 @@ var ERROR_TEXT = {
   draw_invoice_required: "Select at least one approved invoice for this draw.",
   draw_reason_required: "Enter the reason for the draw.",
   draw_exceeds_verified_progress: "The amount is more than verified progress supports: committed budget times percent complete, less retainage and draws already approved.",
+  draw_evidence_not_recorded: "The draw cites evidence that was never recorded with this project's verified progress. Cite evidence recorded on a progress update.",
   invalid_percent_complete: "Percent complete must be between 0 and 100.",
   draw_rationale_required: "A rationale is required for the decision.",
   invalid_draw_approval_amount: "The approved amount must be more than zero and no more than the requested amount.",

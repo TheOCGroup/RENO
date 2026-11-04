@@ -29,6 +29,19 @@ import { receiveClosedAcquisition } from "./missionControlIntake.mjs";
 // MISSION_CONTROL_MAX_BODY_BYTES env or the maxBodyBytes option) —
 // bytes past the cap are discarded as they arrive, never buffered,
 // and an over-cap body is refused 413 body_too_large.
+//
+// Port P2 (reconciliation PRESERVE 3.1): per-actor token binding. An
+// optional registry (actorTokens option / MISSION_CONTROL_ACTOR_TOKENS
+// env, a token -> actorId map) binds write actor identity to the
+// credential presented, the desktop API's model: with a registry
+// configured, a registry token's actor IS the bound actor (a
+// disagreeing x-actor-id is 403 actor_token_mismatch), and the shared
+// operator token remains valid for reads but no longer writes (403
+// actor_token_required). With NO registry configured, the legacy
+// posture stands: the shared token writes under an asserted
+// x-actor-id. Either way the store's recorded role remains the
+// authority for what the actor may do — binding is identity, not
+// authorization, and the claimed-role cross-check still applies.
 
 const OPERATOR_HTML = readFileSync(new URL("../web/operator.html", import.meta.url), "utf8");
 
@@ -73,13 +86,41 @@ async function readJsonBody(req, maxBodyBytes = DEFAULT_MAX_BODY_BYTES) {
   }
 }
 
+function tokenEquals(supplied, expected) {
+  const left = Buffer.from(String(supplied));
+  const right = Buffer.from(String(expected));
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function presentedToken(req) {
+  const header = String(req.headers.authorization || "");
+  return header.startsWith("Bearer ") ? header.slice(7) : null;
+}
+
 function tokenAuthorized(req, token) {
   if (!token) return false;
-  const header = String(req.headers.authorization || "");
-  if (!header.startsWith("Bearer ")) return false;
-  const supplied = Buffer.from(header.slice(7));
-  const expected = Buffer.from(String(token));
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  const supplied = presentedToken(req);
+  return supplied != null && tokenEquals(supplied, token);
+}
+
+// Normalize the actor-token registry from the factory option: an object
+// map token -> actorId, or a JSON string of the same. Malformed config
+// throws actor_tokens_invalid at construction — a misconfigured
+// registry must fail closed at boot, never silently degrade to
+// shared-token writes.
+function normalizeActorTokens(raw) {
+  if (raw == null) return {};
+  let parsed = raw;
+  if (typeof raw === "string") {
+    try { parsed = JSON.parse(raw); } catch { throw new Error("actor_tokens_invalid"); }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("actor_tokens_invalid");
+  const registry = {};
+  for (const [token, actorId] of Object.entries(parsed)) {
+    if (!token || typeof actorId !== "string" || !actorId.trim()) throw new Error("actor_tokens_invalid");
+    registry[token] = actorId;
+  }
+  return registry;
 }
 
 function demoHandoffPayload({ opportunityId, address, purchasePrice, arv, rehab }) {
@@ -154,9 +195,35 @@ export function createMissionControlServer(options = {}) {
   const operatorToken = options.operatorToken ?? null;
   const maxBodyBytes = resolveMaxBodyBytes(options.maxBodyBytes);
   const demo = options.demo === true;
+  let actorTokens = normalizeActorTokens(options.actorTokens ?? null);
+  let seededDemoActorTokens = null;
   const finance = new MissionControlFinance(store);
   const ops = new MissionControlOperationsCompletion(store);
-  if (demo) seedDemoData({ store, finance, ops, tenantId });
+  if (demo) {
+    seedDemoData({ store, finance, ops, tenantId });
+    // Demo runs in the bound posture: its synthetic actors get
+    // deterministic synthetic credentials (overridable via the
+    // actorTokens option / env) so the page and harness exercise the
+    // same identity binding as a configured deployment.
+    if (Object.keys(actorTokens).length === 0) {
+      actorTokens = { "demo-token-pm": "demo-pm", "demo-token-approver": "demo-approver" };
+      seededDemoActorTokens = actorTokens;
+    }
+  }
+  const registryConfigured = Object.keys(actorTokens).length > 0;
+
+  // The actor a presented credential is bound to, or null. Every
+  // registry entry is compared (length-guarded, constant-time) with
+  // no early exit, so the lookup does not leak which entry matched.
+  function boundActorFor(req) {
+    const supplied = presentedToken(req);
+    if (supplied == null || !registryConfigured) return null;
+    let bound = null;
+    for (const [token, actorId] of Object.entries(actorTokens)) {
+      if (tokenEquals(supplied, token)) bound = actorId;
+    }
+    return bound;
+  }
 
   const handoffHandler = createMissionControlHandoffHandler({
     repository: store.intakeRepository(tenantId),
@@ -251,13 +318,28 @@ export function createMissionControlServer(options = {}) {
     };
   }
 
-  // Actor identity for writes: x-actor-id is required; a supplied x-actor-role
-  // must match the role recorded in the store for that actor, else the client
-  // is misrepresenting its identity (403 actor_role_mismatch). The service
-  // layer's own role gates remain the authority for what an actor may do.
-  function actorFrom(req) {
-    const actorId = String(req.headers["x-actor-id"] || "").trim();
-    if (!actorId) throw httpError(400, "actor_id_required");
+  // Actor identity for writes. With a registry configured, identity is
+  // possessed, not asserted: the effective actor is the one bound to the
+  // presented token; an x-actor-id that disagrees is a misrepresentation
+  // (403 actor_token_mismatch), and the shared operator token — valid
+  // for reads — cannot write at all (403 actor_token_required). With no
+  // registry, the legacy posture stands: x-actor-id is required. Either
+  // way, a supplied x-actor-role must match the role recorded in the
+  // store for the effective actor (403 actor_role_mismatch), and the
+  // service layer's own role gates remain the authority for what the
+  // actor may do.
+  function actorFrom(req, boundActor) {
+    const asserted = String(req.headers["x-actor-id"] || "").trim();
+    let actorId;
+    if (boundActor) {
+      if (asserted && asserted !== boundActor) throw httpError(403, "actor_token_mismatch");
+      actorId = boundActor;
+    } else if (registryConfigured) {
+      throw httpError(403, "actor_token_required");
+    } else {
+      if (!asserted) throw httpError(400, "actor_id_required");
+      actorId = asserted;
+    }
     const claimedRole = String(req.headers["x-actor-role"] || "").trim();
     if (claimedRole && finance.actorRole(tenantId, actorId) !== claimedRole) {
       throw httpError(403, "actor_role_mismatch");
@@ -272,8 +354,9 @@ export function createMissionControlServer(options = {}) {
   }
 
   async function handleApi(req, res, url) {
-    if (!operatorToken) { sendJson(res, 503, { ok: false, error: "operator_auth_not_configured" }); return; }
-    if (!tokenAuthorized(req, operatorToken)) { sendJson(res, 401, { ok: false, error: "unauthorized" }); return; }
+    if (!operatorToken && !registryConfigured) { sendJson(res, 503, { ok: false, error: "operator_auth_not_configured" }); return; }
+    const boundActor = boundActorFor(req);
+    if (!boundActor && !tokenAuthorized(req, operatorToken)) { sendJson(res, 401, { ok: false, error: "unauthorized" }); return; }
 
     const segments = url.pathname.split("/").filter(Boolean).map(part => {
       try { return decodeURIComponent(part); } catch { return part; }
@@ -302,7 +385,7 @@ export function createMissionControlServer(options = {}) {
         if (mediaType !== "application/json") throw httpError(415, "unsupported_content_type");
       }
       const body = method === "POST" ? await readJsonBody(req, maxBodyBytes) : null;
-      const actor = method === "POST" ? actorFrom(req) : null;
+      const actor = method === "POST" ? actorFrom(req, boundActor) : null;
       const resource = segments[3];
 
       if (resource === "invoices" && segments.length === 4 && method === "POST") {
@@ -363,6 +446,15 @@ export function createMissionControlServer(options = {}) {
           tenantId, projectId, actor, paymentId: segments[4], bankRecord: body.bankRecord,
         });
         sendJson(res, 201, { ok: true, data: reconciliation });
+        return;
+      }
+      if (resource === "reconciliation-breakdown" && segments.length === 4 && method === "POST") {
+        // Read-only set reconciliation against caller-supplied bank
+        // records (port P-B3): the records travel in the POST body
+        // because the set is caller input, not server state — the
+        // service writes nothing.
+        const report = finance.reconciliationBreakdown(projectId, body.bankRecords, tenantId);
+        sendJson(res, 200, { ok: true, data: report });
         return;
       }
       if (resource === "inspections" && segments.length === 4 && method === "POST") {
@@ -429,13 +521,14 @@ export function createMissionControlServer(options = {}) {
     }
   });
 
-  return { server, store, finance, ops, tenantId, demo };
+  return { server, store, finance, ops, tenantId, demo, actorTokens, seededDemoActorTokens };
 }
 
 export function missionControlServerConfigFromEnv(env = process.env) {
   return {
     dbPath: env.MISSION_CONTROL_DB_PATH || "mission-control.db",
     operatorToken: env.MISSION_CONTROL_OPERATOR_TOKEN || null,
+    actorTokens: env.MISSION_CONTROL_ACTOR_TOKENS || null,
     handoffSecret: env.MISSION_CONTROL_HANDOFF_SECRET || null,
     tenantId: env.MISSION_CONTROL_TENANT_ID || DEFAULT_TENANT_ID,
     demo: env.MISSION_CONTROL_DEMO === "1",
@@ -446,8 +539,15 @@ export function missionControlServerConfigFromEnv(env = process.env) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const config = missionControlServerConfigFromEnv();
-  const { server } = createMissionControlServer(config);
+  const { server, seededDemoActorTokens } = createMissionControlServer(config);
   server.listen(config.port, () => {
     console.log(`mission-control operator server listening on port ${config.port} (tenant ${config.tenantId}${config.demo ? ", DEMO mode" : ""})`);
+    // Only the SEEDED synthetic demo credentials are ever printed;
+    // operator-configured registry tokens are never logged.
+    if (seededDemoActorTokens) {
+      for (const [token, actorId] of Object.entries(seededDemoActorTokens)) {
+        console.log(`demo actor token: ${token} (acts as ${actorId})`);
+      }
+    }
   });
 }
