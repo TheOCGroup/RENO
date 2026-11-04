@@ -20,6 +20,19 @@ variable "evidence_retention_days" {
   default     = 365
 }
 
+variable "web_api_key" {
+  type        = string
+  description = "Identity Platform web API key for the browser sign-in flow (public client identifier; supplied only via the operator-local tfvars, never committed)."
+  sensitive   = true
+  default     = ""
+}
+
+variable "web_api_key_enabled" {
+  type        = bool
+  description = "Whether to set RENOVISION_WEB_API_KEY on the service. Separate from the sensitive key value because a dynamic block's for_each cannot depend on sensitive values."
+  default     = false
+}
+
 variable "container_image" {
   type        = string
   description = "RENOVISION container image (built from this repository; set at deploy time)."

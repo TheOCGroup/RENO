@@ -131,6 +131,13 @@ resource "google_cloud_run_v2_service" "renovision" {
         name  = "RENOVISION_JWKS_URL"
         value = var.jwks_url
       }
+      dynamic "env" {
+        for_each = var.web_api_key_enabled ? toset(["RENOVISION_WEB_API_KEY"]) : toset([])
+        content {
+          name  = env.value
+          value = var.web_api_key
+        }
+      }
       # Demo auth is never set in deployed environments; the process refuses
       # to start without verified-token configuration.
     }
