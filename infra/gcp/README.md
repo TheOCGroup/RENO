@@ -50,3 +50,18 @@ this path.
 Job data (filesystem mode) and bucket contents: use
 `node scripts/renovision-backup.mjs` for data directories; bucket versioning
 protects against accidental object deletion inside the retention window.
+
+## Current private Founder Beta — configuration preservation gate (2026-11-05)
+
+The original PREPARED/NOT PROVISIONED text above is historical and does not describe the deployed private Founder Beta. The last reported serving revision is `renovision-00007-4ts`; independently confirm live state before every change.
+
+The canonical Terraform source includes `web_api_key_enabled` (default `false`) and sensitive `web_api_key` (default empty). **Those defaults are not safe for a live browser-authenticated deployment.** A fresh operator directory or a repo-refreshed deployment without both operator-local settings can remove `RENOVISION_WEB_API_KEY` and break sign-in, even when the Terraform plan shows only one in-place Cloud Run service change. A plan count alone is NOT an adequate gate.
+
+Before any authorized plan or apply, verify without printing values:
+
+1. The secured operator tfvars explicitly set `web_api_key_enabled = true` and a nonempty `web_api_key`. Keep tfvars/state/backups outside Git and protect access.
+2. Inspect the JSON plan and assert the Cloud Run service's *planned* environment names contain `RENOVISION_WEB_API_KEY`, that its value is not empty, and that the planned image digest, ingress, service account, IAM and other resources remain authorized. Do not print or persist sensitive plan fields in logs.
+3. Stop before apply on any mismatch. After apply, verify browser sign-in and run a fresh plan requiring `No changes`.
+4. Existing rollback revisions are not equivalent for sign-in: `00006-b5c` and `00002-tpc` were reported without the browser API key; recheck any rollback candidate's config before routing traffic.
+
+No deploy, apply, or PR merge is authorized by this documentation. Physical accuracy validation and founder interactive sign-in remain separate acceptance gates.
