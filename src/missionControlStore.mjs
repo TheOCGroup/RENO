@@ -364,9 +364,17 @@ export class MissionControlStore {
     this.path = path;
     this.defaultTenantId = tenantId;
     this.#db = new DatabaseSync(path);
-    this.#db.exec("PRAGMA foreign_keys = ON");
-    this.#migrate();
-    this.ensureTenant(this.defaultTenantId);
+    try {
+      this.#db.exec("PRAGMA foreign_keys = ON");
+      this.#migrate();
+      this.ensureTenant(this.defaultTenantId);
+    } catch (err) {
+      // Construction failed after the database handle was opened: close it
+      // before rethrowing, or the handle leaks until GC and the file stays
+      // locked (on Windows a later cleanup delete then fails with EPERM).
+      try { this.#db.close(); } catch { /* never mask the original error */ }
+      throw err;
+    }
   }
 
   close() {
