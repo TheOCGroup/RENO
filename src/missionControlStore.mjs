@@ -364,9 +364,14 @@ export class MissionControlStore {
     this.path = path;
     this.defaultTenantId = tenantId;
     this.#db = new DatabaseSync(path);
-    this.#db.exec("PRAGMA foreign_keys = ON");
-    this.#migrate();
-    this.ensureTenant(this.defaultTenantId);
+    try {
+      this.#db.exec("PRAGMA foreign_keys = ON");
+      this.#migrate();
+      this.ensureTenant(this.defaultTenantId);
+    } catch (error) {
+      this.#db.close();
+      throw error;
+    }
   }
 
   close() {
