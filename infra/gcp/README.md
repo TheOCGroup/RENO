@@ -65,3 +65,13 @@ Before any authorized plan or apply, verify without printing values:
 4. Existing rollback revisions are not equivalent for sign-in: `00006-b5c` and `00002-tpc` were reported without the browser API key; recheck any rollback candidate's config before routing traffic.
 
 No deploy, apply, or PR merge is authorized by this documentation. Physical accuracy validation and founder interactive sign-in remain separate acceptance gates.
+
+### Optional fail-closed plan inspection (no apply)
+
+For the narrow one-service key-reconciliation case only, save the Terraform plan securely and run:
+
+```sh
+terraform show -json secured.plan | node scripts/renovision-terraform-plan-guard.mjs sha256:<64-character-approved-image-digest>
+```
+
+Run this command from the repository root. The inspector checks for exactly one Cloud Run service update, the approved unchanged image digest, a nonempty web key, and no unrelated service-field drift; it prints only PASS or a generic failure reason. **It does not authorize apply**, and it intentionally rejects normal image upgrades or a no-change plan. Keep plan files private because `terraform show -json` can contain sensitive values. Never upload plan JSON to CI or commit it.
