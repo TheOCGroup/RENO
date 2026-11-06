@@ -11,6 +11,11 @@ export function inspectRenovisionPlan(plan, expectedDigest) {
   const [change] = changes;
   if (change.address !== 'google_cloud_run_v2_service.renovision' ||
       JSON.stringify(change.change?.actions) !== JSON.stringify(['update'])) return reject('unexpected_resource_or_action');
+  // Terraform may omit unknown planned values from `after`. Never certify a
+  // plan with unresolved fields, including unknown image or environment values.
+  const hasUnknown = value => value === true || (value && typeof value === 'object' &&
+    Object.values(value).some(hasUnknown));
+  if (hasUnknown(change.change.after_unknown)) return reject('unknown_planned_values');
   const before = change.change.before;
   const after = change.change.after;
   if (!before || !after) return reject('resource_snapshot_missing');
