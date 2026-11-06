@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {evaluateIndependentReview} from "../lib/renovision/independent-review-policy.mjs";
+const sha="a".repeat(40);
+const base={authorId:"builder",reviewerId:"quincey",commitSha:sha,reviewedCommitSha:sha,checks:[{name:"security",status:"pass"},{name:"regression",status:"pass"}],decision:"pass",reviewEvidenceRef:"private-review"};
+test("complete asserted review is structurally passing but unverified",()=>{const r=evaluateIndependentReview(base);assert.equal(r.passed,true);assert.equal(r.independentlyVerified,false);});
+test("same author and reviewer rejected",()=>assert.equal(evaluateIndependentReview({...base,reviewerId:"builder"}).passed,false));
+test("review of older commit rejected",()=>assert.equal(evaluateIndependentReview({...base,reviewedCommitSha:"b".repeat(40)}).passed,false));
+test("not-run check blocks review",()=>assert.equal(evaluateIndependentReview({...base,checks:[{name:"security",status:"not_run"}]}).passed,false));
+test("fail decision blocks review",()=>assert.equal(evaluateIndependentReview({...base,decision:"fail"}).passed,false));
+test("missing review evidence rejected",()=>assert.equal(evaluateIndependentReview({...base,reviewEvidenceRef:""}).valid,false));

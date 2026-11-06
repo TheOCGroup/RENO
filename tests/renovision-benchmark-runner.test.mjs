@@ -1,0 +1,34 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {execFile} from "node:child_process";
+import {promisify} from "node:util";
+import {mkdtemp, readFile, rm, writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {fileURLToPath} from "node:url";
+const run = promisify(execFile);
+const script = fileURLToPath(new URL("../scripts/renovision-benchmark-runner.mjs", import.meta.url));
+const fixture = fileURLToPath(new URL("./fixtures/renovision-benchmark-synthetic.json", import.meta.url));
+test("benchmark runner computes errors from the synthetic fixture without certifying anything", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-bench-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const reportPath = join(dir, "report.json");
+ const {stdout} = await run(process.execPath, [script, fixture, reportPath]);
+ const report = JSON.parse(await readFile(reportPath, "utf8"));
+ assert.equal(report.certified, false);
+ assert.equal(report.independentlyCertified, false);
+ assert.equal(report.provenance.valid, true);
+ assert.equal(report.benchmark.valid, true);
+ assert.equal(report.benchmark.referenceCount, 4);
+ assert.ok(report.benchmark.maxErrorMeters <= 0.03);
+ assert.match(stdout, /Certification: NOT GRANTED/);
+});
+test("benchmark runner rejects a fixture whose reference and capture operators are the same person", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-bench-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const data = JSON.parse(await readFile(fixture, "utf8"));
+ data.provenance.captureOperatorId = data.provenance.referenceOperatorId;
+ const badPath = join(dir, "bad.json");
+ await writeFile(badPath, JSON.stringify(data));
+ await assert.rejects(() => run(process.execPath, [script, badPath]), (e) => e.code === 2);
+});

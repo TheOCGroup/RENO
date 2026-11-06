@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {summarizeDimensionBenchmark} from "../lib/renovision/dimension-benchmark-summary.mjs";
+const samples=[{featureId:"width",referenceMeters:4,candidateMeters:4.01},{featureId:"depth",referenceMeters:3,candidateMeters:2.99}];
+test("within-tolerance samples pass without certification",()=>{const r=summarizeDimensionBenchmark(samples);assert.equal(r.valid,true);assert.equal(r.pass,true);assert.equal(r.independentlyCertified,false);});
+test("absolute tolerance breach fails",()=>assert.equal(summarizeDimensionBenchmark([{featureId:"width",referenceMeters:4,candidateMeters:4.2}]).pass,false));
+test("relative tolerance breach fails even with generous absolute threshold",()=>assert.equal(summarizeDimensionBenchmark([{featureId:"short",referenceMeters:0.5,candidateMeters:0.53}],{absoluteToleranceMeters:0.1}).pass,false));
+test("invalid zero reference rejected",()=>assert.equal(summarizeDimensionBenchmark([{featureId:"x",referenceMeters:0,candidateMeters:1}]).valid,false));
+test("empty benchmark rejected",()=>assert.equal(summarizeDimensionBenchmark([]).valid,false));
+test("negative tolerance rejected",()=>assert.equal(summarizeDimensionBenchmark(samples,{relativeTolerance:-1}).valid,false));
