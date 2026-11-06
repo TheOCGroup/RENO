@@ -28,9 +28,10 @@ export function inspectRenovisionPlan(plan, expectedDigest) {
   if (!key || typeof key.value !== 'string' || !key.value.trim()) return reject('web_api_key_absent_or_empty');
   const priorNames = (oldContainer.env ?? []).map(e=>e.name);
   if (priorNames.some(name=>!names.includes(name))) return reject('existing_env_removed');
-  const redact = obj => JSON.parse(JSON.stringify(obj, (k,v)=>k === 'value' && typeof v === 'string' ? '[REDACTED]' : v));
-  const oldShape = redact(before);
-  const newShape = redact(after);
+  // Clone without redacting: redaction would hide unauthorized changes to existing
+  // environment variable values. Never print or return the snapshots.
+  const oldShape = structuredClone(before);
+  const newShape = structuredClone(after);
   // Allow only a web API key env addition or reconciliation; no image, IAM, scaling or ingress drift.
   const oldEnv = getContainer(oldShape).env ?? [];
   const newEnv = getContainer(newShape).env ?? [];
