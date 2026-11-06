@@ -18,3 +18,26 @@ test('rejects missing key, empty key, image drift, ingress drift, extra resource
    p=>p.resource_changes[0].change.actions=['delete'],
  ]) {const p=plan();change(p);assert.equal(inspectRenovisionPlan(p,digest).ok,false);}
 });
+
+test('rejects unauthorized existing environment value changes without disclosing them',()=>{
+ const p=plan();
+ const before=p.resource_changes[0].change.before.template[0].containers[0].env;
+ const after=p.resource_changes[0].change.after.template[0].containers[0].env;
+ before.pop(); // authorized browser key addition
+ after[0].value='unauthorized-different-bucket';
+ assert.equal(inspectRenovisionPlan(p,digest).ok,false);
+});
+test('rejects value_source drift on an existing environment entry',()=>{
+ const p=plan();
+ const before=p.resource_changes[0].change.before.template[0].containers[0].env;
+ const after=p.resource_changes[0].change.after.template[0].containers[0].env;
+ before.pop();
+ before[0]={name:'RENOVISION_GCS_BUCKET',value_source:{secret_key_ref:{secret:'source-a',version:'1'}}};
+ after[0]={name:'RENOVISION_GCS_BUCKET',value_source:{secret_key_ref:{secret:'source-b',version:'1'}}};
+ assert.equal(inspectRenovisionPlan(p,digest).ok,false);
+});
+test('allows the browser key addition when all existing env values are unchanged',()=>{
+ const p=plan();
+ p.resource_changes[0].change.before.template[0].containers[0].env.pop();
+ assert.equal(inspectRenovisionPlan(p,digest).ok,true);
+});
