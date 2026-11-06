@@ -1,5 +1,7 @@
 # RENOVISION — Device Testing & Physical Benchmark Package (for QUINCEY)
 
+> **STATUS NOTE — 2026-11-06 (private Founder Beta):** Sections 3 and 8 below retain historical prototype instructions and limitations; they are **not** authoritative descriptions of the currently deployed Cloud Run service. The private Founder Beta has a separately documented token-authenticated, GCS-backed deployment (see PR #3 operational evidence). The most recently directly checked serving revision was `renovision-00007-4ts` at 100% traffic. The current PR source is **not deployed** merely because its CI passes. Do not run the local demo-header smoke instructions against production or infer that physical accuracy is certified. The 30-case device matrix, physical benchmark, and interactive founder browser sign-in are **NOT VERIFIED**. Before production acceptance, revalidate the deployed revision, IAM, authenticated endpoints, evidence persistence, and browser login on the actual environment. No merge, apply, deploy, or production access change is authorized by this note.
+
 Status: PREPARED FOR INDEPENDENT QA. Nothing in this package is a certification.
 The implementation team (MUSE lane) built the software; QUINCEY performs
 independent QA on an exact commit. Do not treat any result in this package as a
