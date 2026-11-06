@@ -369,7 +369,11 @@ export class MissionControlStore {
       this.#migrate();
       this.ensureTenant(this.defaultTenantId);
     } catch (error) {
-      this.#db.close();
+      try {
+        this.#db.close();
+      } catch {
+        // Preserve the original initialization failure.
+      }
       throw error;
     }
   }
