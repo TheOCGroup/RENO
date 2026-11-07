@@ -206,9 +206,11 @@ test("browser API requests derive identity exclusively from bearer token", async
  const res = await fetch(base + "/");
  assert.equal(res.status, 200);
  const html = await res.text();
- const headerBuilder = html.match(/function headers\(\)\{([^}]+)\}/);
- assert.ok(headerBuilder, "browser headers function must exist");
- assert.ok(headerBuilder[1].includes("authorization"), "bearer authorization is retained");
- assert.ok(!headerBuilder[1].includes("x-actor-id"), "actor header must not be supplied by browser");
- assert.ok(!headerBuilder[1].includes("x-tenant-id"), "tenant header must not be supplied by browser");
+ const start = html.indexOf("function headers(){");
+ const end = html.indexOf("function projectPath(", start);
+ assert.ok(start >= 0 && end > start, "browser headers function must exist");
+ const headerBuilder = html.slice(start, end);
+ assert.ok(headerBuilder.includes("authorization"), "bearer authorization is retained");
+ assert.ok(!headerBuilder.includes("x-actor-id"), "actor header must not be supplied by browser");
+ assert.ok(!headerBuilder.includes("x-tenant-id"), "tenant header must not be supplied by browser");
 });
