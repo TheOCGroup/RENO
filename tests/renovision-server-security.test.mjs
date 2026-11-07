@@ -155,3 +155,24 @@ test("browser-issued ID tokens without tenant entitlements fail closed", async (
    assert.ok([401, 403].includes(res.status), "missing/invalid claims must not create a project: " + res.status);
  }
 });
+
+test("OIDC signature, issuer and audience are independently enforced", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-oidc-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ const valid = tokenFor();
+ const forged = valid.slice(0, -1) + (valid.at(-1) === "A" ? "B" : "A");
+ for (const token of [
+   tokenFor({iss: "https://attacker.example.com"}),
+   tokenFor({aud: "another-application"}),
+   forged,
+   "not.a.valid-jwt"
+ ]) {
+   const res = await fetch(base + "/api/renovision/projects", {
+     method: "POST",
+     headers: {"content-type": "application/json", authorization: "Bearer " + token},
+     body: JSON.stringify({projectId: "invalid-oidc", propertyId: "property-1", roomId: "room-1"})
+   });
+   assert.equal(res.status, 401, "invalid OIDC token must fail authentication");
+ }
+});
