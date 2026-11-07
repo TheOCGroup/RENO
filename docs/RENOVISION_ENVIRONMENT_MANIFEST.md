@@ -48,3 +48,49 @@ Transport security (HTTPS at the ingress) is assumed and required.
 
 The service never logs tokens, claims or credentials. Operational logs contain
 only the startup mode lines (identity mode, storage class, data paths).
+
+## Browser-to-private-Cloud-Run acceptance gate (Founder Beta)
+
+**Status: BLOCKED / not independently verified.** The existing UI requests
+`/` and `/auth-config` before the user signs in. It subsequently obtains an
+Identity Platform ID token and sends that token as an application API bearer
+token. Cloud Run's private invocation IAM is a **different** authentication
+boundary: an application ID token is not automatically a Cloud Run invocation
+identity token. Successful service-account CLI smoke tests do not prove that a
+normal browser can load the UI or call its APIs.
+
+### Required architecture before release
+
+Keep the RENOVISION Cloud Run service private. Select and implement an
+explicitly authorized browser-facing entry point (for example, an existing
+organization-approved gateway or a new *separately approved* identity-aware
+proxy). That entry point must authenticate the browser, enforce allowed users,
+supply its own IAM-authorized invocation to the private backend, and preserve
+the application's independently verified tenant/role authorization. Do **not**
+pass the gateway's service identity to the app as if it were the end-user's
+tenant identity. Never make the backend public or enable demo header auth to
+work around the issue. Any new gateway, IAM grant, domain, or spend requires
+separate founder authorization.
+
+### Acceptance evidence (all required)
+
+1. Record the exact approved public browser entry URL, backend service URL,
+   project, region, ingress mode, gateway identity, and least-privilege IAM
+   bindings without publishing secrets.
+2. From an ordinary clean browser profile with **no** gcloud credentials,
+   load the UI and `/auth-config`; capture status codes and screenshots.
+3. Sign in using an authorized test user; confirm the app token's issuer,
+   audience, tenant, role, expiry and permitted property scope **server-side**.
+   Never record passwords, raw bearer tokens or refresh tokens.
+4. Verify an authorized API operation and subsequent session refresh through
+   the gateway. Confirm sign-out removes the browser session.
+5. Verify anonymous, expired, forged-header, wrong-tenant and unauthorized-role
+   requests are rejected at the correct boundary; capture sanitized results.
+6. Confirm direct unauthenticated access to the private backend remains denied,
+   and verify security headers in the *actual browser entry point*.
+7. Record CI commit, gateway configuration version, timestamped evidence,
+   rollback instructions, and independent QUINCEY review.
+
+**Release decision:** keep the browser access gate and production authorization
+closed until all evidence above is independently verified. Source tests and
+CLI-only Cloud Run smoke tests do not substitute for this acceptance.
