@@ -63,7 +63,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  const loadArtifact = async ({artifactId, actor}) => evidenceStorage.get({storageRef: artifactId, actorId: actor.id});
  const send = (res, status, body, type = "application/json") => {
    const payload = type === "application/json" ? JSON.stringify(body) : body;
-   res.writeHead(status, {"content-type": type, "cache-control": "no-store"});
+   res.writeHead(status, {"content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "x-frame-options": "DENY", "strict-transport-security": "max-age=31536000"});
    res.end(payload);
  };
  const readBody = (req) => new Promise((resolve, reject) => {
