@@ -161,7 +161,9 @@ test("OIDC signature, issuer and audience are independently enforced", async (t)
  t.after(() => rm(dir, {recursive: true, force: true}));
  const {base} = await boot(t, dir);
  const valid = tokenFor();
- const forged = valid.slice(0, -1) + (valid.at(-1) === "A" ? "B" : "A");
+ const segments = valid.split(".");
+ segments[2] = (segments[2][0] === "A" ? "B" : "A") + segments[2].slice(1);
+ const forged = segments.join(".");
  for (const token of [
    tokenFor({iss: "https://attacker.example.com"}),
    tokenFor({aud: "another-application"}),
