@@ -198,3 +198,17 @@ test("browser sign-out clears fallback credentials and visible project state", a
  ]) assert.ok(signOut[1].includes(required), "sign-out must clear: " + required);
  assert.ok(html.includes("Existing tokens may remain valid until expiry."), "do not misrepresent local sign-out as token revocation");
 });
+
+test("browser API requests derive identity exclusively from bearer token", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-browser-identity-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ const res = await fetch(base + "/");
+ assert.equal(res.status, 200);
+ const html = await res.text();
+ const headerBuilder = html.match(/function headers\(\)\{([^}]+)\}/);
+ assert.ok(headerBuilder, "browser headers function must exist");
+ assert.ok(headerBuilder[1].includes("authorization"), "bearer authorization is retained");
+ assert.ok(!headerBuilder[1].includes("x-actor-id"), "actor header must not be supplied by browser");
+ assert.ok(!headerBuilder[1].includes("x-tenant-id"), "tenant header must not be supplied by browser");
+});
