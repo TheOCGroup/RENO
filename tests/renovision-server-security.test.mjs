@@ -133,3 +133,25 @@ test("HTTP security headers cover HTML, configuration, health and denied API res
    assert.equal(res.headers.get("cache-control"), "no-store", path);
  }
 });
+
+test("browser-issued ID tokens without tenant entitlements fail closed", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-claims-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ for (const claims of [
+   {tenant_id: undefined},
+   {tenant_id: ""},
+   {roles: undefined},
+   {roles: "admin"},
+   {roles: []}
+ ]) {
+   const token = tokenFor(claims);
+   const res = await fetch(base + "/api/renovision/projects", {
+     method: "POST",
+     headers: {"content-type": "application/json", authorization: "Bearer " + token,
+       "x-actor-id": "forged-admin", "x-tenant-id": "forged-tenant"},
+     body: JSON.stringify({projectId: "no-claims", propertyId: "property-1", roomId: "room-1"})
+   });
+   assert.ok([401, 403].includes(res.status), "missing/invalid claims must not create a project: " + res.status);
+ }
+});
