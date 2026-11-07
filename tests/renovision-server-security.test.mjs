@@ -118,3 +118,18 @@ test("revoked tokens stop working immediately", async (t) => {
  authenticator.revokeToken("revoke-me");
  assert.equal((await call(base, "GET", "/api/renovision/projects/sec-6", {token})).status, 401);
 });
+
+test("HTTP security headers cover HTML, configuration, health and denied API responses", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-headers-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ for (const [path, status] of [["/", 200], ["/auth-config", 200], ["/health", 200], ["/api/renovision/projects", 401]]) {
+   const res = await fetch(base + path);
+   assert.equal(res.status, status, path);
+   assert.equal(res.headers.get("x-content-type-options"), "nosniff", path);
+   assert.equal(res.headers.get("referrer-policy"), "no-referrer", path);
+   assert.equal(res.headers.get("x-frame-options"), "DENY", path);
+   assert.equal(res.headers.get("strict-transport-security"), "max-age=31536000", path);
+   assert.equal(res.headers.get("cache-control"), "no-store", path);
+ }
+});
