@@ -178,3 +178,23 @@ test("OIDC signature, issuer and audience are independently enforced", async (t)
    assert.equal(res.status, 401, "invalid OIDC token must fail authentication");
  }
 });
+
+test("browser sign-out clears fallback credentials and visible project state", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-signout-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ const res = await fetch(base + "/");
+ assert.equal(res.status, 200);
+ const html = await res.text();
+ const signOut = html.match(/\$\('btnSignOut'\)\.onclick=function\(\)\{([^}]+)\}/);
+ assert.ok(signOut, "sign-out handler must be present");
+ for (const required of [
+   "saveSession(null)",
+   "$('bearerToken').value=''",
+   "$('signInPassword').value=''",
+   "state.project=null",
+   "$('out').textContent=''",
+   "$('sessionMsg').textContent=''"
+ ]) assert.ok(signOut[1].includes(required), "sign-out must clear: " + required);
+ assert.ok(html.includes("Existing tokens may remain valid until expiry."), "do not misrepresent local sign-out as token revocation");
+});
