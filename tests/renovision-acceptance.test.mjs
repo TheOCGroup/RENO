@@ -77,7 +77,7 @@ test("acceptance: operator UI serves mobile viewport and conservative disclosure
  const dir = await mkdtemp(join(tmpdir(), "renovision-acc-ui-"));
  t.after(() => rm(dir, {recursive: true, force: true}));
  const {base} = await boot(t, dir);
- const res = await fetch(base + "/");
+ const res = await fetch(base + "/operator");
  assert.equal(res.status, 200);
  const html = await res.text();
  assert.match(html, /name="viewport" content="width=device-width,initial-scale=1"/);
