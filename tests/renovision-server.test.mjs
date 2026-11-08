@@ -81,7 +81,12 @@ test("unauthenticated requests are rejected and cross-tenant projects are invisi
 });
 test("the operator interface is served with the permanent accuracy disclosure", async (t) => {
  const base = await boot(t);
- const res = await fetch(base + "/");
+ const studio = await fetch(base + "/");
+ assert.equal(studio.status, 200);
+ const studioHtml = await studio.text();
+ assert.match(studioHtml, /Upload room photo/);
+ assert.match(studioHtml, /AI redesign not generated/);
+ const res = await fetch(base + "/operator");
  assert.equal(res.status, 200);
  const html = await res.text();
  assert.match(html, /Concept visualization only/);
