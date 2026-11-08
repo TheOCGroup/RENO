@@ -12,6 +12,7 @@ import {persistFrameEvidence} from "../lib/renovision/evidence-repository.mjs";
 import {authorizeAction} from "../lib/renovision/access-control.mjs";
 import {buildExportPackage} from "../lib/renovision/export-package.mjs";
 import {RENOVISION_APP_HTML} from "./renovisionUi.mjs";
+import {RENOVISION_STUDIO_HTML} from "./renovisionStudio.mjs";
 const MAX_BODY_BYTES = 32_000_000;
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
@@ -118,7 +119,8 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  const route = async (req, res) => {
    const url = new URL(req.url, "http://localhost");
    const path = url.pathname;
-   if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
+   if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
+   if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
    if (req.method === "GET" && path === "/auth-config") {
      // Public browser sign-in configuration. The Identity Platform web API key
