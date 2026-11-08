@@ -94,3 +94,14 @@ separate founder authorization.
 **Release decision:** keep the browser access gate and production authorization
 closed until all evidence above is independently verified. Source tests and
 CLI-only Cloud Run smoke tests do not substitute for this acceptance.
+
+### Staging gateway implementation evidence — 2026-11-08
+
+- Gateway source: `infra/gcp/gateway/server.mjs`; container: `infra/gcp/gateway/Dockerfile`; tests: `tests/renovision-gateway.test.mjs`.
+- Staging service: `renovision-gateway-staging`, project `ocg-pipeline`, region `us-central1`, URL `https://renovision-gateway-staging-438680341626.us-central1.run.app`.
+- Gateway service account: `renovision-gateway@ocg-pipeline.iam.gserviceaccount.com`, granted `roles/run.invoker` on private `renovision` backend. Existing founder binding preserved; no `allUsers` backend invoker binding.
+- Gateway is intentionally browser-invokable (Cloud Run `allUsers` invoker) to serve the login screen. It forwards a separate Cloud Run invocation token using `X-Serverless-Authorization`, while retaining the application's `Authorization` header for backend user/tenant checks. **The gateway does not itself authenticate browser users before serving the UI**; API authorization remains exclusively the backend's responsibility.
+- Live unauthenticated smoke: `GET /` 200, `GET /auth-config` 200, `GET /health` 200, `GET /api/renovision/projects` 401; direct backend `GET /` 403; forged actor/tenant headers 401; forged bearer 401; unexpected API query 404. These do not establish valid-user, wrong-tenant or real-browser acceptance.
+- CI for Dockerfile commit `2fb62059a1f6e2b5dcfbdef2fb11ca18669f036e`: both Mission Control Gate and RENOVISION Spatial Validation CI PASS.
+- Staging capacity configured with minimum instances 0 and maximum instances 1. This is **not** a verified dollar spend or budget-enforcement mechanism. Review Cloud Billing before further scale-up.
+- **HOLD**: no real user sign-in, token refresh, cross-tenant E2E, mobile capture, physical benchmark, or independent QUINCEY signoff verified. No production promotion authorized by these smoke results.
