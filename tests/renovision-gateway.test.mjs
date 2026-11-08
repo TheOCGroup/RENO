@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {once} from "node:events";
-import {createGateway} from "../src/renovisionGateway.mjs";
+process.env.RENOVISION_BACKEND_URL ||= "https://renovision-rsazfnmlja-uc.a.run.app";
+const {createGateway} = await import("../src/renovisionGateway.mjs");
 const backend = process.env.RENOVISION_BACKEND_URL || "https://renovision-rsazfnmlja-uc.a.run.app";
 async function serve(t, fake) {
  const server=createGateway({getIdentityToken:async()=>"gateway-iam-token",fetchImpl:fake});
