@@ -214,3 +214,18 @@ test("browser API requests derive identity exclusively from bearer token", async
  assert.ok(!headerBuilder.includes("x-actor-id"), "actor header must not be supplied by browser");
  assert.ok(!headerBuilder.includes("x-tenant-id"), "tenant header must not be supplied by browser");
 });
+
+test("expired browser sessions fail closed on refresh errors", async (t) => {
+ const dir = await mkdtemp(join(tmpdir(), "renovision-refresh-"));
+ t.after(() => rm(dir, {recursive: true, force: true}));
+ const {base} = await boot(t, dir);
+ const html = await (await fetch(base + "/")).text();
+ const start = html.indexOf("function refreshSession(){");
+ const end = html.indexOf("function headers(){", start);
+ assert.ok(start >= 0 && end > start, "refresh handler exists");
+ const refresh = html.slice(start, end);
+ assert.ok(refresh.includes("!session.refreshToken"), "missing refresh credential checked");
+ assert.ok(refresh.includes("!authCfg.signIn.apiKey"), "missing refresh configuration checked");
+ assert.ok(refresh.includes(".catch(function(){saveSession(null)"), "refresh network failure clears session");
+ assert.ok(refresh.includes("Session refresh failed"), "refresh failure is disclosed");
+});
