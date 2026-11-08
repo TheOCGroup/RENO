@@ -19,6 +19,7 @@ import {createGcsApprovalRegistry} from "../lib/renovision/gcs-approval-registry
 import {createTokenAuthenticator} from "../lib/renovision/identity.mjs";
 import {authorizeAction} from "../lib/renovision/access-control.mjs";
 import {createRenderProvider} from "../lib/renovision/render-provider.mjs";
+import {createVertexPhotoRenderer} from "../lib/renovision/vertex-photo-renderer.mjs";
 const dataDir = process.env.RENOVISION_DATA_DIR || join(process.cwd(), "data", "renovision");
 const actorRegistry = new Map();
 const registerActor = (actor) => { if (actor?.id) actorRegistry.set(actor.id, actor); };
@@ -100,13 +101,14 @@ const projectStore = process.env.RENOVISION_GCS_BUCKET
 const approvals = process.env.RENOVISION_GCS_BUCKET
  ? createGcsApprovalRegistry({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken})
  : (process.env.K_SERVICE || process.env.K_REVISION) ? null : createMemoryApprovalRegistry();
+const photoRenderer = createVertexPhotoRenderer({enabled:process.env.RENOVISION_VERTEX_PHOTO_ENABLED==="1",approved:process.env.RENOVISION_VERTEX_PHOTO_FOUNDER_APPROVED==="1",projectId:process.env.GOOGLE_CLOUD_PROJECT||process.env.GCP_PROJECT||"ocg-pipeline",getAccessToken:getGcsAccessToken});
 const renderProvider = createRenderProvider({enabled: process.env.RENOVISION_PHOTOREAL_ENABLED === "1", founderApproved: process.env.RENOVISION_PHOTOREAL_FOUNDER_APPROVED === "1"});
 // Browser sign-in (Identity Platform email/password): the web API key is a
 // public client identifier configured per deployment; the project id is the
 // token audience in token mode. Without the key the UI keeps the manual
 // ID-token field as its fallback.
 const webAuthConfig = {apiKey: process.env.RENOVISION_WEB_API_KEY || null, projectId: process.env.RENOVISION_TOKEN_AUDIENCE || null};
-const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, renderProvider, identityMode, webAuthConfig});
+const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode, webAuthConfig});
 console.log("RENOVISION approvals: " + (approvals ? approvals.storageClass : "not configured (fail closed)") + "; browser sign-in: " + (webAuthConfig.apiKey ? "configured" : "not configured (manual token fallback)"));
 const port = Number(process.env.PORT || 8787);
 server.listen(port, () => {
