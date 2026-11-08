@@ -35,3 +35,12 @@ test("gateway fails closed when IAM token acquisition fails",async t=>{
  assert.equal(r.status,502);
  assert.equal((await r.json()).error,"gateway_upstream_unavailable");
 });
+
+test("landing page accepts link tracking while API queries remain rejected",async t=>{
+ let upstream;
+ const base=await serve(t,async url=>{upstream=url;return new Response("app",{status:200})});
+ const r=await fetch(base+"/?utm_source=chatgpt.com");
+ assert.equal(r.status,200);
+ assert.equal(upstream,backend+"/");
+ assert.equal((await fetch(base+"/api/renovision/projects?utm_source=chatgpt.com")).status,404);
+});
