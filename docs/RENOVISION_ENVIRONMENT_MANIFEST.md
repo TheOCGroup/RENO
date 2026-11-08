@@ -105,3 +105,9 @@ CLI-only Cloud Run smoke tests do not substitute for this acceptance.
 - CI for Dockerfile commit `2fb62059a1f6e2b5dcfbdef2fb11ca18669f036e`: both Mission Control Gate and RENOVISION Spatial Validation CI PASS.
 - Staging capacity configured with minimum instances 0 and maximum instances 1. This is **not** a verified dollar spend or budget-enforcement mechanism. Review Cloud Billing before further scale-up.
 - **HOLD**: no real user sign-in, token refresh, cross-tenant E2E, mobile capture, physical benchmark, or independent QUINCEY signoff verified. No production promotion authorized by these smoke results.
+
+### Browser and budget verification — 2026-11-08
+
+- Clean headless Google Chrome session (no gcloud invocation token or saved app credentials) loaded staging gateway `/`: HTTP 200; RENOVISION title and sign-in control present; zero page JavaScript errors observed. This verifies anonymous page rendering, **not** successful user login or app API authorization.
+- Google Cloud Billing Budgets lists an existing `RENOVISION Founder Beta -- ocg-pipeline $15 monthly` budget with specified amount USD 15. Billing budgets are **alerts**, not hard spending caps; actual spend and forecast were not verified.
+- Remaining release blockers: authorized Identity Platform test account with server-side tenant/role/property entitlements, browser sign-in and refresh, wrong-tenant/role denial, physical-room capture benchmark, and independent QA. Do not fabricate acceptance by issuing demo credentials or bypassing IAM.
