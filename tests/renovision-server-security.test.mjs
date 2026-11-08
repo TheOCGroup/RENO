@@ -183,7 +183,7 @@ test("browser sign-out clears fallback credentials and visible project state", a
  const dir = await mkdtemp(join(tmpdir(), "renovision-signout-"));
  t.after(() => rm(dir, {recursive: true, force: true}));
  const {base} = await boot(t, dir);
- const res = await fetch(base + "/");
+ const res = await fetch(base + "/operator");
  assert.equal(res.status, 200);
  const html = await res.text();
  const signOut = html.match(/\$\('btnSignOut'\)\.onclick=function\(\)\{([^}]+)\}/);
@@ -203,7 +203,7 @@ test("browser API requests derive identity exclusively from bearer token", async
  const dir = await mkdtemp(join(tmpdir(), "renovision-browser-identity-"));
  t.after(() => rm(dir, {recursive: true, force: true}));
  const {base} = await boot(t, dir);
- const res = await fetch(base + "/");
+ const res = await fetch(base + "/operator");
  assert.equal(res.status, 200);
  const html = await res.text();
  const start = html.indexOf("function headers(){");
@@ -219,7 +219,7 @@ test("expired browser sessions fail closed on refresh errors", async (t) => {
  const dir = await mkdtemp(join(tmpdir(), "renovision-refresh-"));
  t.after(() => rm(dir, {recursive: true, force: true}));
  const {base} = await boot(t, dir);
- const html = await (await fetch(base + "/")).text();
+ const html = await (await fetch(base + "/operator")).text();
  const start = html.indexOf("function refreshSession(){");
  const end = html.indexOf("function headers(){", start);
  assert.ok(start >= 0 && end > start, "refresh handler exists");
