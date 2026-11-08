@@ -226,6 +226,8 @@ test("expired browser sessions fail closed on refresh errors", async (t) => {
  const refresh = html.slice(start, end);
  assert.ok(refresh.includes("!session.refreshToken"), "missing refresh credential checked");
  assert.ok(refresh.includes("!authCfg.signIn.apiKey"), "missing refresh configuration checked");
- assert.ok(refresh.includes(".catch(function(){saveSession(null)"), "refresh network failure clears session");
+ assert.ok(refresh.includes(".catch(function(){expireSession("), "refresh network failure expires session");
  assert.ok(refresh.includes("Session refresh failed"), "refresh failure is disclosed");
+ assert.ok(html.includes("function expireSession(message){saveSession(null);$(\'bearerToken\').value=\'\'"), "expiry clears fallback bearer");
+ assert.ok(html.includes("if(j.idToken){$(\'bearerToken\').value=\'\'"), "new sign-in clears fallback bearer");
 });
