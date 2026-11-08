@@ -41,7 +41,7 @@ export function createMemoryApprovalRegistry() {
    get storageClass() { return "in-memory"; }
  };
 }
-export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
+export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
  if (typeof authenticate !== "function") throw new TypeError("authenticate function required");
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
@@ -122,6 +122,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
+   if (req.method === "GET" && path === "/studio-capabilities") return send(res, 200, {ok:true, photoRendering:photoRenderer?.status?.() ?? {enabled:false}});
    if (req.method === "GET" && path === "/auth-config") {
      // Public browser sign-in configuration. The Identity Platform web API key
      // is a client identifier, not a credential; it is exposed only when the
@@ -180,7 +181,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        "": "project:read", "preview/existing.svg": "project:read", "preview/proposed.svg": "project:read",
        "capture-plan": "capture:write", evidence: "capture:write", captures: "capture:write", "capture-review": "capture:write",
        measurements: "measurement:write", corrections: "measurement:correct", lock: "geometry:lock",
-       proposals: "change:propose", preview: "preview:generate", furnishing: "furnishing:write",
+       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write",
        comparison: "comparison:build", "quincey-packet": "export:read", export: "export:read"
      })[routeKey];
      const action = actionFor(sub);
@@ -242,6 +243,10 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        const result = await project.proposeChange({actor, resolveApproval: typeof resolveApproval === "function" ? resolveApproval : resolveApproval?.resolveApproval, eventStore, change: body.change});
        project.clearPendingSpatialEvent(targetFeature);
        return done(201, {ok: true, result});
+     }
+     if (req.method === "POST" && sub === "render-photo") {
+       const result = photoRenderer ? await photoRenderer.render({mimeType:body.mimeType,imageBase64:body.imageBase64,prompt:body.prompt}) : {ok:false,errors:["photo_rendering_not_enabled"]};
+       return send(res, result.ok ? 200 : 422, result);
      }
      if (req.method === "POST" && sub === "preview") {
        if (body.mode === "photoreal") {
