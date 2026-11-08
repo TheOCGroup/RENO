@@ -23,7 +23,7 @@ export function createGateway({getIdentityToken = async () => {
   return createServer(async (req,res) => {
     try {
       const u = new URL(req.url,"http://localhost");
-      if (!allowed(req.method,u.pathname) || u.search || req.headers.upgrade) return respond(res,404,"route_not_found");
+      if (!allowed(req.method,u.pathname) || (u.search && u.pathname !== "/") || req.headers.upgrade) return respond(res,404,"route_not_found");
       if (req.method !== "GET" && req.method !== "HEAD" && !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) return respond(res,415,"json_required");
       const parts=[];let size=0;
       for await (const part of req) {size+=part.length;if(size>maxBytes) return respond(res,413,"payload_too_large");parts.push(part);}
