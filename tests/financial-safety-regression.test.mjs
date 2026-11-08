@@ -178,9 +178,9 @@ test("F6: no disbursement path exists — src/ carries no egress or payment-rail
     const source = readFileSync(join(srcDir, file), "utf8");
     for (const [pattern, label] of forbidden) {
       // RENOVISION uses fetch for Google metadata and private GCS persistence,
-      // and browser-authenticated API requests, not payment rails. Keep every other guard in force,
+      // and browser-authenticated API requests in the operator and studio UIs, not payment rails. Keep every other guard in force,
       // and prohibit network fetch in all other src modules.
-      if (["renovisionMain.mjs", "renovisionUi.mjs"].includes(file) && label === "fetch(") continue;
+      if (["renovisionMain.mjs", "renovisionUi.mjs", "renovisionStudio.mjs"].includes(file) && label === "fetch(") continue;
       assert.ok(!pattern.test(source), `${file} must not contain ${label}`);
     }
   }
