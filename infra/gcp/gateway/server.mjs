@@ -5,7 +5,7 @@ if (!backend || !/^https:\/\/[a-z0-9.-]+\.run\.app\/?$/.test(backend)) throw new
 const origin = backend.replace(/\/$/, "");
 const metadata = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + encodeURIComponent(origin) + "&format=full";
 const maxBytes = 32_000_000;
-const allowed = (method, path) => (method === "GET" && (path === "/" || path === "/auth-config" || path === "/health")) ||
+const allowed = (method, path) => (method === "GET" && (path === "/" || path === "/operator" || path === "/auth-config" || path === "/health")) ||
   (/^\/api\/renovision\/(projects|approvals)(\/|$)/.test(path) && ["GET","POST","PUT","PATCH","DELETE"].includes(method));
 const headers = {
   "cache-control":"no-store",
