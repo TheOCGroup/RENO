@@ -44,3 +44,17 @@ test("landing page accepts link tracking while API queries remain rejected",asyn
  assert.equal(upstream,backend+"/");
  assert.equal((await fetch(base+"/api/renovision/projects?utm_source=chatgpt.com")).status,404);
 });
+
+test("image generation gets longer upstream timeout while other routes retain 30s",async t=>{
+ const durations=[];
+ const base=await serve(t,async(url,init)=>{
+  durations.push({url,signal:init.signal});
+  return new Response(JSON.stringify({ok:true}),{headers:{"content-type":"application/json"}});
+ });
+ await fetch(base+"/api/renovision/projects/a/render-photo",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});
+ await fetch(base+"/api/renovision/projects");
+ assert.equal(durations.length,2);
+ assert.match(durations[0].url,/render-photo$/);
+ assert.ok(durations[0].signal instanceof AbortSignal);
+ assert.ok(durations[1].signal instanceof AbortSignal);
+});
