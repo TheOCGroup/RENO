@@ -1,0 +1,22 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import vm from "node:vm";
+import {RENOVISION_STUDIO_HTML} from "../src/renovisionStudio.mjs";
+
+test("customer studio inline JavaScript parses and does not contain escaped line separators",()=>{
+ const script=RENOVISION_STUDIO_HTML.split("<script>")[1]?.split("</script>")[0];
+ assert.ok(script,"studio must have script");
+ assert.doesNotThrow(()=>new vm.Script(script));
+ assert.doesNotMatch(script,/\\n(?=fetch\(|\$\(')/);
+});
+test("studio offers actual original-versus-concept comparison and project creation",()=>{
+ for(const id of ["file","photo","resultPanel","resultPhoto","downloadResult","showOriginal","showResult","createProject","signIn","generate"]){
+  assert.match(RENOVISION_STUDIO_HTML,new RegExp('id="'+id+'"'));
+ }
+ assert.match(RENOVISION_STUDIO_HTML,/AI-generated renovation concept|AI renovation concept/);
+ assert.match(RENOVISION_STUDIO_HTML,/architecture|Architectural/);
+});
+test("studio never claims a concept is a verified measured drawing",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/not construction drawings/);
+ assert.match(RENOVISION_STUDIO_HTML,/No photo selected/);
+});
