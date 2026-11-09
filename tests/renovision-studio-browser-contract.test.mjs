@@ -20,3 +20,11 @@ test("studio never claims a concept is a verified measured drawing",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/not construction drawings/);
  assert.match(RENOVISION_STUDIO_HTML,/No photo selected/);
 });
+
+test("customer session has explicit sign-out and expires without storing credentials",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/id="signOut"/);
+ assert.match(RENOVISION_STUDIO_HTML,/sessionExpiresAt/);
+ assert.match(RENOVISION_STUDIO_HTML,/Session expired\. Sign in again/);
+ assert.match(RENOVISION_STUDIO_HTML,/\$\('renderPassword'\)\.value=''/);
+ assert.doesNotMatch(RENOVISION_STUDIO_HTML,/localStorage|sessionStorage/);
+});
