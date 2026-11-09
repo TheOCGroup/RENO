@@ -32,7 +32,7 @@ export function createGateway({getIdentityToken = async () => {
       const outgoing = {"X-Serverless-Authorization":"Bearer "+token};
       if (req.headers.authorization) outgoing.Authorization=req.headers.authorization;
       if (req.headers["content-type"]) outgoing["Content-Type"]=req.headers["content-type"];
-      const upstream = await fetchImpl(origin+u.pathname,{method:req.method,headers:outgoing,body:parts.length?Buffer.concat(parts):undefined,redirect:"manual",signal:AbortSignal.timeout(30000)});
+      const upstream = await fetchImpl(origin+u.pathname,{method:req.method,headers:outgoing,body:parts.length?Buffer.concat(parts):undefined,redirect:"manual",signal:AbortSignal.timeout(u.pathname.endsWith('/render-photo')?120000:30000)});
       const responseHeaders={...headers};
       const type=upstream.headers.get("content-type");
       if (type) responseHeaders["content-type"]=type;
