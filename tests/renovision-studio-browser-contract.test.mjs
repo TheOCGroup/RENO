@@ -37,3 +37,11 @@ test("material inspiration is selectable and comparison uses actual source and g
  assert.match(RENOVISION_STUDIO_HTML,/updateComparison\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/illustrative swatches, not product samples/);
 });
+
+test("room journeys select the matching brief and paid rendering stays fail-closed",()=>{
+ for(const room of ["Kitchen","Bathroom","Living room","Bedroom"]) assert.match(RENOVISION_STUDIO_HTML,new RegExp('data-room="'+room+'"'));
+ assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/\$\('room'\)\.value=c\.dataset\.room/);
+ assert.match(RENOVISION_STUDIO_HTML,/\$\('generate'\)\.disabled=!renderingAvailable\|\|!sessionReady\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/Project changed — create or open to continue/);
+});
