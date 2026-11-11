@@ -28,3 +28,12 @@ test("customer session has explicit sign-out and expires without storing credent
  assert.match(RENOVISION_STUDIO_HTML,/\$\('renderPassword'\)\.value=''/);
  assert.doesNotMatch(RENOVISION_STUDIO_HTML,/localStorage|sessionStorage/);
 });
+
+test("material inspiration is selectable and comparison uses actual source and generated images",()=>{
+ for(const id of ["materialTitle","comparison","comparisonOriginal","comparisonConcept","comparisonRange","comparisonDivider"]){assert.match(RENOVISION_STUDIO_HTML,new RegExp('id="'+id+'"'));}
+ assert.match(RENOVISION_STUDIO_HTML,/data-material="Natural oak flooring/);
+ assert.match(RENOVISION_STUDIO_HTML,/comparisonOriginal'\)\.src=photoUrl/);
+ assert.match(RENOVISION_STUDIO_HTML,/comparisonConcept'\)\.src=resultUrl/);
+ assert.match(RENOVISION_STUDIO_HTML,/updateComparison\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/illustrative swatches, not product samples/);
+});
