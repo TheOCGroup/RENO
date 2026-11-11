@@ -45,3 +45,12 @@ test("room journeys select the matching brief and paid rendering stays fail-clos
  assert.match(RENOVISION_STUDIO_HTML,/\$\('generate'\)\.disabled=!renderingAvailable\|\|!sessionReady\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/Project changed — create or open to continue/);
 });
+
+test("renovation scope planning remains local and is exported in design brief",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/id="scopeGrid"/);
+ assert.match(RENOVISION_STUDIO_HTML,/const roomScopes=/);
+ assert.match(RENOVISION_STUDIO_HTML,/Kitchen:\['Cabinetry'/);
+ assert.match(RENOVISION_STUDIO_HTML,/Bathroom:\['Tile and shower'/);
+ assert.match(RENOVISION_STUDIO_HTML,/renovationPriorities:\[\.\.\.\(scopeSelections\.get/);
+ assert.match(RENOVISION_STUDIO_HTML,/not a contractor estimate/);
+});
