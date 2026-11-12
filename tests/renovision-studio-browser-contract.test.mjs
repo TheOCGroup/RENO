@@ -120,3 +120,9 @@ test("late sign-in responses are ignored after sign-out or credential edits",()=
  assert.match(RENOVISION_STUDIO_HTML,/if\(attempt!==authAttempt\)return;if\(!r.ok\)/);
  assert.match(RENOVISION_STUDIO_HTML,/signOut'\)\.onclick=\(\)=>\{authAttempt\+\+/);
 });
+
+test("in-flight generation remains exclusive even when design changes",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/if\(renderInFlight\)return;if\(!renderingAvailable\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/!renderInFlight&&renderingAvailable/);
+ assert.match(RENOVISION_STUDIO_HTML,/finally\{renderInFlight=false;refreshGenerateButton\(\)/);
+});
