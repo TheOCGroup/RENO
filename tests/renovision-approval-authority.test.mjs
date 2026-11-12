@@ -162,7 +162,11 @@ test("operator interface carries the Identity Platform sign-in flow, not just a 
 
 test("Cloud Run entry point wires the durable GCS approval authority and reports it on /health", async (t) => {
   const entry = resolve(dirname(fileURLToPath(import.meta.url)), "../src/renovisionMain.mjs");
-  const port = 18741;
+  const {createServer: createPortProbe} = await import("node:net");
+  const probe = createPortProbe();
+  await new Promise(resolve => probe.listen(0, "127.0.0.1", resolve));
+  const port = probe.address().port;
+  await new Promise(resolve => probe.close(resolve));
   const child = spawn(process.execPath, [entry], {
     env: {...process.env, K_SERVICE: "renovision", PORT: String(port), RENOVISION_GCS_BUCKET: "test-bucket", RENOVISION_JWKS_URL: "https://example.test/jwks", RENOVISION_TOKEN_ISSUER: "https://securetoken.google.com/test-project", RENOVISION_TOKEN_AUDIENCE: "test-project", RENOVISION_WEB_API_KEY: "public-web-key", RENOVISION_DEMO_AUTH: "0"},
     stdio: ["ignore", "pipe", "pipe"]
