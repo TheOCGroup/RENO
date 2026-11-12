@@ -171,3 +171,10 @@ test("contractor worksheet clears estimates on scope and identity changes",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/Materials total \(\$\)/);
  assert.match(RENOVISION_STUDIO_HTML,/Labor total \(\$\)/);
 });
+
+test("contractor estimates reject zero quantity, fractional cents and unsafe totals",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/const quantity=parse\(v.quantity,\{positive:true\}\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/materialsCost=parse\(v.materialsCost,\{money:true\}\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/Number.isSafeInteger\(sumCents\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:complete&&totalCost!==null\?'entered-unverified':'incomplete'/);
+});
