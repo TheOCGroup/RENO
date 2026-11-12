@@ -76,7 +76,7 @@ test("material direction is reversible and does not overwrite user notes",()=>{
 });
 
 test("changing design direction invalidates stale generated comparisons",()=>{
- assert.match(RENOVISION_STUDIO_HTML,/function invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/function invalidateConcept\(\{keepRefinement=false\}/);
  assert.match(RENOVISION_STUDIO_HTML,/URL\.revokeObjectURL\(resultUrl\)/);
  assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)\{invalidateConcept\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/input\.addEventListener\('change',\(\)=>\{invalidateConcept\(\)/);
@@ -90,4 +90,10 @@ test("late AI responses are discarded after design or authorization changes",()=
  assert.match(RENOVISION_STUDIO_HTML,/requestedRevision!==designRevision\|\|requestedProject!==activeProjectId\|\|requestedToken!==idToken/);
  assert.match(RENOVISION_STUDIO_HTML,/Outdated result discarded/);
  assert.match(RENOVISION_STUDIO_HTML,/function clearPhoto\(\)\{designRevision\+\+/);
+});
+
+test("refinement notes preserve the selected source image",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/keepRefinement:id==='changes'/);
+ assert.match(RENOVISION_STUDIO_HTML,/if\(!keepRefinement\)refinementSource=null/);
+ assert.match(RENOVISION_STUDIO_HTML,/refinementSource=resultBlob;refreshGenerateButton\(\)/);
 });
