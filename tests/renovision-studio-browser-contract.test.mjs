@@ -178,3 +178,7 @@ test("contractor estimates reject zero quantity, fractional cents and unsafe tot
  assert.match(RENOVISION_STUDIO_HTML,/Number.isSafeInteger\(sumCents\)/);
  assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:complete&&totalCost!==null\?'entered-unverified':'incomplete'/);
 });
+
+test("switching rooms resets contractor estimate worksheet",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)\{invalidateConcept\(\);resetEstimateWorksheet\(\);renderScopes\(\)/);
+});
