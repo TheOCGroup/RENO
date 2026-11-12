@@ -54,3 +54,9 @@ test("renovation scope planning remains local and is exported in design brief",(
  assert.match(RENOVISION_STUDIO_HTML,/renovationPriorities:\[\.\.\.\(scopeSelections\.get/);
  assert.match(RENOVISION_STUDIO_HTML,/not a contractor estimate/);
 });
+
+test("render prompt includes renovation scope and cannot re-enable after failure",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/Renovation priorities: /);
+ assert.match(RENOVISION_STUDIO_HTML,/finally\{btn\.disabled=!renderingAvailable\|\|!activeProjectId\|\|!sessionReady\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/for\(const id of \['projectId','propertyId','roomId'\]\)/);
+});
