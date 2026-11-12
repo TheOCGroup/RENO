@@ -74,3 +74,13 @@ test("material direction is reversible and does not overwrite user notes",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/materialDirection:selectedMaterial\|\|null/);
  assert.match(RENOVISION_STUDIO_HTML,/selectedMaterial,\$\('changes'\)\.value/);
 });
+
+test("changing design direction invalidates stale generated comparisons",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/function invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/URL\.revokeObjectURL\(resultUrl\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)\{invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/input\.addEventListener\('change',\(\)=>\{invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/selectedMaterial=wasSelected\?'':card\.dataset\.material;invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/if\(palette!==b\.dataset\.color\)invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/\['style','changes'\]/);
+});
