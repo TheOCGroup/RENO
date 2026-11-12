@@ -67,3 +67,10 @@ test("development header-auth server binds only to loopback",()=>{
  assert.match(source,/identityMode === "demo" \? "127\.0\.0\.1"/);
  assert.match(source,/server\.listen\(port, listenHost,/);
 });
+
+test("material direction is reversible and does not overwrite user notes",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/let selectedMaterial=''/);
+ assert.match(RENOVISION_STUDIO_HTML,/selectedMaterial=wasSelected\?'':card\.dataset\.material/);
+ assert.match(RENOVISION_STUDIO_HTML,/materialDirection:selectedMaterial\|\|null/);
+ assert.match(RENOVISION_STUDIO_HTML,/selectedMaterial,\$\('changes'\)\.value/);
+});
