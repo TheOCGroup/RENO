@@ -108,3 +108,9 @@ test("account and project changes invalidate generated concepts",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/if\(activeProjectId!==projectId\)invalidateConcept\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/addEventListener\('input',\(\)=>\{invalidateConcept\(\);activeProjectId=null/);
 });
+
+test("late project-open responses cannot rebind edited projects or changed accounts",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/const requestCurrent=\(\)=>requestedRevision===designRevision&&requestedToken===idToken/);
+ assert.match(RENOVISION_STUDIO_HTML,/if\(!requestCurrent\(\)\)\{\$\('projectState'\)\.textContent='Project details or session changed/);
+ assert.match(RENOVISION_STUDIO_HTML,/catch\(e\)\{if\(requestCurrent\(\)\)/);
+});
