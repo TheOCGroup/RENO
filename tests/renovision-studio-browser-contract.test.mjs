@@ -58,7 +58,7 @@ test("renovation scope planning remains local and is exported in design brief",(
 
 test("render prompt includes renovation scope and cannot re-enable after failure",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/Renovation priorities: /);
- assert.match(RENOVISION_STUDIO_HTML,/finally\{refreshGenerateButton\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/finally\{renderInFlight=false;refreshGenerateButton\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/for\(const id of \['projectId','propertyId','roomId'\]\)/);
 });
 
