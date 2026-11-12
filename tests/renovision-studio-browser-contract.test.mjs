@@ -147,3 +147,11 @@ test("downloaded design brief carries verified project scope and version metadat
  assert.match(RENOVISION_STUDIO_HTML,/formatVersion:2,createdAt:new Date\(\)\.toISOString\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/project:activeProjectId\?\{projectId:activeProjectId,propertyId:\$\('propertyId'\)\.value\.trim\(\),roomId:\$\('roomId'\)\.value\.trim\(\)\}:null/);
 });
+
+test("contractor scope draft exports selected work without invented estimates",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/id="downloadScope"/);
+ assert.match(RENOVISION_STUDIO_HTML,/type:'contractor-scope-draft'/);
+ assert.match(RENOVISION_STUDIO_HTML,/items:selected.map/);
+ assert.match(RENOVISION_STUDIO_HTML,/quantity:null,unit:null,materialsCost:null,laborCost:null,contractorEstimate:null/);
+ assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:'not-estimated',totalCost:null/);
+});
