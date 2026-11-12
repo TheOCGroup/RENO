@@ -114,3 +114,9 @@ test("late project-open responses cannot rebind edited projects or changed accou
  assert.match(RENOVISION_STUDIO_HTML,/if\(!requestCurrent\(\)\)\{\$\('projectState'\)\.textContent='Project details or session changed/);
  assert.match(RENOVISION_STUDIO_HTML,/catch\(e\)\{if\(requestCurrent\(\)\)/);
 });
+
+test("late sign-in responses are ignored after sign-out or credential edits",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/const attempt=\+\+authAttempt/);
+ assert.match(RENOVISION_STUDIO_HTML,/if\(attempt!==authAttempt\)return;if\(!r.ok\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/signOut'\)\.onclick=\(\)=>\{authAttempt\+\+/);
+});
