@@ -136,3 +136,9 @@ test("stale render work cannot dispatch or overwrite status with late failures",
 test("clearing the original photo also clears any retained refinement image",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/function clearPhoto\(\)\{designRevision\+\+;refinementSource=null/);
 });
+
+test("existing project must match selected property and room before activation",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/resolvedProject=existing.project/);
+ assert.match(RENOVISION_STUDIO_HTML,/resolvedProject.propertyId!==propertyId\|\|resolvedProject.roomId!==roomId/);
+ assert.match(RENOVISION_STUDIO_HTML,/Existing project does not match the selected property and room/);
+});
