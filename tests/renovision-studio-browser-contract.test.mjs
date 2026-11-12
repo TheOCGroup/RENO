@@ -155,3 +155,11 @@ test("contractor scope draft exports selected work without invented estimates",(
  assert.match(RENOVISION_STUDIO_HTML,/quantity:null,unit:null,materialsCost:null,laborCost:null,contractorEstimate:null/);
  assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:'not-estimated',totalCost:null/);
 });
+
+test("manual contractor estimate worksheet withholds totals for incomplete items",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/id="reviewScope"/);
+ assert.match(RENOVISION_STUDIO_HTML,/id='exportEstimate'/);
+ assert.match(RENOVISION_STUDIO_HTML,/const complete=items.every/);
+ assert.match(RENOVISION_STUDIO_HTML,/const totalCost=complete\?/);
+ assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:complete\?'entered-unverified':'incomplete'/);
+});
