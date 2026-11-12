@@ -84,3 +84,10 @@ test("changing design direction invalidates stale generated comparisons",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/if\(palette!==b\.dataset\.color\)invalidateConcept\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/\['style','changes'\]/);
 });
+
+test("late AI responses are discarded after design or authorization changes",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/let designRevision=0/);
+ assert.match(RENOVISION_STUDIO_HTML,/requestedRevision!==designRevision\|\|requestedProject!==activeProjectId\|\|requestedToken!==idToken/);
+ assert.match(RENOVISION_STUDIO_HTML,/Outdated result discarded/);
+ assert.match(RENOVISION_STUDIO_HTML,/function clearPhoto\(\)\{designRevision\+\+/);
+});
