@@ -104,7 +104,7 @@ test("invalidating a visible concept restores the original photo",()=>{
 });
 
 test("account and project changes invalidate generated concepts",()=>{
- assert.match(RENOVISION_STUDIO_HTML,/signOut'\)\.onclick=\(\)=>\{invalidateConcept\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/signOut'\)\.onclick=\(\)=>\{authAttempt\+\+;invalidateConcept\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/if\(activeProjectId!==projectId\)invalidateConcept\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/addEventListener\('input',\(\)=>\{invalidateConcept\(\);activeProjectId=null/);
 });
