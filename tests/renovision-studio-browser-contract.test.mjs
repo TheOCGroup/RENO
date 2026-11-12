@@ -163,3 +163,11 @@ test("manual contractor estimate worksheet withholds totals for incomplete items
  assert.match(RENOVISION_STUDIO_HTML,/const totalCost=complete\?/);
  assert.match(RENOVISION_STUDIO_HTML,/estimateStatus:complete\?'entered-unverified':'incomplete'/);
 });
+
+test("contractor worksheet clears estimates on scope and identity changes",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/function resetEstimateWorksheet\(\)\{scopeEstimateInputs.clear\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/input.addEventListener\('change',\(\)=>\{invalidateConcept\(\);resetEstimateWorksheet\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/\$\('signOut'\)\.onclick=\(\)=>\{authAttempt\+\+;invalidateConcept\(\);resetEstimateWorksheet\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/Materials total \(\$\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/Labor total \(\$\)/);
+});
