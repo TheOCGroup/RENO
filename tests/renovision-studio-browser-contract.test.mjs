@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -59,4 +60,10 @@ test("render prompt includes renovation scope and cannot re-enable after failure
  assert.match(RENOVISION_STUDIO_HTML,/Renovation priorities: /);
  assert.match(RENOVISION_STUDIO_HTML,/finally\{btn\.disabled=!renderingAvailable\|\|!activeProjectId\|\|!sessionReady\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/for\(const id of \['projectId','propertyId','roomId'\]\)/);
+});
+
+test("development header-auth server binds only to loopback",()=>{
+ const source=readFileSync(new URL("../src/renovisionMain.mjs",import.meta.url),"utf8");
+ assert.match(source,/identityMode === "demo" \? "127\.0\.0\.1"/);
+ assert.match(source,/server\.listen\(port, listenHost,/);
 });
