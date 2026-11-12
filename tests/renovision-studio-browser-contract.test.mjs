@@ -87,7 +87,7 @@ test("changing design direction invalidates stale generated comparisons",()=>{
 
 test("late AI responses are discarded after design or authorization changes",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/let designRevision=0/);
- assert.match(RENOVISION_STUDIO_HTML,/requestedRevision!==designRevision\|\|requestedProject!==activeProjectId\|\|requestedToken!==idToken/);
+ assert.match(RENOVISION_STUDIO_HTML,/const renderCurrent=\(\)=>requestedRevision===designRevision&&requestedProject===activeProjectId&&requestedToken===idToken/);
  assert.match(RENOVISION_STUDIO_HTML,/Outdated result discarded/);
  assert.match(RENOVISION_STUDIO_HTML,/function clearPhoto\(\)\{designRevision\+\+/);
 });
@@ -125,4 +125,10 @@ test("in-flight generation remains exclusive even when design changes",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/if\(renderInFlight\)return;if\(!renderingAvailable\)/);
  assert.match(RENOVISION_STUDIO_HTML,/!renderInFlight&&renderingAvailable/);
  assert.match(RENOVISION_STUDIO_HTML,/finally\{renderInFlight=false;refreshGenerateButton\(\)/);
+});
+
+test("stale render work cannot dispatch or overwrite status with late failures",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/if\(!renderCurrent\(\)\)return;const response=await fetch/);
+ assert.match(RENOVISION_STUDIO_HTML,/authorization:'Bearer '\+requestedToken/);
+ assert.match(RENOVISION_STUDIO_HTML,/catch\(e\)\{if\(renderCurrent\(\)\)\$\('status'\)/);
 });
