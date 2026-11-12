@@ -97,3 +97,8 @@ test("refinement notes preserve the selected source image",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/if\(!keepRefinement\)refinementSource=null/);
  assert.match(RENOVISION_STUDIO_HTML,/refinementSource=resultBlob;refreshGenerateButton\(\)/);
 });
+
+test("invalidating a visible concept restores the original photo",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/if\(\$\('photo'\)\.getAttribute\('src'\)===resultUrl\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/if\(photoUrl\)\$\('photo'\)\.src=photoUrl/);
+});
