@@ -111,7 +111,9 @@ const webAuthConfig = {apiKey: process.env.RENOVISION_WEB_API_KEY || null, proje
 const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode, webAuthConfig});
 console.log("RENOVISION approvals: " + (approvals ? approvals.storageClass : "not configured (fail closed)") + "; browser sign-in: " + (webAuthConfig.apiKey ? "configured" : "not configured (manual token fallback)"));
 const port = Number(process.env.PORT || 8787);
-server.listen(port, () => {
+// Header-based demo identity is trusted only on this machine; never expose it on LAN.
+const listenHost = identityMode === "demo" ? "127.0.0.1" : (process.env.HOST || "0.0.0.0");
+server.listen(port, listenHost, () => {
  console.log("RENOVISION server listening on http://localhost:" + port + " (identity: " + identityMode + ", project storage: " + projectStore.storageClass + ")");
  console.log("Photorealistic rendering: " + (renderProvider.status().enabled ? "ENABLED by founder-approved flag" : "disabled") + ". No accuracy claims are authorized by this service.");
 });
