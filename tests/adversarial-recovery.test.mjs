@@ -27,7 +27,7 @@ function payload(id) {
 
 function tempDir(t) {
   const dir = mkdtempSync(join(tmpdir(), "mc-adv-a-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 12, retryDelay: 100 }));
   return dir;
 }
 
