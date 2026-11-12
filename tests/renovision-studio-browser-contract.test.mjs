@@ -132,3 +132,7 @@ test("stale render work cannot dispatch or overwrite status with late failures",
  assert.match(RENOVISION_STUDIO_HTML,/authorization:'Bearer '\+requestedToken/);
  assert.match(RENOVISION_STUDIO_HTML,/catch\(e\)\{if\(renderCurrent\(\)\)\$\('status'\)/);
 });
+
+test("clearing the original photo also clears any retained refinement image",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/function clearPhoto\(\)\{designRevision\+\+;refinementSource=null/);
+});
