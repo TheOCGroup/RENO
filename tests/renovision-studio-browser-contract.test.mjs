@@ -142,3 +142,8 @@ test("existing project must match selected property and room before activation",
  assert.match(RENOVISION_STUDIO_HTML,/resolvedProject.propertyId!==propertyId\|\|resolvedProject.roomId!==roomId/);
  assert.match(RENOVISION_STUDIO_HTML,/Existing project does not match the selected property and room/);
 });
+
+test("downloaded design brief carries verified project scope and version metadata",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/formatVersion:2,createdAt:new Date\(\)\.toISOString\(\)/);
+ assert.match(RENOVISION_STUDIO_HTML,/project:activeProjectId\?\{projectId:activeProjectId,propertyId:\$\('propertyId'\)\.value\.trim\(\),roomId:\$\('roomId'\)\.value\.trim\(\)\}:null/);
+});
