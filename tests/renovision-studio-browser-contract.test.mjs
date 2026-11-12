@@ -43,7 +43,7 @@ test("room journeys select the matching brief and paid rendering stays fail-clos
  assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)/);
  assert.match(RENOVISION_STUDIO_HTML,/\$\('room'\)\.value=c\.dataset\.room/);
  assert.match(RENOVISION_STUDIO_HTML,/\$\('generate'\)\.disabled=!renderingAvailable\|\|!sessionReady\(\)/);
- assert.match(RENOVISION_STUDIO_HTML,/Project changed — create or open to continue/);
+ assert.match(RENOVISION_STUDIO_HTML,/Project details changed; create or open to continue/);
 });
 
 test("renovation scope planning remains local and is exported in design brief",()=>{
