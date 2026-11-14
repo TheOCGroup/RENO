@@ -182,3 +182,11 @@ test("contractor estimates reject zero quantity, fractional cents and unsafe tot
 test("switching rooms resets contractor estimate worksheet",()=>{
  assert.match(RENOVISION_STUDIO_HTML,/function syncRoomJourney\(\)\{invalidateConcept\(\);resetEstimateWorksheet\(\);renderScopes\(\)/);
 });
+
+test("password recovery is explicit, requires email and does not expose account existence",()=>{
+ assert.match(RENOVISION_STUDIO_HTML,/id="requestPasswordReset"/);
+ assert.match(RENOVISION_STUDIO_HTML,/requestPasswordReset'\)\.onclick=async/);
+ assert.match(RENOVISION_STUDIO_HTML,/accounts:sendOobCode\?key=/);
+ assert.match(RENOVISION_STUDIO_HTML,/requestType:'PASSWORD_RESET',email/);
+ assert.match(RENOVISION_STUDIO_HTML,/If this email is eligible/);
+});
