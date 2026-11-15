@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildMinimalGlb, parseGlb, inspectGlbFile} from "../lib/renovision/glb-inspector.mjs";
+import {
+  buildMinimalGlb,
+  parseGlb,
+  inspectGlbFile,
+  exportAssetFormat,
+  EXPORT_FORMATS,
+} from "../lib/renovision/glb-inspector.mjs";
 
 test("buildMinimalGlb creates a spec-compliant glTF 2.0 binary with PBR material and exact bounds", () => {
   const buf = buildMinimalGlb({
@@ -20,6 +26,7 @@ test("buildMinimalGlb creates a spec-compliant glTF 2.0 binary with PBR material
   assert.equal(parsed.meshCount, 1);
   assert.equal(parsed.primitiveCount, 1);
   assert.equal(parsed.materialCount, 1);
+  assert.equal(parsed.hasTextures, false);
   assert.equal(parsed.vertexCount, 8);
   assert.equal(parsed.triangleCount, 12);
   assert.equal(parsed.pbrMaterials[0].hasPbrMetallicRoughness, true);
@@ -34,7 +41,7 @@ test("buildMinimalGlb creates a spec-compliant glTF 2.0 binary with PBR material
   assert.equal(report.errors.length, 0);
 });
 
-test("parseGlb and inspectGlbFile reject truncated, non-GLB, and over-budget buffers", () => {
+test("parseGlb rejects truncated, non-GLB, over-budget, and NaN-corrupted geometry buffers", () => {
   assert.equal(parseGlb(Buffer.from("not-a-glb")).valid, false);
   assert.equal(parseGlb(Buffer.alloc(4)).valid, false);
 
@@ -46,4 +53,32 @@ test("parseGlb and inspectGlbFile reject truncated, non-GLB, and over-budget buf
   const overTris = inspectGlbFile(valid, { maxTriangles: 4 });
   assert.equal(overTris.passed, false);
   assert.match(overTris.errors[0], /exceeds maxTriangles/);
+
+  // Corrupt first float of BIN chunk (after 12-byte header + JSON chunk + 8-byte BIN header) with NaN
+  const corrupted = Buffer.from(valid);
+  const jsonLen = corrupted.readUInt32LE(12);
+  const binStart = 12 + 8 + jsonLen + 8;
+  corrupted.writeFloatLE(Number.NaN, binStart);
+  const nanResult = parseGlb(corrupted);
+  assert.equal(nanResult.valid, false);
+  assert.match(nanResult.errors[0], /non-finite coordinate/);
+});
+
+test("exportAssetFormat produces valid gltf, obj, stl, ply, and glb outputs and rejects unsupported formats", () => {
+  for (const fmt of EXPORT_FORMATS) {
+    const res = exportAssetFormat(fmt, { name: "dining-table", widthMeters: 2, heightMeters: 0.75, depthMeters: 1 });
+    assert.equal(res.ok, true);
+    assert.ok(Buffer.isBuffer(res.buffer) && res.buffer.length > 0);
+  }
+  const objText = exportAssetFormat("obj", { name: "dining-table" }).buffer.toString("utf8");
+  assert.match(objText, /^# OCG 3D Engine Wavefront OBJ/m);
+  assert.match(objText, /^v /m);
+  assert.match(objText, /^f /m);
+
+  const plyText = exportAssetFormat("ply", { name: "dining-table" }).buffer.toString("utf8");
+  assert.match(plyText, /^ply/m);
+  assert.match(plyText, /^end_header/m);
+
+  const bad = exportAssetFormat("fbx");
+  assert.equal(bad.ok, false);
 });
