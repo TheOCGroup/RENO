@@ -62,6 +62,13 @@ test("parseGlb rejects truncated, non-GLB, over-budget, and NaN-corrupted geomet
   const nanResult = parseGlb(corrupted);
   assert.equal(nanResult.valid, false);
   assert.match(nanResult.errors[0], /non-finite coordinate/);
+
+  // Corrupt first triangle index (after 8 vec3 floats = 96 bytes) to 999 (>= 8 vertices)
+  const badIdx = Buffer.from(valid);
+  badIdx.writeUInt16LE(999, binStart + 96);
+  const oobResult = parseGlb(badIdx);
+  assert.equal(oobResult.valid, false);
+  assert.match(oobResult.errors[0], /out of bounds/);
 });
 
 test("exportAssetFormat produces valid gltf, obj, stl, ply, and glb outputs and rejects unsupported formats", () => {
