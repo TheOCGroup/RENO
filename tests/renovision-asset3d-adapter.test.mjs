@@ -105,6 +105,7 @@ test("adapter processes local image-to-3D, background removal, text-to-image-to-
       weightsCachedLocally: true,
     },
     backgroundRemover: async ({ imageBase64 }) => ({ imageBase64 }),
+    backgroundRemoverCommercialAuthorized: true,
     imageGenerator: async () => ({ imageBase64: VALID_RGBA_PNG }),
     provider: async ({ assetName }) => ({
       glbBuffer: buildMinimalGlb({ name: assetName, widthMeters: 1.8, heightMeters: 0.75, depthMeters: 0.9 }),
@@ -161,4 +162,45 @@ test("adapter processes local image-to-3D, background removal, text-to-image-to-
   assert.equal(cancelled.job.status, "cancelled");
   const procCancelled = await adapter.processJob(cancelSub.job.jobId, { tenantId: "tenant-nova" });
   assert.equal(procCancelled.ok, false);
+});
+
+test("LIC-1: unauthorized background remover is skipped while local 3D engine continues functioning", async () => {
+  let bgCalled = false;
+  const adapter = createAsset3dAdapter({
+    enabled: true,
+    founderApproved: true,
+    localOnly: true,
+    environment: {
+      os: "linux",
+      hasNvidiaGpu: true,
+      vramGb: 24,
+      freeDiskGb: 80,
+      cudaVersion: "12.4",
+      pythonVersion: "3.10",
+      helperLicensesAccepted: true,
+      weightsCachedLocally: true,
+    },
+    backgroundRemover: async ({ imageBase64 }) => {
+      bgCalled = true;
+      return { imageBase64 };
+    },
+    backgroundRemoverCommercialAuthorized: false,
+    provider: async ({ assetName }) => ({
+      glbBuffer: buildMinimalGlb({ name: assetName, widthMeters: 1.0, heightMeters: 1.0, depthMeters: 1.0 }),
+    }),
+  });
+
+  const sub = adapter.submitJob({
+    tenantId: "tenant-lic",
+    consumer: "reno",
+    category: "chair_seating",
+    mimeType: "image/png",
+    imageBase64: VALID_RGBA_PNG,
+    removeBackground: true,
+  });
+  const res = await adapter.processJob(sub.job.jobId, { tenantId: "tenant-lic" });
+  assert.equal(res.ok, true);
+  assert.equal(bgCalled, false);
+  assert.equal(res.job.result.preprocessing.backgroundRemoved, false);
+  assert.match(res.job.result.preprocessing.backgroundRemoverBlockedReason, /CC-BY-NC-4\.0/);
 });

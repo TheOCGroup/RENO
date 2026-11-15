@@ -89,6 +89,51 @@ test("server inspects valid and invalid GLB uploads and enforces tenant isolatio
 
     const crossTenant = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}?tenantId=tenant-beta`);
     assert.equal(crossTenant.status, 404);
+
+    // SEC-2: missing tenantId -> 400
+    const noTenantCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}/cancel`, { method: "POST" });
+    assert.equal(noTenantCancel.status, 400);
+
+    // SEC-2: malformed JSON -> 400
+    const badJsonCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{bad",
+    });
+    assert.equal(badJsonCancel.status, 400);
+
+    // SEC-2: cross-tenant cancel -> 404
+    const crossCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenantId: "tenant-beta" }),
+    });
+    assert.equal(crossCancel.status, 404);
+
+    // SEC-2: nonexistent job -> 404
+    const missingCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/asset3d_missing/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenantId: "tenant-alpha" }),
+    });
+    assert.equal(missingCancel.status, 404);
+
+    // SEC-2: authorized cancel -> 200 & repeated cancel remains safe
+    const okCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenantId: "tenant-alpha" }),
+    });
+    assert.equal(okCancel.status, 200);
+    const okCancelJson = await okCancel.json();
+    assert.equal(okCancelJson.job.status, "cancelled");
+
+    const repeatCancel = await fetch(`${srv.baseUrl}/api/3d/jobs/${job.jobId}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tenantId: "tenant-alpha" }),
+    });
+    assert.equal(repeatCancel.status, 200);
   } finally {
     await srv.close();
   }

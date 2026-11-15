@@ -77,6 +77,8 @@ function send(res, status, contentType, body, extraHeaders = {}) {
   res.writeHead(status, {
     "content-type": contentType,
     "cache-control": "no-store",
+    "content-security-policy":
+      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "no-referrer",
@@ -210,6 +212,36 @@ export function createAsset3dServer({
           return send(res, 404, "application/json; charset=utf-8", JSON.stringify({ error: "job_not_found" }));
         }
         return send(res, 200, "application/json; charset=utf-8", JSON.stringify({ job }));
+      }
+
+      const cancelMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)\/cancel$/);
+      if (req.method === "POST" && cancelMatch) {
+        const raw = await readBody(req, 64 * 1024);
+        let body = {};
+        if (raw.length > 0) {
+          try {
+            body = JSON.parse(raw.toString("utf8"));
+          } catch {
+            return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_json" }));
+          }
+        }
+        const tenantId =
+          (typeof body?.tenantId === "string" && body.tenantId.trim()) ||
+          (url.searchParams.get("tenantId") || "").trim();
+        if (!tenantId) {
+          return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "tenant_id_required" }));
+        }
+        const cancelled = engineAdapter.cancelJob(cancelMatch[1], { tenantId });
+        if (!cancelled.ok) {
+          const isTerminal = cancelled.errors?.some((e) => /cannot cancel job/.test(e));
+          return send(
+            res,
+            isTerminal ? 409 : 404,
+            "application/json; charset=utf-8",
+            JSON.stringify({ error: isTerminal ? "cannot_cancel_terminal_job" : "job_not_found", errors: cancelled.errors }),
+          );
+        }
+        return send(res, 200, "application/json; charset=utf-8", JSON.stringify({ ok: true, job: cancelled.job }));
       }
 
       return send(res, 404, "application/json; charset=utf-8", JSON.stringify({ error: "not_found" }));
