@@ -245,7 +245,10 @@ test("registry config: JSON-string form works, env config passes it through, mal
 
   const dir = mkdtempSync(join(tmpdir(), "mc-binding-bad-"));
   const store = new MissionControlStore(join(dir, "mission-control.db"), { tenantId: "default" });
-  t.after(() => { store.close(); rmSync(dir, { recursive: true, force: true }); });
+  t.after(() => {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
   assert.throws(
     () => createMissionControlServer({ store, operatorToken: OPERATOR_TOKEN, actorTokens: "{not json" }),
     /actor_tokens_invalid/,
