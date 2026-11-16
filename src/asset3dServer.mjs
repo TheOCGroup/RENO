@@ -1,12 +1,15 @@
-/** Local-only HTTP server for the OCG 3D ENGINE Preview & Inspection Studio.
- * Binds to 127.0.0.1 by default, applies strict security headers, enforces
- * upload size limits, and exposes sample assets, multi-format export, GLB
- * inspection, model-router status, and async 3D generation jobs. */
+/** Shared HTTP API server for the OCG 3D ENGINE.
+ * Binds to 127.0.0.1 by default, enforces OIDC authentication and tenant
+ * isolation on all /api/3d/* routes (failing closed when auth is unavailable),
+ * backs assets with pluggable storage (memory or optional approved GCS), and
+ * exposes job lifecycle, 5-format export, GLB inspection, and model routing. */
 import http from "node:http";
 import {renderAsset3dViewerHtml} from "../lib/renovision/asset3d-viewer.mjs";
 import {exportAssetFormat, inspectGlbFile, EXPORT_FORMATS} from "../lib/renovision/glb-inspector.mjs";
 import {createModelRouter3d} from "../lib/renovision/model-router-3d.mjs";
 import {createAsset3dAdapter} from "../lib/renovision/asset3d-adapter.mjs";
+import {createAsset3dAuthMiddleware} from "../lib/renovision/asset3d-auth.mjs";
+import {createMemoryAsset3dStorage} from "../lib/renovision/asset3d-storage.mjs";
 
 export const SAMPLE_3D_CATALOG = Object.freeze([
   {
@@ -72,6 +75,7 @@ export const SAMPLE_3D_CATALOG = Object.freeze([
 ]);
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+const text = (x) => typeof x === "string" && x.trim().length > 0;
 
 function send(res, status, contentType, body, extraHeaders = {}) {
   res.writeHead(status, {
@@ -87,32 +91,108 @@ function send(res, status, contentType, body, extraHeaders = {}) {
   res.end(body);
 }
 
+function sendJson(res, status, payload, extraHeaders = {}) {
+  return send(res, status, "application/json; charset=utf-8", JSON.stringify(payload), extraHeaders);
+}
+
 function readBody(req, maxBytes = MAX_UPLOAD_BYTES) {
   return new Promise((resolve, reject) => {
+    const contentLength = Number(req.headers?.["content-length"]);
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      req.resume();
+      reject(Object.assign(new Error("body_too_large"), { statusCode: 413 }));
+      return;
+    }
     const chunks = [];
     let total = 0;
+    let settled = false;
     req.on("data", (chunk) => {
+      if (settled) return;
       total += chunk.length;
       if (total > maxBytes) {
+        settled = true;
+        req.resume();
         reject(Object.assign(new Error("body_too_large"), { statusCode: 413 }));
-        req.destroy();
         return;
       }
       chunks.push(chunk);
     });
-    req.on("end", () => resolve(Buffer.concat(chunks)));
-    req.on("error", reject);
+    req.on("end", () => {
+      if (!settled) {
+        settled = true;
+        resolve(Buffer.concat(chunks));
+      }
+    });
+    req.on("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
   });
+}
+
+function mapStorageErrorStatus(errCode) {
+  if (errCode === "not_found") return 404;
+  if (errCode === "corrupted_asset") return 422;
+  if (errCode === "unsupported_export_format" || errCode === "invalid_asset_id") return 400;
+  if (errCode === "gcs_disabled" || errCode === "gcs_not_configured" || errCode === "storage_write_failed") return 503;
+  return 500;
 }
 
 export function createAsset3dServer({
   environment = {},
   adapter = null,
   modelRouter = null,
+  auth = null,
+  authenticator = null,
+  authenticate = null,
+  storage = null,
 } = {}) {
   const router = modelRouter ?? createModelRouter3d({ allowPaid: false });
   const engineAdapter = adapter ?? createAsset3dAdapter({ environment, modelRouter: router });
+  const authMiddleware = auth ?? createAsset3dAuthMiddleware({ authenticator, authenticate });
+  const artifactStore = storage ?? createMemoryAsset3dStorage();
   const sampleMap = new Map(SAMPLE_3D_CATALOG.map((s) => [s.id, s]));
+  const jobAssetMap = new Map();
+
+  async function ensureJobAssetPersisted(job, actor) {
+    if (!job || job.status !== "completed" || !job.result?.glbBuffer) return null;
+    if (jobAssetMap.has(job.jobId)) return jobAssetMap.get(job.jobId);
+    const glbBuf = Buffer.isBuffer(job.result.glbBuffer)
+      ? job.result.glbBuffer
+      : Buffer.from(job.result.glbBuffer);
+    const assetId = `asset_${job.jobId}`;
+    const stored = await artifactStore.putAsset({
+      assetId,
+      tenantId: actor.tenantId,
+      consumer: job.consumer,
+      category: job.category,
+      jobId: job.jobId,
+      glbBuffer: glbBuf,
+      metadata: { name: job.assetName, propertyId: job.propertyId, roomId: job.roomId },
+      provenance: {
+        ...(job.result.provenance ?? {}),
+        dimensionProvenance: job.result.dimensionProvenance ?? "ai_estimated",
+        dimensionsVerified: job.result.dimensionsVerified === true,
+        createdBy: actor.id,
+      },
+    });
+    if (!stored.ok) {
+      return { ok: false, error: stored.error };
+    }
+    jobAssetMap.set(job.jobId, { ok: true, assetId: stored.asset.assetId });
+    return { ok: true, assetId: stored.asset.assetId };
+  }
+
+  function sanitizeHttpJob(job, assetId = null) {
+    const out = structuredClone(job);
+    if (out.result && out.result.glbBuffer) {
+      delete out.result.glbBuffer;
+    }
+    if (assetId) out.assetId = assetId;
+    return out;
+  }
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -123,133 +203,219 @@ export function createAsset3dServer({
         return send(res, 200, "text/html; charset=utf-8", renderAsset3dViewerHtml());
       }
 
-      if (req.method === "GET" && path === "/health") {
-        return send(
-          res,
-          200,
-          "application/json; charset=utf-8",
-          JSON.stringify({
+      // All /api/3d/* endpoints enforce OIDC authentication and tenant isolation.
+      if (path.startsWith("/api/3d/")) {
+        const authResult = await authMiddleware.requireAuth(req);
+        if (!authResult.ok) {
+          return sendJson(res, authResult.status, {
+            error: authResult.error,
+            message: authResult.message,
+          });
+        }
+        const actor = authResult.actor;
+
+        if (req.method === "GET" && path === "/api/3d/health") {
+          return sendJson(res, 200, {
             ok: true,
             service: "ocg-3d-engine",
+            tenantId: actor.tenantId,
+            actorId: actor.id,
             localOnly: true,
             budgetUsd: 0,
             supportedExportFormats: EXPORT_FORMATS,
+            storageClass: artifactStore.storageClass,
+            storageConfigured: artifactStore.configured !== false,
             adapterStatus: engineAdapter.status(),
-          }),
-        );
-      }
+          });
+        }
 
-      if (req.method === "GET" && path === "/api/3d/models") {
-        return send(
-          res,
-          200,
-          "application/json; charset=utf-8",
-          JSON.stringify({
+        if (req.method === "GET" && path === "/api/3d/models") {
+          return sendJson(res, 200, {
             models: router.listModels(),
             selection: router.selectModel({ mode: "image_to_3d", environment }),
-          }),
-        );
-      }
-
-      if (req.method === "GET" && path === "/api/3d/samples") {
-        return send(
-          res,
-          200,
-          "application/json; charset=utf-8",
-          JSON.stringify({ samples: SAMPLE_3D_CATALOG }),
-        );
-      }
-
-      const sampleMatch = path.match(/^\/api\/3d\/samples\/([a-z0-9-]+)\.([a-z0-9]+)$/);
-      if (req.method === "GET" && sampleMatch) {
-        const [, id, fmt] = sampleMatch;
-        const spec = sampleMap.get(id);
-        if (!spec) {
-          return send(res, 404, "application/json; charset=utf-8", JSON.stringify({ error: "sample_not_found" }));
+          });
         }
-        const exported = exportAssetFormat(fmt, { ...spec, name: spec.id });
-        if (!exported.ok) {
-          return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ errors: exported.errors }));
+
+        if (req.method === "GET" && path === "/api/3d/samples") {
+          return sendJson(res, 200, { samples: SAMPLE_3D_CATALOG });
         }
-        return send(res, 200, exported.mimeType, exported.buffer, {
-          "content-disposition": `attachment; filename="${id}.${exported.format}"`,
-        });
-      }
 
-      if (req.method === "POST" && path === "/api/3d/inspect") {
-        const raw = await readBody(req, MAX_UPLOAD_BYTES);
-        const report = inspectGlbFile(raw);
-        return send(
-          res,
-          report.passed ? 200 : 400,
-          "application/json; charset=utf-8",
-          JSON.stringify(report),
-        );
-      }
-
-      if (req.method === "POST" && path === "/api/3d/jobs") {
-        const raw = await readBody(req, MAX_UPLOAD_BYTES);
-        let payload;
-        try {
-          payload = JSON.parse(raw.toString("utf8"));
-        } catch {
-          return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_json" }));
-        }
-        const sub = engineAdapter.submitJob(payload);
-        return send(
-          res,
-          sub.accepted ? 202 : 400,
-          "application/json; charset=utf-8",
-          JSON.stringify(sub),
-        );
-      }
-
-      const jobMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)$/);
-      if (req.method === "GET" && jobMatch) {
-        const tenantId = url.searchParams.get("tenantId") || "";
-        const job = engineAdapter.getJob(jobMatch[1], { tenantId });
-        if (!job) {
-          return send(res, 404, "application/json; charset=utf-8", JSON.stringify({ error: "job_not_found" }));
-        }
-        return send(res, 200, "application/json; charset=utf-8", JSON.stringify({ job }));
-      }
-
-      const cancelMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)\/cancel$/);
-      if (req.method === "POST" && cancelMatch) {
-        const raw = await readBody(req, 64 * 1024);
-        let body = {};
-        if (raw.length > 0) {
-          try {
-            body = JSON.parse(raw.toString("utf8"));
-          } catch {
-            return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_json" }));
+        const sampleMatch = path.match(/^\/api\/3d\/samples\/([a-z0-9-]+)\.([a-z0-9]+)$/);
+        if (req.method === "GET" && sampleMatch) {
+          const [, id, fmt] = sampleMatch;
+          const spec = sampleMap.get(id);
+          if (!spec) {
+            return sendJson(res, 404, { error: "sample_not_found" });
           }
+          const exported = exportAssetFormat(fmt, { ...spec, name: spec.id });
+          if (!exported.ok) {
+            return sendJson(res, 400, { errors: exported.errors });
+          }
+          return send(res, 200, exported.mimeType, exported.buffer, {
+            "content-disposition": `attachment; filename="${id}.${exported.format}"`,
+          });
         }
-        const tenantId =
-          (typeof body?.tenantId === "string" && body.tenantId.trim()) ||
-          (url.searchParams.get("tenantId") || "").trim();
-        if (!tenantId) {
-          return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "tenant_id_required" }));
+
+        if (req.method === "POST" && path === "/api/3d/inspect") {
+          const raw = await readBody(req, MAX_UPLOAD_BYTES);
+          const report = inspectGlbFile(raw);
+          return sendJson(res, report.passed ? 200 : 400, report);
         }
-        const cancelled = engineAdapter.cancelJob(cancelMatch[1], { tenantId });
-        if (!cancelled.ok) {
-          const isTerminal = cancelled.errors?.some((e) => /cannot cancel job/.test(e));
-          return send(
-            res,
-            isTerminal ? 409 : 404,
-            "application/json; charset=utf-8",
-            JSON.stringify({ error: isTerminal ? "cannot_cancel_terminal_job" : "job_not_found", errors: cancelled.errors }),
-          );
+
+        if (req.method === "POST" && path === "/api/3d/jobs") {
+          const raw = await readBody(req, MAX_UPLOAD_BYTES);
+          let payload;
+          try {
+            payload = JSON.parse(raw.toString("utf8"));
+          } catch {
+            return sendJson(res, 400, { error: "invalid_json" });
+          }
+          if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+            return sendJson(res, 400, { error: "invalid_request_body" });
+          }
+          // Never trust request-body tenantId; reject impersonation attempts.
+          if (text(payload.tenantId) && payload.tenantId.trim() !== actor.tenantId) {
+            return sendJson(res, 403, { error: "tenant_impersonation_denied" });
+          }
+          const sub = engineAdapter.submitJob({
+            ...payload,
+            tenantId: actor.tenantId,
+          });
+          if (!sub.accepted) {
+            return sendJson(res, 400, sub);
+          }
+          if (payload.processImmediately === true) {
+            const proc = await engineAdapter.processJob(sub.job.jobId, { tenantId: actor.tenantId });
+            const persisted = proc.job ? await ensureJobAssetPersisted(proc.job, actor) : null;
+            if (persisted && !persisted.ok) {
+              return sendJson(res, mapStorageErrorStatus(persisted.error), { error: persisted.error });
+            }
+            return sendJson(res, proc.ok ? 201 : 202, {
+              accepted: true,
+              processed: proc.ok,
+              errors: proc.errors ?? [],
+              job: sanitizeHttpJob(proc.job, persisted?.assetId ?? null),
+            });
+          }
+          return sendJson(res, 202, { accepted: true, job: sanitizeHttpJob(sub.job) });
         }
-        return send(res, 200, "application/json; charset=utf-8", JSON.stringify({ ok: true, job: cancelled.job }));
+
+        const jobExportMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)\/export\.([a-z0-9]+)$/);
+        if (req.method === "GET" && jobExportMatch) {
+          const [, jobId, fmt] = jobExportMatch;
+          if (!EXPORT_FORMATS.includes(fmt)) {
+            return sendJson(res, 400, { error: "unsupported_export_format", supportedFormats: EXPORT_FORMATS });
+          }
+          const job = engineAdapter.getJob(jobId, { tenantId: actor.tenantId });
+          if (!job) {
+            return sendJson(res, 404, { error: "job_not_found" });
+          }
+          if (job.status !== "completed" || !job.result?.glbBuffer) {
+            return sendJson(res, 409, { error: "job_not_completed", status: job.status });
+          }
+          const persisted = await ensureJobAssetPersisted(job, actor);
+          if (!persisted?.ok) {
+            return sendJson(res, mapStorageErrorStatus(persisted?.error), { error: persisted?.error ?? "storage_error" });
+          }
+          const exported = await artifactStore.exportAsset({
+            assetId: persisted.assetId,
+            tenantId: actor.tenantId,
+            format: fmt,
+          });
+          if (!exported.ok) {
+            return sendJson(res, mapStorageErrorStatus(exported.error), { error: exported.error });
+          }
+          return send(res, 200, exported.mimeType, exported.buffer, {
+            "content-disposition": `attachment; filename="${jobId}.${exported.format}"`,
+          });
+        }
+
+        const jobMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)$/);
+        if (req.method === "GET" && jobMatch) {
+          const job = engineAdapter.getJob(jobMatch[1], { tenantId: actor.tenantId });
+          if (!job) {
+            return sendJson(res, 404, { error: "job_not_found" });
+          }
+          const persisted = await ensureJobAssetPersisted(job, actor);
+          if (persisted && !persisted.ok) {
+            return sendJson(res, mapStorageErrorStatus(persisted.error), { error: persisted.error });
+          }
+          return sendJson(res, 200, { job: sanitizeHttpJob(job, persisted?.assetId ?? null) });
+        }
+
+        const cancelMatch = path.match(/^\/api\/3d\/jobs\/([a-zA-Z0-9_-]+)\/cancel$/);
+        if (req.method === "POST" && cancelMatch) {
+          const raw = await readBody(req, 64 * 1024);
+          if (raw.length > 0) {
+            let body;
+            try {
+              body = JSON.parse(raw.toString("utf8"));
+            } catch {
+              return sendJson(res, 400, { error: "invalid_json" });
+            }
+            if (text(body?.tenantId) && body.tenantId.trim() !== actor.tenantId) {
+              return sendJson(res, 403, { error: "tenant_impersonation_denied" });
+            }
+          }
+          const cancelled = engineAdapter.cancelJob(cancelMatch[1], { tenantId: actor.tenantId });
+          if (!cancelled.ok) {
+            const isTerminal = cancelled.errors?.some((e) => /cannot cancel job/.test(e));
+            return sendJson(res, isTerminal ? 409 : 404, {
+              error: isTerminal ? "cannot_cancel_terminal_job" : "job_not_found",
+              errors: cancelled.errors,
+            });
+          }
+          return sendJson(res, 200, { ok: true, job: sanitizeHttpJob(cancelled.job) });
+        }
+
+        if (req.method === "GET" && path === "/api/3d/assets") {
+          const assets = await artifactStore.listAssets({
+            tenantId: actor.tenantId,
+            consumer: url.searchParams.get("consumer") || null,
+            category: url.searchParams.get("category") || null,
+          });
+          return sendJson(res, 200, { assets });
+        }
+
+        const assetMatch = path.match(/^\/api\/3d\/assets\/([a-zA-Z0-9_-]+)$/);
+        if (assetMatch && req.method === "GET") {
+          const download = url.searchParams.get("download") === "1";
+          const got = await artifactStore.getAsset({
+            assetId: assetMatch[1],
+            tenantId: actor.tenantId,
+            includeBuffer: download,
+          });
+          if (!got.ok) {
+            return sendJson(res, mapStorageErrorStatus(got.error), { error: got.error });
+          }
+          if (download) {
+            return send(res, 200, "model/gltf-binary", got.glbBuffer, {
+              "content-disposition": `attachment; filename="${got.asset.assetId}.glb"`,
+            });
+          }
+          return sendJson(res, 200, { asset: got.asset });
+        }
+
+        if (assetMatch && req.method === "DELETE") {
+          const del = await artifactStore.deleteAsset({
+            assetId: assetMatch[1],
+            tenantId: actor.tenantId,
+          });
+          if (!del.ok) {
+            return sendJson(res, mapStorageErrorStatus(del.error), { error: del.error });
+          }
+          return sendJson(res, 200, del);
+        }
+
+        return sendJson(res, 404, { error: "not_found" });
       }
 
-      return send(res, 404, "application/json; charset=utf-8", JSON.stringify({ error: "not_found" }));
+      return sendJson(res, 404, { error: "not_found" });
     } catch (err) {
       if (err?.statusCode === 413) {
-        return send(res, 413, "application/json; charset=utf-8", JSON.stringify({ error: "body_too_large" }));
+        return sendJson(res, 413, { error: "body_too_large" });
       }
-      return send(res, 500, "application/json; charset=utf-8", JSON.stringify({ error: "internal_error" }));
+      return sendJson(res, 500, { error: "internal_error" });
     }
   });
 
