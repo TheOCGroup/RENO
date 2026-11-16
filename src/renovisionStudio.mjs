@@ -56,5 +56,562 @@ $('closeScopeReview').onclick=()=>scopeReview.classList.add('hidden');
 $('exportEstimate').onclick=()=>{const room=$('room').value;const selected=[...(scopeSelections.get(room)||new Set())];const contractor=$('contractorName').value.trim();if(!selected.length){$('scopeReviewStatus').textContent='Select at least one renovation priority.';return}if(!contractor){$('scopeReviewStatus').textContent='Enter the contractor or estimate source before exporting.';return}const parse=(value,{positive=false,money=false}={})=>{if(value===undefined||value===null||String(value).trim()==='')return null;const n=Number(value);if(!Number.isFinite(n)||(positive?n<=0:n<0))return null;if(money&&(!Number.isSafeInteger(Math.round(n*100))||Math.abs(n*100-Math.round(n*100))>0.000001))return null;return n};const items=selected.map((name,index)=>{const v=scopeEstimateInputs.get(room+'|'+name)||{};const quantity=parse(v.quantity,{positive:true}),materialsCost=parse(v.materialsCost,{money:true}),laborCost=parse(v.laborCost,{money:true});return {itemId:'S-'+String(index+1).padStart(3,'0'),description:name,quantity,unit:v.unit?.trim()||null,materialsCost,laborCost,lineTotal:materialsCost!==null&&laborCost!==null&&Number.isSafeInteger(Math.round((materialsCost+laborCost)*100))?Math.round((materialsCost+laborCost)*100)/100:null,status:'contractor-input-unverified'}});const complete=items.every(x=>x.quantity!==null&&x.unit&&x.lineTotal!==null);const sumCents=complete?items.reduce((sum,x)=>sum+Math.round(x.lineTotal*100),0):null;const totalCost=sumCents!==null&&Number.isSafeInteger(sumCents)?sumCents/100:null;downloadJson({product:'RENOVISION AI',type:'contractor-estimate-worksheet',formatVersion:1,createdAt:new Date().toISOString(),project:activeProjectId?{projectId:activeProjectId,propertyId:$('propertyId').value.trim(),roomId:$('roomId').value.trim()}:null,room,contractorSource:contractor,items,totalCost,estimateStatus:complete&&totalCost!==null?'entered-unverified':'incomplete',disclaimer:'Contractor-entered figures only. RENOVISION has not verified quantities, labor, materials, permits, contractor licensing, or estimate accuracy. No approval or contract is implied.'},'renovision-contractor-estimate.json');$('scopeReviewStatus').textContent=complete&&totalCost!==null?'Worksheet exported with calculated subtotal; amounts remain unverified.':'Incomplete worksheet exported. Total withheld until every work item has quantity, unit, materials and labor.'};
 
 const furnitureItems=[];const obstacles=[];let selectedFurniture=-1;const moneyCents=n=>{const v=Number(n);return Number.isFinite(v)&&v>=0&&Number.isSafeInteger(Math.round(v*100))&&Math.abs(v*100-Math.round(v*100))<0.000001?Math.round(v*100):null};const dimension=n=>{const v=Number(n);return n!==''&&Number.isFinite(v)&&v>0&&v<=100000?v:null};const safeText=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function furnitureFit(item){const w=dimension($('roomWidth').value),d=dimension($('roomDepth').value),c=Number($('clearance').value);if(w===null||d===null||!Number.isFinite(c)||c<0)return 'Room dimensions needed';return (item.width+c<=w&&item.depth+c<=d)||(item.depth+c<=w&&item.width+c<=d)?'Fits room envelope with stated clearance (layout unverified)':'Does not fit room envelope with stated clearance'}function drawFloorPlan(){const host=$('floorPlan'),status=$('floorPlanStatus');host.replaceChildren();const w=dimension($('roomWidth').value),d=dimension($('roomDepth').value);if(w===null||d===null){status.textContent='Enter valid room width and depth to position furniture.';return}const scale=Math.min((host.clientWidth-16)/w,340/d);if(!Number.isFinite(scale)||scale<=0)return;const surface=document.createElement('div');surface.style.cssText='position:relative;margin:8px;background:#f4f0e9;border:2px solid #756d60;box-sizing:border-box;width:'+w*scale+'px;height:'+d*scale+'px';host.append(surface);let overlaps=0,offRoom=0,zoneConflicts=0;obstacles.forEach(zone=>{const z=document.createElement('div');z.title=zone.type+' (approximate)';z.textContent=zone.type;z.style.cssText='position:absolute;pointer-events:none;overflow:hidden;border:2px dashed #a36e51;background:#eac9ac66;color:#663b24;font-size:10px;left:'+zone.x*scale+'px;top:'+zone.y*scale+'px;width:'+zone.width*scale+'px;height:'+zone.depth*scale+'px';surface.append(z)});furnitureItems.forEach((item,i)=>{if(!Number.isFinite(item.x))item.x=0;if(!Number.isFinite(item.y))item.y=0;const iw=item.rotated?item.depth:item.width, id=item.rotated?item.width:item.depth;const inside=item.x>=0&&item.y>=0&&item.x+iw<=w&&item.y+id<=d;if(!inside)offRoom++;for(const zone of obstacles){if(item.x<zone.x+zone.width&&item.x+iw>zone.x&&item.y<zone.y+zone.depth&&item.y+id>zone.y)zoneConflicts++}for(let j=0;j<i;j++){const other=furnitureItems[j];if(item.x<other.x+(other.rotated?other.depth:other.width)&&item.x+iw>other.x&&item.y<other.y+(other.rotated?other.width:other.depth)&&item.y+id>other.y)overlaps++}const block=document.createElement('button');block.type='button';block.textContent=item.name;block.onclick=()=>{selectedFurniture=i;$('selectedFurnitureStatus').textContent='Selected: '+item.name};block.title=item.name+' — drag to reposition';block.setAttribute('aria-label','Move '+item.name+' using drag or arrow keys');block.style.cssText='position:absolute;overflow:hidden;white-space:normal;word-break:break-word;font-size:11px;padding:3px;touch-action:none;border:1px solid #6c645b;border-radius:3px;background:'+(inside?'#d5e2d8':'#efc8b8')+';color:#243c30;left:'+item.x*scale+'px;top:'+item.y*scale+'px;width:'+Math.max(2,iw*scale)+'px;height:'+Math.max(2,id*scale)+'px';block.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();block.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,ox=item.x,oy=item.y;block.onpointermove=ev=>{item.x=Math.round(Math.max(0,Math.min(w-iw,ox+(ev.clientX-sx)/scale))*10)/10;item.y=Math.round(Math.max(0,Math.min(d-id,oy+(ev.clientY-sy)/scale))*10)/10;block.style.left=item.x*scale+'px';block.style.top=item.y*scale+'px'};block.onpointerup=()=>{block.onpointermove=null;drawFloorPlan()}};block.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const step=e.shiftKey?6:1;item.x=Math.max(0,Math.min(w-iw,item.x+(e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0)));item.y=Math.max(0,Math.min(d-id,item.y+(e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0)));drawFloorPlan()};surface.append(block)});status.textContent=furnitureItems.length+' item(s) | '+offRoom+' outside room bounds | '+overlaps+' furniture overlaps | '+zoneConflicts+' obstacle-zone conflicts. Zones are approximate; real clearances and accessibility remain unverified.'}
-function updateFurniturePlan(){const budget=moneyCents($('designBudget').value);const total=furnitureItems.reduce((n,x)=>n+x.priceCents,0);const safeTotal=Number.isSafeInteger(total);$('furnitureSummary').textContent='Items: '+furnitureItems.length+' | Estimated merchandise: '+(safeTotal?'USD '+(total/100).toFixed(2):'unavailable')+' | Budget remaining: '+(budget!==null&&safeTotal?'USD '+((budget-total)/100).toFixed(2):'enter valid budget')+(budget!==null&&safeTotal&&total>budget?' | OVER BUDGET':'');$('furnitureItems').replaceChildren();furnitureItems.forEach((item,i)=>{const row=document.createElement('div');row.className='notice';const link=item.url?'<a href="'+safeText(item.url)+'" target="_blank" rel="noopener noreferrer">Retailer product page</a>':'';row.innerHTML='<strong>'+safeText(item.name)+'</strong> — '+safeText(item.retailer||'Retailer unspecified')+' — USD '+(item.priceCents/100).toFixed(2)+' — '+item.width+' × '+item.depth+' in. '+safeText(furnitureFit(item))+' '+link+' ';const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Remove';remove.onclick=()=>{furnitureItems.splice(i,1);updateFurniturePlan()};row.append(remove);$('furnitureItems').append(row)});drawFloorPlan()}for(const id of ['roomWidth','roomDepth','clearance','designBudget'])$(id).addEventListener('input',updateFurniturePlan);$('addFurniture').onclick=()=>{const name=$('furnitureName').value.trim(),retailer=$('furnitureRetailer').value.trim(),rawUrl=$('furnitureUrl').value.trim(),width=dimension($('furnitureWidth').value),depth=dimension($('furnitureDepth').value),priceCents=moneyCents($('furniturePrice').value);let url='';try{if(rawUrl){const parsed=new URL(rawUrl);if(parsed.protocol!=='https:'||!parsed.hostname)throw Error('invalid');url=parsed.href}}catch{$('furnitureMessage').textContent='Use a valid HTTPS retailer URL.';return}if(!name||width===null||depth===null||priceCents===null||$('furniturePrice').value===''){$('furnitureMessage').textContent='Enter a product name, positive dimensions and valid price.';return}furnitureItems.push({name,retailer,url,width,depth,priceCents,x:0,y:0,rotated:false});$('furnitureMessage').textContent='Added to shortlist. Verify dimensions and retailer pricing.';updateFurniturePlan()};$('addObstacle').onclick=()=>{const w=dimension($('roomWidth').value),d=dimension($('roomDepth').value),x=Number($('obstacleX').value),y=Number($('obstacleY').value),width=dimension($('obstacleWidth').value),depth=dimension($('obstacleDepth').value);if(w===null||d===null||!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||width===null||depth===null||x+width>w||y+depth>d){$('obstacleMessage').textContent='Enter a valid obstacle fully within the room.';return}obstacles.push({type:$('obstacleType').value,x,y,width,depth});$('obstacleMessage').textContent='Zone added. This is a rectangular approximation, not a verified door swing or window clearance.';drawFloorPlan()};$('clearObstacles').onclick=()=>{obstacles.length=0;$('obstacleMessage').textContent='Zones cleared.';drawFloorPlan()};$('rotateFurniture').onclick=()=>{const item=furnitureItems[selectedFurniture];if(!item){$('selectedFurnitureStatus').textContent='Select a furniture block first.';return}item.rotated=!item.rotated;drawFloorPlan();$('selectedFurnitureStatus').textContent=item.name+' rotated '+(item.rotated?'90°':'0°')};$('clearFurniturePlan').onclick=()=>{furnitureItems.length=0;obstacles.length=0;selectedFurniture=-1;updateFurniturePlan()};$('exportFurniturePlan').onclick=()=>{const budget=moneyCents($('designBudget').value),total=furnitureItems.reduce((n,x)=>n+x.priceCents,0);downloadJson({product:'RENOVISION AI',type:'interior-design-shopping-plan',formatVersion:1,room:$('room').value,style:$('designStyle').value,materialDirection:$('designMaterial').value,roomWidthInches:dimension($('roomWidth').value),roomDepthInches:dimension($('roomDepth').value),clearanceInches:Number($('clearance').value),budget:budget===null?null:budget/100,merchandiseTotal:Number.isSafeInteger(total)?total/100:null,obstacles,items:furnitureItems.map(x=>({...x,price:x.priceCents/100,fit:furnitureFit(x)})),disclaimer:'Preliminary user-entered shopping plan. Fit, safety, pricing, taxes, shipping, inventory and purchase links are unverified.'},'renovision-interior-shopping-plan.json')};$('room').addEventListener('change',()=>{furnitureItems.length=0;updateFurniturePlan()});updateFurniturePlan();
+function updateFurniturePlan(){const budget=moneyCents($('designBudget').value);const total=furnitureItems.reduce((n,x)=>n+x.priceCents,0);const safeTotal=Number.isSafeInteger(total);$('furnitureSummary').textContent='Items: '+furnitureItems.length+' | Estimated merchandise: '+(safeTotal?'USD '+(total/100).toFixed(2):'unavailable')+' | Budget remaining: '+(budget!==null&&safeTotal?'USD '+((budget-total)/100).toFixed(2):'enter valid budget')+(budget!==null&&safeTotal&&total>budget?' | OVER BUDGET':'');$('furnitureItems').replaceChildren();furnitureItems.forEach((item,i)=>{const row=document.createElement('div');row.className='notice';const link=item.url?'<a href="'+safeText(item.url)+'" target="_blank" rel="noopener noreferrer">Retailer product page</a>':'';row.innerHTML='<strong>'+safeText(item.name)+'</strong> — '+safeText(item.retailer||'Retailer unspecified')+' — USD '+(item.priceCents/100).toFixed(2)+' — '+item.width+' × '+item.depth+' in. '+safeText(furnitureFit(item))+' '+link+' ';const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Remove';remove.onclick=()=>{furnitureItems.splice(i,1);updateFurniturePlan()};row.append(remove);$('furnitureItems').append(row)});drawFloorPlan()}for(const id of ['roomWidth','roomDepth','clearance','designBudget'])$(id).addEventListener('input',updateFurniturePlan);$('addFurniture').onclick=()=>{const name=$('furnitureName').value.trim(),retailer=$('furnitureRetailer').value.trim(),rawUrl=$('furnitureUrl').value.trim(),width=dimension($('furnitureWidth').value),depth=dimension($('furnitureDepth').value),priceCents=moneyCents($('furniturePrice').value);let url='';try{if(rawUrl){const parsed=new URL(rawUrl);if(parsed.protocol!=='https:'||!parsed.hostname)throw Error('invalid');url=parsed.href}}catch{$('furnitureMessage').textContent='Use a valid HTTPS retailer URL.';return}if(!name||width===null||depth===null||priceCents===null||$('furniturePrice').value===''){$('furnitureMessage').textContent='Enter a product name, positive dimensions and valid price.';return}furnitureItems.push({name,retailer,url,width,depth,priceCents,x:0,y:0,rotated:false});$('furnitureMessage').textContent='Added to shortlist. Verify dimensions and retailer pricing.';updateFurniturePlan()};$('addObstacle').onclick=()=>{const w=dimension($('roomWidth').value),d=dimension($('roomDepth').value),x=Number($('obstacleX').value),y=Number($('obstacleY').value),width=dimension($('obstacleWidth').value),depth=dimension($('obstacleDepth').value);if(w===null||d===null||!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||width===null||depth===null||x+width>w||y+depth>d){$('obstacleMessage').textContent='Enter a valid obstacle fully within the room.';return}obstacles.push({type:$('obstacleType').value,x,y,width,depth});$('obstacleMessage').textContent='Zone added. This is a rectangular approximation, not a verified door swing or window clearance.';drawFloorPlan()};$('clearObstacles').onclick=()=>{obstacles.length=0;$('obstacleMessage').textContent='Zones cleared.';drawFloorPlan()};$('rotateFurniture').onclick=()=>{const item=furnitureItems[selectedFurniture];if(!item){$('selectedFurnitureStatus').textContent='Select a furniture block first.';return}item.rotated=!item.rotated;drawFloorPlan();$('selectedFurnitureStatus').textContent=item.name+' rotated '+(item.rotated?'90°':'0°')};$('clearFurniturePlan').onclick=()=>{furnitureItems.length=0;obstacles.length=0;selectedFurniture=-1;updateFurniturePlan()};$('exportFurniturePlan').onclick=()=>{const budget=moneyCents($('designBudget').value),total=furnitureItems.reduce((n,x)=>n+x.priceCents,0);downloadJson({product:'RENOVISION AI',type:'interior-design-shopping-plan',formatVersion:1,room:$('room').value,style:$('designStyle').value,materialDirection:$('designMaterial').value,roomWidthInches:dimension($('roomWidth').value),roomDepthInches:dimension($('roomDepth').value),clearanceInches:Number($('clearance').value),budget:budget===null?null:budget/100,merchandiseTotal:Number.isSafeInteger(total)?total/100:null,obstacles,items:furnitureItems.map(x=>({...x,price:x.priceCents/100,fit:furnitureFit(x)})),disclaimer:'Preliminary user-entered shopping plan. Fit, safety, pricing, taxes, shipping, inventory and purchase links are unverified.'},'renovision-interior-shopping-plan.json')};
+
+/* ===== RENOVISION design platform extension: openings, walkways, layouts,
+   library, catalog, budget, persistent workspace. Appended to the studio
+   script; uses the studio's own helpers ($, dimension, moneyCents,
+   furnitureItems, obstacles, updateFurniturePlan, drawFloorPlan, idToken,
+   activeProjectId). Units in this UI are inches; the server workspace is
+   meters — conversion happens only at the workspace boundary. ===== */
+const IN_M = 0.0254;
+const toM = (inches) => Math.round(inches / 1 * IN_M * 1000) / 1000;
+const toIn = (meters) => Math.round(meters / IN_M * 10) / 10;
+const openings = [];
+const walkways = [];
+const planHistory = [];
+let savedLayouts = new Map();
+let activeLayoutName = "Layout 1";
+let wsProducts = [];
+let wsShopping = new Set();
+let wsBudget = null;
+let wsSelections = {styleId: null, paletteId: null, materialIds: []};
+let libraryData = null;
+let itemCounter = 0;
+
+function planSnapshot() {
+  return JSON.stringify({f: furnitureItems, o: obstacles, p: openings, w: walkways});
+}
+function planRestore(snap) {
+  const s = JSON.parse(snap);
+  furnitureItems.length = 0; s.f.forEach((x) => furnitureItems.push(x));
+  obstacles.length = 0; s.o.forEach((x) => obstacles.push(x));
+  openings.length = 0; s.p.forEach((x) => openings.push(x));
+  walkways.length = 0; s.w.forEach((x) => walkways.push(x));
+  selectedFurniture = -1;
+  updateFurniturePlan();
+}
+function pushHistory() {
+  const snap = planSnapshot();
+  if (planHistory[planHistory.length - 1] !== snap) planHistory.push(snap);
+  if (planHistory.length > 60) planHistory.shift();
+}
+
+function zoneRectsInches() {
+  const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+  if (w === null || d === null) return [];
+  const zones = [];
+  for (const o of openings) {
+    if (o.kind === "window") {
+      const strip = 0.6 / IN_M;
+      if (o.wall === "north") zones.push({kind: "window", label: "window zone", x: o.offsetIn, y: 0, width: o.widthIn, depth: strip});
+      if (o.wall === "south") zones.push({kind: "window", label: "window zone", x: o.offsetIn, y: d - strip, width: o.widthIn, depth: strip});
+      if (o.wall === "west") zones.push({kind: "window", label: "window zone", x: 0, y: o.offsetIn, width: strip, depth: o.widthIn});
+      if (o.wall === "east") zones.push({kind: "window", label: "window zone", x: w - strip, y: o.offsetIn, width: strip, depth: o.widthIn});
+    } else if (o.direction !== "out") {
+      const s = o.widthIn;
+      if (o.wall === "north") zones.push({kind: "swing", label: "door swing", x: o.offsetIn, y: 0, width: s, depth: s});
+      if (o.wall === "south") zones.push({kind: "swing", label: "door swing", x: o.offsetIn, y: d - s, width: s, depth: s});
+      if (o.wall === "west") zones.push({kind: "swing", label: "door swing", x: 0, y: o.offsetIn, width: s, depth: s});
+      if (o.wall === "east") zones.push({kind: "swing", label: "door swing", x: w - s, y: o.offsetIn, width: s, depth: s});
+    }
+  }
+  for (const wk of walkways) zones.push({kind: "walkway", label: "walkway", x: wk.x, y: wk.y, width: wk.width, depth: wk.depth});
+  return zones;
+}
+
+function renderZones() {
+  const host = $("floorPlan");
+  if (!host) return;
+  host.querySelectorAll("[data-rv-zone]").forEach((el) => el.remove());
+  const surface = host.querySelector("div");
+  const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+  if (!surface || w === null || d === null) return;
+  const scale = Math.min((host.clientWidth - 16) / w, 340 / d);
+  if (!Number.isFinite(scale) || scale <= 0) return;
+  const colors = {swing: ["#b3543f", "#b3543f22"], window: ["#3f6fb5", "#3f6fb522"], walkway: ["#3f7d4e", "#3f7d4e1e"]};
+  let swingHits = 0, windowHits = 0, walkwayHits = 0;
+  for (const z of zoneRectsInches()) {
+    const el = document.createElement("div");
+    el.setAttribute("data-rv-zone", "1");
+    el.title = z.label + " (approximate)";
+    el.textContent = z.label;
+    const c = colors[z.kind];
+    el.style.cssText = "position:absolute;pointer-events:none;overflow:hidden;border:2px dashed " + c[0] + ";background:" + c[1] + ";color:" + c[0] + ";font-size:10px;left:" + z.x * scale + "px;top:" + z.y * scale + "px;width:" + z.width * scale + "px;height:" + z.depth * scale + "px";
+    surface.append(el);
+    for (const item of furnitureItems) {
+      const iw = item.rotated ? item.depth : item.width, idp = item.rotated ? item.width : item.depth;
+      if (item.x < z.x + z.width && item.x + iw > z.x && item.y < z.y + z.depth && item.y + idp > z.y) {
+        if (z.kind === "swing") swingHits++; else if (z.kind === "window") windowHits++; else walkwayHits++;
+      }
+    }
+  }
+  const status = $("floorPlanStatus");
+  if (status && !status.textContent.includes("door-swing intrusions")) {
+    status.textContent += " | " + swingHits + " door-swing intrusions | " + windowHits + " window-zone blocks | " + walkwayHits + " walkway intrusions. Swing and window zones are conservative approximations; accessibility unverified.";
+  }
+}
+const drawFloorPlanOrig = drawFloorPlan;
+drawFloorPlan = function () { drawFloorPlanOrig(); renderZones(); };
+
+function makePanel(title, blurb) {
+  const sec = document.createElement("section");
+  sec.className = "panel";
+  sec.style.marginTop = "20px";
+  const h = document.createElement("h3"); h.textContent = title; sec.append(h);
+  if (blurb) { const p = document.createElement("p"); p.textContent = blurb; sec.append(p); }
+  const main = document.querySelector("main") || document.body;
+  main.append(sec);
+  return sec;
+}
+function field(parent, labelText, input) {
+  const lab = document.createElement("label"); lab.textContent = labelText; lab.append(input); parent.append(lab); return input;
+}
+function textInput(id, ph) { const i = document.createElement("input"); i.id = id; if (ph) i.placeholder = ph; return i; }
+function numInput(id, ph) { const i = textInput(id, ph); i.type = "number"; i.min = "0"; i.step = "any"; return i; }
+function selInput(id, options) { const s = document.createElement("select"); s.id = id; for (const o of options) { const op = document.createElement("option"); op.value = o; op.textContent = o; s.append(op); } return s; }
+function actionButton(parent, label, cls) { const b = document.createElement("button"); b.type = "button"; if (cls) b.className = cls; b.textContent = label; parent.append(b); return b; }
+function statusLine(parent) { const p = document.createElement("p"); p.className = "status"; parent.append(p); return p; }
+
+/* ----- Openings & circulation panel ----- */
+const zonePanel = makePanel("Doors, windows & circulation", "Add wall openings and walkway zones. Door swings are drawn as conservative swept squares; furniture intruding into a swing, window or walkway zone is flagged in the plan diagnostics.");
+{
+  const row = document.createElement("div"); row.className = "actions"; zonePanel.append(row);
+  field(row, "Opening type", selInput("opKind", ["door", "window"]));
+  field(row, "Wall", selInput("opWall", ["north", "south", "east", "west"]));
+  field(row, "Offset along wall (in)", numInput("opOffset", "e.g. 24"));
+  field(row, "Width (in)", numInput("opWidth", "e.g. 36"));
+  field(row, "Hinge (doors)", selInput("opHinge", ["start", "end"]));
+  field(row, "Swing (doors)", selInput("opDirection", ["in", "out"]));
+  const add = actionButton(row, "Add opening");
+  const msg = statusLine(zonePanel);
+  add.onclick = () => {
+    const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+    const wall = $("opWall").value, off = Number($("opOffset").value), width = dimension($("opWidth").value);
+    const wallLen = wall === "north" || wall === "south" ? w : d;
+    if (w === null || d === null || !Number.isFinite(off) || off < 0 || width === null || off + width > wallLen) { msg.textContent = "Enter a valid opening fully within its wall."; return; }
+    pushHistory();
+    openings.push({id: "op-" + (++itemCounter), kind: $("opKind").value, wall, offsetIn: off, widthIn: width, hinge: $("opHinge").value, direction: $("opDirection").value});
+    msg.textContent = "Opening added. Zones are approximations, not verified clearances.";
+    drawFloorPlan();
+  };
+  const row2 = document.createElement("div"); row2.className = "actions"; zonePanel.append(row2);
+  field(row2, "Walkway X (in)", numInput("wkX", "e.g. 12"));
+  field(row2, "Walkway Y (in)", numInput("wkY", "e.g. 60"));
+  field(row2, "Width (in)", numInput("wkW", "e.g. 120"));
+  field(row2, "Depth (in)", numInput("wkD", "e.g. 36"));
+  field(row2, "Minimum width (in)", numInput("wkMin", "e.g. 36"));
+  const addW = actionButton(row2, "Add walkway");
+  addW.onclick = () => {
+    const x = Number($("wkX").value), y = Number($("wkY").value), width = dimension($("wkW").value), depth = dimension($("wkD").value);
+    const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+    if (w === null || d === null || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || width === null || depth === null || x + width > w || y + depth > d) { msg.textContent = "Enter a valid walkway fully within the room."; return; }
+    pushHistory();
+    walkways.push({id: "wk-" + (++itemCounter), x, y, width, depth, minWidthIn: Number($("wkMin").value) || null});
+    msg.textContent = "Walkway added. Keep it clear for circulation; accessibility remains unverified.";
+    drawFloorPlan();
+  };
+  const clear = actionButton(row2, "Clear openings & walkways", "secondary");
+  clear.onclick = () => { pushHistory(); openings.length = 0; walkways.length = 0; drawFloorPlan(); };
+}
+
+/* ----- Plan tools: undo, duplicate ----- */
+const toolsPanel = makePanel("Plan tools", "");
+{
+  const row = document.createElement("div"); row.className = "actions"; toolsPanel.append(row);
+  const undo = actionButton(row, "Undo", "secondary");
+  undo.onclick = () => { const snap = planHistory.pop(); if (snap) planRestore(snap); };
+  const dup = actionButton(row, "Duplicate selected", "secondary");
+  const msg = statusLine(toolsPanel);
+  dup.onclick = () => {
+    const item = furnitureItems[selectedFurniture];
+    if (!item) { msg.textContent = "Select a furniture block first."; return; }
+    pushHistory();
+    const copy = {...item, name: item.name + " copy", x: Math.min(item.x + 6, 9999), y: Math.min(item.y + 6, 9999)};
+    furnitureItems.push(copy);
+    msg.textContent = "Duplicated " + item.name + ". Check the copy's position in the diagnostics.";
+    updateFurniturePlan();
+  };
+  const planHost = $("floorPlan");
+  if (planHost) planHost.addEventListener("pointerdown", () => pushHistory(), true);
+}
+
+/* ----- Layout manager + workspace persistence ----- */
+const layoutPanel = makePanel("Layouts & project workspace", "Keep several named layouts for this room, then save the whole design workspace — layouts, products, budget and library selections — into the project record. It reopens exactly as saved, visible only to your account.");
+const wsStatus = statusLine(layoutPanel);
+{
+  const row = document.createElement("div"); row.className = "actions"; layoutPanel.append(row);
+  field(row, "Layout name", textInput("layoutName", "Layout 1"));
+  const saveL = actionButton(row, "Save layout");
+  field(row, "Saved layouts", selInput("layoutList", []));
+  const loadL = actionButton(row, "Switch layout", "secondary");
+  const dupL = actionButton(row, "Duplicate layout", "secondary");
+  const delL = actionButton(row, "Delete layout", "secondary");
+  const refreshList = () => {
+    const sel = $("layoutList"); sel.replaceChildren();
+    for (const name of savedLayouts.keys()) { const op = document.createElement("option"); op.value = name; op.textContent = name; sel.append(op); }
+    sel.value = activeLayoutName;
+  };
+  const captureCurrent = () => JSON.parse(planSnapshot());
+  const applyState = (s) => {
+    furnitureItems.length = 0; (s.f || []).forEach((x) => furnitureItems.push(x));
+    obstacles.length = 0; (s.o || []).forEach((x) => obstacles.push(x));
+    openings.length = 0; (s.p || []).forEach((x) => openings.push(x));
+    walkways.length = 0; (s.w || []).forEach((x) => walkways.push(x));
+    selectedFurniture = -1;
+    updateFurniturePlan();
+  };
+  saveL.onclick = () => {
+    const name = $("layoutName").value.trim() || activeLayoutName;
+    activeLayoutName = name;
+    savedLayouts.set(name, captureCurrent());
+    refreshList();
+    wsStatus.textContent = "Layout '" + name + "' kept in this session. Save the workspace to persist it in the project.";
+  };
+  loadL.onclick = () => {
+    const name = $("layoutList").value;
+    if (!savedLayouts.has(name)) return;
+    pushHistory();
+    savedLayouts.set(activeLayoutName, captureCurrent());
+    activeLayoutName = name;
+    $("layoutName").value = name;
+    applyState(savedLayouts.get(name));
+    refreshList();
+    wsStatus.textContent = "Switched to layout '" + name + "'.";
+  };
+  dupL.onclick = () => {
+    const name = $("layoutList").value;
+    if (!savedLayouts.has(name)) return;
+    const copyName = name + " copy";
+    savedLayouts.set(copyName, JSON.parse(JSON.stringify(savedLayouts.get(name))));
+    refreshList();
+    wsStatus.textContent = "Layout duplicated as '" + copyName + "'.";
+  };
+  delL.onclick = () => {
+    const name = $("layoutList").value;
+    if (name === activeLayoutName) { wsStatus.textContent = "Switch away before deleting the active layout."; return; }
+    savedLayouts.delete(name);
+    refreshList();
+  };
+  layoutPanel._refreshList = refreshList;
+  layoutPanel._applyState = applyState;
+  layoutPanel._captureCurrent = captureCurrent;
+}
+
+/* ===== Design platform extension, part 2: library, catalog, budget,
+   workspace save/load. ===== */
+const BUDGET_CATS = [["furniture", "Furniture"], ["materials", "Materials"], ["flooring", "Flooring"], ["paint", "Paint"], ["lighting", "Lighting"], ["fixtures", "Fixtures"], ["cabinetry", "Cabinetry"], ["countertops", "Countertops"], ["appliances", "Appliances"], ["labor", "Labor"], ["contractor-estimates", "Contractor estimates"], ["delivery", "Delivery"], ["taxes", "Taxes"], ["permits", "Permits"], ["contingency", "Contingency"]];
+const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+async function apiCall(path, method, body) {
+  const r = await fetch(path, {method, headers: {"content-type": "application/json", authorization: "Bearer " + idToken}, body: body ? JSON.stringify(body) : undefined});
+  const data = await r.json().catch(() => ({}));
+  return {status: r.status, data};
+}
+const dollars = (cents) => cents === null || cents === undefined ? "unknown" : "USD " + (cents / 100).toFixed(2);
+
+/* ----- Workspace collect / save / load ----- */
+const wsNotesInput = field(layoutPanel, "Project design notes", textInput("wsNotes", "Notes kept with the design workspace"));
+{
+  const row = document.createElement("div"); row.className = "actions"; layoutPanel.append(row);
+  const save = actionButton(row, "Save workspace to project");
+  const load = actionButton(row, "Load saved workspace", "secondary");
+  save.onclick = async () => {
+    if (!activeProjectId || !idToken) { wsStatus.textContent = "Sign in and open a project first."; return; }
+    try {
+      const ws = collectWorkspace();
+      const r = await apiCall("/api/renovision/projects/" + encodeURIComponent(activeProjectId) + "/design-workspace", "POST", {workspace: ws});
+      if (r.status === 200) wsStatus.textContent = "Workspace saved to the project at " + new Date(r.data.designWorkspace.updatedAt).toLocaleTimeString() + ". Layouts: " + ws.layouts.length + ", products: " + ws.products.length + ".";
+      else wsStatus.textContent = "Save rejected: " + ((r.data.errors || ["unknown error"]).join("; "));
+    } catch (e) { wsStatus.textContent = "Save failed: " + e.message; }
+  };
+  load.onclick = async () => {
+    if (!activeProjectId || !idToken) { wsStatus.textContent = "Sign in and open a project first."; return; }
+    try {
+      const r = await apiCall("/api/renovision/projects/" + encodeURIComponent(activeProjectId) + "/design-workspace", "GET");
+      if (r.status !== 200) { wsStatus.textContent = "Load failed (" + r.status + ")."; return; }
+      if (!r.data.designWorkspace) { wsStatus.textContent = "No saved workspace in this project yet."; return; }
+      hydrateWorkspace(r.data.designWorkspace);
+      wsStatus.textContent = "Workspace loaded. Verify dimensions before relying on any fit or price.";
+    } catch (e) { wsStatus.textContent = "Load failed: " + e.message; }
+  };
+}
+function collectWorkspace() {
+  savedLayouts.set(activeLayoutName, layoutPanel._captureCurrent());
+  const roomW = dimension($("roomWidth").value), roomD = dimension($("roomDepth").value);
+  if (roomW === null || roomD === null) throw new Error("enter valid room width and depth before saving");
+  const layouts = [];
+  for (const [name, s] of savedLayouts.entries()) {
+    layouts.push({
+      layoutId: slugify(name) || "layout", name, roomId: $("roomId").value.trim() || null,
+      room: {widthMeters: toM(roomW), depthMeters: toM(roomD)},
+      openings: (s.p || []).map((o) => ({id: o.id, kind: o.kind, wall: o.wall, offsetMeters: toM(o.offsetIn), widthMeters: toM(o.widthIn), swing: o.kind === "door" ? {hinge: o.hinge, direction: o.direction} : undefined})),
+      obstacles: (s.o || []).map((z, i) => ({id: "ob-" + (i + 1), kind: ["column", "fireplace", "built-in", "radiator"].includes(z.type) ? z.type : "other", xMeters: toM(z.x), yMeters: toM(z.y), widthMeters: toM(z.width), depthMeters: toM(z.depth)})),
+      walkways: (s.w || []).map((wk) => ({id: wk.id, xMeters: toM(wk.x), yMeters: toM(wk.y), widthMeters: toM(wk.width), depthMeters: toM(wk.depth), minimumWidthMeters: wk.minWidthIn ? toM(wk.minWidthIn) : undefined})),
+      items: (s.f || []).map((item) => {
+        if (!item._lid) item._lid = "item-" + (++itemCounter);
+        return {id: item._lid, productId: item._pid || null, name: item.name, xMeters: toM(item.x), yMeters: toM(item.y), widthMeters: toM(item.width), depthMeters: toM(item.depth), rotationDeg: item.rotated ? 90 : 0};
+      }),
+    });
+  }
+  const derivedLines = [];
+  furnitureItems.forEach((item, i) => { if (item.priceCents > 0) derivedLines.push({lineId: "auto-" + (i + 1), categoryId: "furniture", label: item.name, productId: item._pid || null, estimatedCents: item.priceCents, actualCents: null, status: "planned"}); });
+  let budget = wsBudget;
+  if (!budget) budget = {currency: "USD", totalBudgetCents: moneyCents($("designBudget").value), allocations: {}, lines: derivedLines};
+  else if (!budget.lines.length && derivedLines.length) budget = {...budget, lines: derivedLines};
+  return {
+    format: "renovision-design-workspace/v1",
+    styleId: wsSelections.styleId || (libraryData ? (libraryData.styles.find((s) => s.name === $("designStyle").value)?.id ?? null) : null),
+    paletteId: wsSelections.paletteId, collectionId: null, materialIds: wsSelections.materialIds,
+    layouts, activeLayoutId: slugify(activeLayoutName) || "layout",
+    products: wsProducts, shoppingListIds: [...wsShopping], budget,
+    notes: wsNotesInput.value || "",
+  };
+}
+function hydrateWorkspace(ws) {
+  wsProducts = ws.products || [];
+  wsShopping = new Set(ws.shoppingListIds || []);
+  wsBudget = ws.budget || null;
+  wsSelections = {styleId: ws.styleId || null, paletteId: ws.paletteId || null, materialIds: ws.materialIds || []};
+  wsNotesInput.value = ws.notes || "";
+  savedLayouts = new Map();
+  const byId = new Map(wsProducts.map((p) => [p.productId, p]));
+  for (const l of ws.layouts || []) {
+    savedLayouts.set(l.name, {
+      f: (l.items || []).map((item) => { const prod = item.productId ? byId.get(item.productId) : null; return {name: item.name || (prod ? prod.name : "Item"), retailer: prod?.retailer?.name || "", url: prod?.retailer?.url || "", width: toIn(item.widthMeters), depth: toIn(item.depthMeters), priceCents: prod?.priceCents ?? 0, x: toIn(item.xMeters), y: toIn(item.yMeters), rotated: item.rotationDeg === 90 || item.rotationDeg === 270, _lid: item.id, _pid: item.productId || null}; }),
+      o: (l.obstacles || []).map((z) => ({type: z.kind, x: toIn(z.xMeters), y: toIn(z.yMeters), width: toIn(z.widthMeters), depth: toIn(z.depthMeters)})),
+      p: (l.openings || []).map((o) => ({id: o.id, kind: o.kind, wall: o.wall, offsetIn: toIn(o.offsetMeters), widthIn: toIn(o.widthMeters), hinge: o.swing?.hinge || "start", direction: o.swing?.direction || "in"})),
+      w: (l.walkways || []).map((wk) => ({id: wk.id, x: toIn(wk.xMeters), y: toIn(wk.yMeters), width: toIn(wk.widthMeters), depth: toIn(wk.depthMeters), minWidthIn: wk.minimumWidthMeters ? toIn(wk.minimumWidthMeters) : null})),
+    });
+  }
+  const active = (ws.layouts || []).find((l) => l.layoutId === ws.activeLayoutId) || (ws.layouts || [])[0];
+  if (active) {
+    activeLayoutName = active.name;
+    $("layoutName").value = active.name;
+    $("roomWidth").value = toIn(active.room.widthMeters);
+    $("roomDepth").value = toIn(active.room.depthMeters);
+    layoutPanel._applyState(savedLayouts.get(active.name));
+  }
+  layoutPanel._refreshList();
+  renderCatalog();
+  renderBudget();
+  markLibrarySelections();
+}
+
+/* ----- Design library panel ----- */
+const libraryPanel = makePanel("Design library", "Twenty design styles, materials by category, cohesive palettes and room collections. Selections are saved with the workspace. Palette colors are illustrative design values — always check physical samples.");
+const libraryStatus = statusLine(libraryPanel);
+const libraryBody = document.createElement("div"); libraryPanel.append(libraryBody);
+{
+  const load = actionButton(libraryPanel, "Load design library", "secondary");
+  load.onclick = async () => {
+    if (!idToken) { libraryStatus.textContent = "Sign in first."; return; }
+    const r = await apiCall("/api/renovision/design-library", "GET");
+    if (r.status !== 200) { libraryStatus.textContent = "Library failed to load (" + r.status + ")."; return; }
+    libraryData = r.data.library;
+    renderLibrary();
+    libraryStatus.textContent = "Library loaded: " + libraryData.styles.length + " styles, " + libraryData.materials.length + " materials, " + libraryData.palettes.length + " palettes, " + libraryData.collections.length + " collections.";
+  };
+}
+function markLibrarySelections() {
+  libraryBody.querySelectorAll("[data-style-id]").forEach((el) => { el.style.outline = el.getAttribute("data-style-id") === wsSelections.styleId ? "2px solid #756d60" : ""; });
+  libraryBody.querySelectorAll("[data-palette-id]").forEach((el) => { el.style.outline = el.getAttribute("data-palette-id") === wsSelections.paletteId ? "2px solid #756d60" : ""; });
+}
+function renderLibrary() {
+  libraryBody.replaceChildren();
+  if (!libraryData) return;
+  const sh = document.createElement("h4"); sh.textContent = "Styles"; libraryBody.append(sh);
+  const sg = document.createElement("div"); sg.className = "actions"; libraryBody.append(sg);
+  for (const s of libraryData.styles) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "secondary"; b.textContent = s.name; b.title = s.description; b.setAttribute("data-style-id", s.id);
+    b.onclick = () => { wsSelections.styleId = s.id; const sel = $("designStyle"); for (const op of sel.options) if (op.text === s.name || op.value === s.name) sel.value = op.value; markLibrarySelections(); libraryStatus.textContent = "Style selected: " + s.name + " — " + s.description; };
+    sg.append(b);
+  }
+  const ph = document.createElement("h4"); ph.textContent = "Palettes"; libraryBody.append(ph);
+  for (const p of libraryData.palettes) {
+    const row = document.createElement("div"); row.className = "notice"; row.setAttribute("data-palette-id", p.id);
+    const title = document.createElement("strong"); title.textContent = p.name + " "; row.append(title);
+    for (const c of p.colors) { const sw = document.createElement("span"); sw.title = c.name + " (" + c.role + ")"; sw.style.cssText = "display:inline-block;width:18px;height:18px;border:1px solid #999;vertical-align:middle;margin-right:4px;background:" + c.hex; row.append(sw); }
+    const use = document.createElement("button"); use.type = "button"; use.className = "secondary"; use.textContent = "Use palette";
+    use.onclick = () => { wsSelections.paletteId = p.id; wsSelections.materialIds = [...p.materialIds]; markLibrarySelections(); libraryStatus.textContent = "Palette selected: " + p.name + " (materials: " + p.materialIds.join(", ") + ")."; };
+    row.append(use);
+    libraryBody.append(row);
+  }
+  const mh = document.createElement("h4"); mh.textContent = "Materials — check up to three to compare"; libraryBody.append(mh);
+  const compareSet = new Set();
+  const compareOut = document.createElement("div"); compareOut.className = "notice";
+  const renderCompare = () => {
+    compareOut.replaceChildren();
+    if (!compareSet.size) { compareOut.textContent = "No materials selected for comparison."; return; }
+    for (const id of compareSet) { const m = libraryData.materials.find((x) => x.id === id); const line = document.createElement("div"); line.textContent = m.name + " (" + m.category + ") — durability: " + m.durability + ", maintenance: " + m.maintenance + ". " + m.description; compareOut.append(line); }
+    const note = document.createElement("div"); note.textContent = "General characteristics only; performance varies by specific product."; compareOut.append(note);
+  };
+  for (const cat of libraryData.categories) {
+    const mats = libraryData.materials.filter((m) => m.category === cat.id);
+    if (!mats.length) continue;
+    const line = document.createElement("div");
+    const strong = document.createElement("strong"); strong.textContent = cat.name + ": "; line.append(strong);
+    for (const m of mats) {
+      const lab = document.createElement("label"); lab.style.marginRight = "10px";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = wsSelections.materialIds.includes(m.id);
+      cb.onchange = () => {
+        if (cb.checked) { wsSelections.materialIds = [...new Set([...wsSelections.materialIds, m.id])]; if (compareSet.size < 3) compareSet.add(m.id); }
+        else { wsSelections.materialIds = wsSelections.materialIds.filter((x) => x !== m.id); compareSet.delete(m.id); }
+        renderCompare();
+      };
+      lab.append(cb, document.createTextNode(" " + m.name));
+      line.append(lab);
+    }
+    libraryBody.append(line);
+  }
+  libraryBody.append(compareOut); renderCompare();
+  const ch = document.createElement("h4"); ch.textContent = "Room collections"; libraryBody.append(ch);
+  for (const c of libraryData.collections) {
+    const row = document.createElement("div"); row.className = "notice";
+    row.textContent = c.name + " (" + c.roomType + ") — " + c.notes + " ";
+    const use = document.createElement("button"); use.type = "button"; use.className = "secondary"; use.textContent = "Apply collection";
+    use.onclick = () => { wsSelections.styleId = c.styleId; wsSelections.paletteId = c.paletteId; wsSelections.materialIds = [...c.materialIds]; const st = libraryData.styles.find((s) => s.id === c.styleId); if (st) { const sel = $("designStyle"); for (const op of sel.options) if (op.text === st.name || op.value === st.name) sel.value = op.value; } markLibrarySelections(); libraryStatus.textContent = "Collection applied: " + c.name + ". Save the workspace to persist it."; };
+    row.append(use);
+    libraryBody.append(row);
+  }
+  markLibrarySelections();
+}
+
+/* ----- Product catalog panel ----- */
+const catalogPanel = makePanel("Furniture & product catalog", "Products you add yourself, with their source recorded. RENOVISION does not invent listings, prices or availability: unknown prices stay unknown, and dimensions are unverified unless you record their source.");
+const catalogStatus = statusLine(catalogPanel);
+const catalogList = document.createElement("div"); catalogPanel.append(catalogList);
+const shopSummary = document.createElement("p"); shopSummary.className = "status"; catalogPanel.append(shopSummary);
+function freshnessOf(p) {
+  const ts = Date.parse(p?.source?.retrievedAt ?? "");
+  if (!Number.isFinite(ts)) return "freshness unknown";
+  const age = Date.now() - ts;
+  if (age < 0) return "freshness unknown";
+  return age <= 7 * 24 * 3600 * 1000 ? "recorded within 7 days" : "recorded over 7 days ago — re-check the source";
+}
+function renderCatalog() {
+  catalogList.replaceChildren();
+  const q = ($("catalogSearch")?.value || "").toLowerCase();
+  const maxW = Number($("catalogMaxW")?.value);
+  for (const p of wsProducts) {
+    if (q && ![p.name, p.type, p.color, p.material, p.retailer?.name].some((f) => typeof f === "string" && f.toLowerCase().includes(q))) continue;
+    if (Number.isFinite(maxW) && maxW > 0 && toIn(p.widthMeters) > maxW) continue;
+    const row = document.createElement("div"); row.className = "notice";
+    const head = document.createElement("strong"); head.textContent = p.name; row.append(head);
+    row.append(document.createTextNode(" — " + p.type + " — " + toIn(p.widthMeters) + " × " + toIn(p.depthMeters) + " in — " + dollars(p.priceCents) + " — " + (p.dimensionsVerified ? "dimensions verified (" + p.dimensionSource + ")" : "dimensions unverified") + " — source: " + (p.source?.label || "unknown") + ", " + freshnessOf(p) + " "));
+    if (p.retailer?.url) { const a = document.createElement("a"); a.href = p.retailer.url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = p.retailer.name || "Retailer page"; row.append(a, document.createTextNode(" ")); }
+    const add = document.createElement("button"); add.type = "button"; add.className = "secondary"; add.textContent = "Add to plan";
+    add.onclick = () => { pushHistory(); furnitureItems.push({name: p.name, retailer: p.retailer?.name || "", url: p.retailer?.url || "", width: toIn(p.widthMeters), depth: toIn(p.depthMeters), priceCents: p.priceCents ?? 0, x: 0, y: 0, rotated: false, _pid: p.productId, _lid: "item-" + (++itemCounter)}); updateFurniturePlan(); catalogStatus.textContent = p.name + " added to the plan." + (p.priceCents === null ? " Its price is unknown and is excluded from budget lines." : ""); };
+    const shop = document.createElement("button"); shop.type = "button"; shop.className = "secondary"; shop.textContent = wsShopping.has(p.productId) ? "In shopping list ✓" : "Add to shopping list";
+    shop.onclick = () => { if (wsShopping.has(p.productId)) wsShopping.delete(p.productId); else wsShopping.add(p.productId); renderCatalog(); };
+    row.append(add, shop);
+    catalogList.append(row);
+  }
+  if (!wsProducts.length) catalogList.textContent = "No products yet. Add the first one below.";
+  const selected = wsProducts.filter((p) => wsShopping.has(p.productId));
+  const unpriced = selected.filter((p) => p.priceCents === null).length;
+  shopSummary.textContent = "Shopping list: " + selected.length + " item(s). " + (unpriced ? "Merchandise total unavailable — price unknown for " + unpriced + " item(s). Totals are never estimated." : "Merchandise: " + dollars(selected.reduce((s, p) => s + p.priceCents, 0)) + " (delivery unknown unless recorded per product).");
+}
+{
+  const row = document.createElement("div"); row.className = "actions"; catalogPanel.append(row);
+  field(row, "Search catalog", textInput("catalogSearch", "name, type, color…"));
+  field(row, "Max width (in)", numInput("catalogMaxW", "e.g. 84"));
+  $("catalogSearch").addEventListener("input", renderCatalog);
+  $("catalogMaxW").addEventListener("input", renderCatalog);
+  const form = document.createElement("div"); form.className = "actions"; catalogPanel.append(form);
+  field(form, "Product name", textInput("catName", "e.g. Linen sofa"));
+  field(form, "Type", textInput("catType", "sofa, table, rug…"));
+  field(form, "Retailer", textInput("catRetailer", "Retailer name"));
+  field(form, "Retailer URL (HTTPS)", textInput("catUrl", "https://…"));
+  field(form, "Width (in)", numInput("catW", "e.g. 84"));
+  field(form, "Depth (in)", numInput("catD", "e.g. 38"));
+  field(form, "Price ($, blank = unknown)", numInput("catPrice", ""));
+  field(form, "Color", textInput("catColor", ""));
+  field(form, "Material", textInput("catMaterial", ""));
+  field(form, "Dimension source", textInput("catDimSource", "e.g. manufacturer spec sheet"));
+  const add = actionButton(form, "Add product to catalog");
+  add.onclick = () => {
+    const name = $("catName").value.trim(), type = $("catType").value.trim();
+    const w = dimension($("catW").value), d = dimension($("catD").value);
+    const rawUrl = $("catUrl").value.trim();
+    let url = null;
+    if (rawUrl) { try { const u = new URL(rawUrl); if (u.protocol !== "https:" || !u.hostname) throw new Error("bad"); url = u.href; } catch { catalogStatus.textContent = "Use a valid HTTPS retailer URL or leave it blank."; return; } }
+    if (!name || !type || w === null || d === null) { catalogStatus.textContent = "Enter a name, type and positive dimensions."; return; }
+    const priceRaw = $("catPrice").value;
+    const priceCents = priceRaw === "" ? null : moneyCents(priceRaw);
+    if (priceRaw !== "" && priceCents === null) { catalogStatus.textContent = "Enter a valid price or leave it blank for unknown."; return; }
+    const dimSource = $("catDimSource").value.trim() || null;
+    wsProducts.push({productId: "prod-" + (++itemCounter) + "-" + Date.now().toString(36), name, type, widthMeters: toM(w), depthMeters: toM(d), heightMeters: null, color: $("catColor").value.trim() || null, material: $("catMaterial").value.trim() || null, styleIds: wsSelections.styleId ? [wsSelections.styleId] : [], priceCents, deliveryCents: null, currency: "USD", retailer: $("catRetailer").value.trim() ? {name: $("catRetailer").value.trim(), url} : null, availability: "unknown", dimensionSource: dimSource, dimensionsVerified: Boolean(dimSource), source: {kind: "manual_entry", label: "manual entry", retrievedAt: new Date().toISOString()}});
+    catalogStatus.textContent = name + " added to the catalog as a manual entry. Save the workspace to persist it.";
+    renderCatalog();
+  };
+}
+
+/* ----- Budget panel ----- */
+const budgetPanel = makePanel("Project budget", "Category allocations, estimated versus actual spend, and over-budget alerts. All amounts are exact cents math; contractor figures remain unverified and are never approved costs.");
+const budgetStatus = statusLine(budgetPanel);
+const budgetBody = document.createElement("div"); budgetPanel.append(budgetBody);
+function ensureBudget() {
+  if (!wsBudget) wsBudget = {currency: "USD", totalBudgetCents: moneyCents($("designBudget").value), allocations: {}, lines: []};
+  return wsBudget;
+}
+function renderBudget() {
+  const b = ensureBudget();
+  budgetBody.replaceChildren();
+  const summary = document.createElement("div"); summary.className = "notice";
+  const est = b.lines.filter((l) => l.status !== "cancelled").reduce((s, l) => s + l.estimatedCents, 0);
+  const act = b.lines.filter((l) => l.status !== "cancelled").reduce((s, l) => s + (l.actualCents || 0), 0);
+  summary.textContent = "Total budget: " + dollars(b.totalBudgetCents) + " | Estimated: " + dollars(est) + " | Actual recorded: " + dollars(act) + " | Remaining vs estimate: " + (b.totalBudgetCents === null ? "unknown" : dollars(b.totalBudgetCents - est)) + (b.totalBudgetCents !== null && est > b.totalBudgetCents ? " | OVER BUDGET" : "");
+  budgetBody.append(summary);
+  for (const [cid, cname] of BUDGET_CATS) {
+    const lines = b.lines.filter((l) => l.categoryId === cid && l.status !== "cancelled");
+    if (!lines.length && b.allocations[cid] === undefined) continue;
+    const cEst = lines.reduce((s, l) => s + l.estimatedCents, 0);
+    const alloc = b.allocations[cid];
+    const row = document.createElement("div");
+    row.textContent = cname + ": allocated " + dollars(alloc ?? null) + ", estimated " + dollars(cEst) + (alloc !== undefined && cEst > alloc ? " — OVER ALLOCATION" : "");
+    budgetBody.append(row);
+  }
+  const list = document.createElement("div"); budgetBody.append(list);
+  b.lines.forEach((line, idx) => {
+    const row = document.createElement("div"); row.className = "notice";
+    row.textContent = line.label + " (" + line.categoryId + ") — est " + dollars(line.estimatedCents) + ", actual " + (line.actualCents === null ? "not recorded" : dollars(line.actualCents)) + ", " + line.status + " ";
+    const actIn = document.createElement("input"); actIn.type = "number"; actIn.min = "0"; actIn.step = "0.01"; actIn.placeholder = "Actual $"; actIn.style.width = "110px";
+    const setAct = document.createElement("button"); setAct.type = "button"; setAct.className = "secondary"; setAct.textContent = "Record actual";
+    setAct.onclick = () => { const c = moneyCents(actIn.value); if (c === null) { budgetStatus.textContent = "Enter a valid actual amount."; return; } line.actualCents = c; line.status = "purchased"; renderBudget(); };
+    const rm = document.createElement("button"); rm.type = "button"; rm.className = "secondary"; rm.textContent = "Remove";
+    rm.onclick = () => { b.lines.splice(idx, 1); renderBudget(); };
+    row.append(actIn, setAct, rm);
+    list.append(row);
+  });
+  const form = document.createElement("div"); form.className = "actions"; budgetBody.append(form);
+  field(form, "Allocation category", selInput("budAllocCat", BUDGET_CATS.map((c) => c[0])));
+  field(form, "Allocation ($)", numInput("budAlloc", ""));
+  const setAlloc = actionButton(form, "Set allocation", "secondary");
+  setAlloc.onclick = () => { const c = moneyCents($("budAlloc").value); if (c === null) { budgetStatus.textContent = "Enter a valid allocation."; return; } ensureBudget().allocations[$("budAllocCat").value] = c; renderBudget(); };
+  field(form, "Line label", textInput("budLabel", "e.g. Sofa"));
+  field(form, "Line category", selInput("budLineCat", BUDGET_CATS.map((c) => c[0])));
+  field(form, "Estimated ($)", numInput("budEst", ""));
+  const addLine = actionButton(form, "Add budget line", "secondary");
+  addLine.onclick = () => { const c = moneyCents($("budEst").value); const label = $("budLabel").value.trim(); if (!label || c === null) { budgetStatus.textContent = "Enter a label and a valid estimate."; return; } ensureBudget().lines.push({lineId: "line-" + (++itemCounter) + "-" + Date.now().toString(36), categoryId: $("budLineCat").value, label, productId: null, estimatedCents: c, actualCents: null, status: "planned"}); renderBudget(); };
+  const importBtn = actionButton(form, "Import shopping list as furniture lines", "secondary");
+  importBtn.onclick = () => {
+    const bb = ensureBudget();
+    let added = 0, skipped = 0;
+    for (const p of wsProducts.filter((x) => wsShopping.has(x.productId))) {
+      if (p.priceCents === null) { skipped++; continue; }
+      if (bb.lines.some((l) => l.productId === p.productId)) continue;
+      bb.lines.push({lineId: "line-" + (++itemCounter) + "-" + Date.now().toString(36), categoryId: "furniture", label: p.name, productId: p.productId, estimatedCents: p.priceCents, actualCents: null, status: "planned"});
+      added++;
+    }
+    budgetStatus.textContent = "Imported " + added + " priced product(s)." + (skipped ? " " + skipped + " unpriced product(s) skipped — their cost is unknown, never estimated." : "");
+    renderBudget();
+  };
+  const totalRow = document.createElement("div"); totalRow.className = "actions"; budgetBody.append(totalRow);
+  field(totalRow, "Total project budget ($)", numInput("budTotal", ""));
+  const setTotal = actionButton(totalRow, "Set total budget", "secondary");
+  setTotal.onclick = () => { const c = moneyCents($("budTotal").value); if (c === null) { budgetStatus.textContent = "Enter a valid total budget."; return; } ensureBudget().totalBudgetCents = c; $("designBudget").value = (c / 100).toFixed(2); renderBudget(); };
+}
+renderCatalog();
+renderBudget();
+$('room').addEventListener('change',()=>{furnitureItems.length=0;updateFurniturePlan()});updateFurniturePlan();
 </script></body></html>`;

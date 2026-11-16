@@ -263,7 +263,127 @@ test("budget: fractional cents and unknown categories fail closed with no totals
   assert.equal(validateProjectBudget(b2).valid, false);
 });
 
-/* ---------------- design workspace (persistence) ---------------- */
+/* ---------------- design library + layout evaluation routes ---------------- */
+
+test("routes: design-library serves the full library; evaluate-layout validates and diagnoses", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "renovision-lib-"));
+  t.after(() => rm(dir, {recursive: true, force: true}));
+  const actorTenants = new Map();
+  const authenticate = async (req) => {
+    const id = req.headers["x-actor-id"], tenantId = req.headers["x-tenant-id"];
+    if (!id || !tenantId) return null;
+    actorTenants.set(id, tenantId);
+    return {id, tenantId, authenticated: true, roles: ["admin"], propertyIds: ["*"], roomIds: []};
+  };
+  const authorize = async ({actorId, tenantId}) => Boolean(actorId && actorTenants.has(actorId) && (!tenantId || actorTenants.get(actorId) === tenantId));
+  const evidenceStorage = createDurableEvidenceStorage({rootDir: join(dir, "evidence"), authorize});
+  const eventStore = createDurableSpatialEventStore({rootDir: join(dir, "events"), authorize: async (scope) => authorize({actorId: scope?.actor?.id, tenantId: scope?.tenantId})});
+  const server = createRenovisionServer({authenticate, resolveApproval: createMemoryApprovalRegistry(), evidenceStorage, eventStore});
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  t.after(() => server.close());
+  const base = "http://127.0.0.1:" + server.address().port;
+  const HA = {"x-actor-id": "operator-1", "x-tenant-id": "tenant-a", "content-type": "application/json"};
+  const libRes = await fetch(base + "/api/renovision/design-library", {headers: HA});
+  assert.equal(libRes.status, 200);
+  const lib = (await libRes.json()).library;
+  assert.equal(lib.styles.length, 20);
+  assert.equal(lib.categories.length, 13);
+  assert.ok(lib.materials.length >= 17);
+  assert.ok(lib.palettes.length >= 8);
+  assert.ok(lib.collections.length >= 6);
+  const unauth = await fetch(base + "/api/renovision/design-library");
+  assert.equal(unauth.status, 401);
+  const layout = createRoomLayout({layoutId: "eval-1", name: "Eval", roomId: "room-1", widthMeters: 5, depthMeters: 4});
+  layout.items.push({id: "big", xMeters: 4.5, yMeters: 3.5, widthMeters: 1, depthMeters: 1, rotationDeg: 0});
+  const evRes = await fetch(base + "/api/renovision/design/evaluate-layout", {method: "POST", headers: HA, body: JSON.stringify({layout})});
+  assert.equal(evRes.status, 200);
+  const ev = (await evRes.json()).evaluation;
+  assert.equal(ev.valid, true);
+  assert.equal(ev.verified, false);
+  assert.ok(ev.items[0].issues.includes("outside_room_bounds"));
+  const badRes = await fetch(base + "/api/renovision/design/evaluate-layout", {method: "POST", headers: HA, body: JSON.stringify({layout: {room: {widthMeters: -1, depthMeters: 4}, items: []}})});
+  assert.equal(badRes.status, 422);
+});
+
+/* ---------------- studio extension executes and collects a valid workspace ---------------- */
+
+import {createContext, runInContext} from "node:vm";
+import {RENOVISION_STUDIO_HTML} from "../src/renovisionStudio.mjs";
+
+test("studio extension: appended design-platform script executes and its workspace passes server validation", () => {
+  const startMarker = "/* ===== RENOVISION design platform extension";
+  const endMarker = "$('room').addEventListener('change',()=>{furnitureItems.length=0;updateFurniturePlan()});updateFurniturePlan();";
+  const start = RENOVISION_STUDIO_HTML.indexOf(startMarker);
+  const end = RENOVISION_STUDIO_HTML.indexOf(endMarker);
+  assert.ok(start > 0 && end > start, "extension block present in studio page");
+  const block = RENOVISION_STUDIO_HTML.slice(start, end);
+
+  const allElements = [];
+  const makeEl = (tag = "div") => {
+    const el = {
+      tag, id: "", value: "", textContent: "", innerHTML: "", title: "", placeholder: "", type: "", className: "", checked: false,
+      style: {}, children: [], options: [], dataset: {},
+      classList: {add() {}, remove() {}, toggle() {}},
+      setAttribute() {}, getAttribute() { return null; },
+      append(...kids) { this.children.push(...kids); }, appendChild(k) { this.children.push(k); return k; },
+      replaceChildren(...kids) { this.children = [...kids]; },
+      addEventListener() {}, removeEventListener() {},
+      querySelectorAll() { return []; }, querySelector() { return null; },
+      closest() { return null; }, scrollIntoView() {}, focus() {},
+    };
+    allElements.push(el);
+    return el;
+  };
+  const byId = (id) => {
+    let el = allElements.find((e) => e.id === id);
+    if (!el) { el = makeEl("input"); el.id = id; }
+    return el;
+  };
+  // Pre-register the main-script element ids the extension reads at load.
+  const preset = {roomWidth: "240", roomDepth: "180", designBudget: "5000", roomId: "room-1", clearance: "30"};
+  for (const [id, v] of Object.entries(preset)) { const el = byId(id); el.value = v; }
+  byId("designStyle").options = [{text: "Japandi", value: "Japandi"}];
+  byId("designStyle").value = "Japandi";
+  byId("floorPlan").clientWidth = 800;
+
+  const sandbox = {
+    console, JSON, Math, Number, String, Boolean, Array, Object, Set, Map, Date, URL, Error, Promise, fetch: async () => { throw new Error("no network in test"); },
+    document: {
+      createElement: (tag) => makeEl(tag),
+      createTextNode: (text) => ({textContent: text}),
+      getElementById: (id) => byId(id),
+      querySelector: () => makeEl("main"),
+      querySelectorAll: () => [],
+      body: makeEl("body"),
+    },
+    furnitureItems: [], obstacles: [],
+    selectedFurniture: -1,
+    activeProjectId: "proj-1", idToken: "test-token",
+    dimension: (n) => { const v = Number(n); return n !== "" && n !== null && n !== undefined && Number.isFinite(v) && v > 0 && v <= 100000 ? v : null; },
+    moneyCents: (n) => { const v = Number(n); return Number.isFinite(v) && v >= 0 && Number.isSafeInteger(Math.round(v * 100)) && Math.abs(v * 100 - Math.round(v * 100)) < 0.000001 ? Math.round(v * 100) : null; },
+    drawFloorPlan: function () {},
+    updateFurniturePlan: function () { sandbox.__ufp = (sandbox.__ufp || 0) + 1; },
+  };
+  sandbox.$ = (id) => byId(id);
+  sandbox.window = sandbox;
+  const ctx = createContext(sandbox);
+  runInContext(block, ctx, {filename: "studio-extension.js"});
+  // The block executed end to end (panels built, catalog + budget rendered).
+  assert.ok(runInContext("typeof collectWorkspace", ctx) === "function");
+  // Exercise the collectors: add a plan item and an opening through the
+  // extension's own state, then collect and validate server-side.
+  runInContext("furnitureItems.push({name:'Test sofa', retailer:'R', url:'', width:84, depth:38, priceCents:129900, x:12, y:60, rotated:false, _pid:null, _lid:'item-t1'})", ctx);
+  runInContext("openings.push({id:'op-t1', kind:'door', wall:'north', offsetIn:24, widthIn:36, hinge:'start', direction:'in'})", ctx);
+  runInContext("walkways.push({id:'wk-t1', x:12, y:96, width:120, depth:36, minWidthIn:36})", ctx);
+  const ws = runInContext("collectWorkspace()", ctx);
+  const check = validateDesignWorkspace(ws);
+  assert.equal(check.valid, true, check.errors.join("; "));
+  assert.equal(ws.layouts.length, 1);
+  assert.equal(ws.layouts[0].items[0].widthMeters, 2.134); // 84in in meters, 3dp
+  assert.equal(ws.layouts[0].openings[0].kind, "door");
+  assert.equal(ws.budget.totalBudgetCents, 500000);
+  assert.equal(ws.budget.lines[0].estimatedCents, 129900);
+});
 
 import {RenovisionProject} from "../lib/renovision/project-workflow.mjs";
 import {validateDesignWorkspace, normalizeDesignWorkspace, emptyDesignWorkspace} from "../lib/renovision/design-workspace.mjs";

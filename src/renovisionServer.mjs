@@ -13,6 +13,8 @@ import {authorizeAction} from "../lib/renovision/access-control.mjs";
 import {buildExportPackage} from "../lib/renovision/export-package.mjs";
 import {RENOVISION_APP_HTML} from "./renovisionUi.mjs";
 import {RENOVISION_STUDIO_HTML} from "./renovisionStudio.mjs";
+import {listDesignStyles, listDesignCategories, listDesignMaterials, listDesignPalettes, listRoomCollections} from "../lib/renovision/design-library.mjs";
+import {evaluateRoomLayout} from "../lib/renovision/room-layout.mjs";
 const MAX_BODY_BYTES = 32_000_000;
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
@@ -162,7 +164,14 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        if (!record) return send(res, 404, {ok: false, errors: ["approval_not_found"]});
        return send(res, 200, {ok: true, approval: record});
      }
-     if (req.method === "POST" && path === "/api/renovision/projects") {
+     if (req.method === "GET" && path === "/api/renovision/design-library") {
+      return send(res, 200, {ok: true, library: {styles: listDesignStyles(), categories: listDesignCategories(), materials: listDesignMaterials(), palettes: listDesignPalettes(), collections: listRoomCollections()}});
+    }
+    if (req.method === "POST" && path === "/api/renovision/design/evaluate-layout") {
+      const evaluation = evaluateRoomLayout(body.layout, {minimumClearanceMeters: body.minimumClearanceMeters});
+      return send(res, evaluation.valid ? 200 : 422, {ok: evaluation.valid, evaluation});
+    }
+    if (req.method === "POST" && path === "/api/renovision/projects") {
        const check = guard("project:create", {propertyId: body.propertyId, roomId: body.roomId});
        if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
        if ((!projectStore && projects.has(keyFor(actor, body.projectId))) || (projectStore && await projectStore.load(body.projectId, actor.tenantId))) return send(res, 409, {ok: false, errors: ["project_already_exists"]});
