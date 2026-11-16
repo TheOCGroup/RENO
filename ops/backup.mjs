@@ -46,15 +46,29 @@ try {
   }
 
   // Audit-chain verification through the application's own modules.
-  const store = new MissionControlStore(dest, {});
+  // verifyAuditChain returns a boolean verdict; false FAILS the backup
+  // (remediation 2026-11-16, QUINCEY F-1: the verdict was previously
+  // discarded and the counter incremented unconditionally).
+  // Tenant: MISSION_CONTROL_TENANT_ID (default "default"), as the server
+  // resolves it (QUINCEY F-3). A database whose projects live under a
+  // different tenant fails loudly instead of verifying vacuously.
+  const tenantId = process.env.MISSION_CONTROL_TENANT_ID || "default";
+  const store = new MissionControlStore(dest, { tenantId });
   const finance = new MissionControlFinance(store);
-  const projects = store.listProjects(store.defaultTenantId);
+  const projects = store.listProjects(tenantId);
+  if (destCounts.projects > 0 && projects.length === 0) {
+    store.close();
+    throw new Error(`tenant mismatch: backup holds ${destCounts.projects} project(s) but tenant "${tenantId}" sees none — set MISSION_CONTROL_TENANT_ID to the database's tenant`);
+  }
   let chainsVerified = 0;
-  for (const p of projects) { finance.verifyAuditChain(p.id); chainsVerified++; }
+  for (const p of projects) {
+    if (finance.verifyAuditChain(p.id, tenantId) !== true) { store.close(); throw new Error(`audit chain verification FAILED for project ${p.id}`); }
+    chainsVerified++;
+  }
   store.close();
 
   const bytes = readFileSync(dest);
-  receipt = { ok: true, source: src, backup: dest, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), integrity, counts: destCounts, projects: projects.length, auditChainsVerified: chainsVerified };
+  receipt = { ok: true, source: src, backup: dest, tenantId, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), integrity, counts: destCounts, projects: projects.length, auditChainsVerified: chainsVerified };
 } catch (err) {
   try { rmSync(dest, { force: true }); } catch {}
   console.error(JSON.stringify({ ok: false, error: String(err && err.message || err) }));

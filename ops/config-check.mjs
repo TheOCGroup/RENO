@@ -38,9 +38,14 @@ if (!present("MISSION_CONTROL_ACTOR_TOKENS")) {
   fail("actor_tokens", "MISSION_CONTROL_ACTOR_TOKENS is MISSING — per-actor token binding is mandatory in production");
 } else {
   try {
+    // Mirrors the server's normalizeActorTokens exactly (remediation
+    // 2026-11-16, QUINCEY F-2): a plain object (never an array), no empty
+    // token keys, every actor ID a non-blank string.
     const parsed = JSON.parse(env.MISSION_CONTROL_ACTOR_TOKENS);
-    const entries = parsed && typeof parsed === "object" ? Object.entries(parsed) : [];
-    if (entries.length === 0 || entries.some(([, v]) => typeof v !== "string" || !v)) throw new Error("empty or malformed mapping");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object mapping");
+    const entries = Object.entries(parsed);
+    if (entries.length === 0) throw new Error("empty mapping");
+    if (entries.some(([token, v]) => !token || typeof v !== "string" || !v.trim())) throw new Error("empty token or blank actor id");
     ok("actor_tokens", `valid JSON registry, ${entries.length} actor binding(s)`);
   } catch (err) {
     fail("actor_tokens", `MISSION_CONTROL_ACTOR_TOKENS is not a valid token->actorId JSON mapping (${err.message})`);

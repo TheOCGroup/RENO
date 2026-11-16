@@ -68,3 +68,16 @@ test("config-check refuses demo mode, missing registry, missing secrets, missing
   assert.equal(empty.code, 1);
   assert.ok(codes(empty).length >= 4, "an empty environment fails on every mandatory item");
 });
+
+test("F-2 regression: registry validation mirrors the server (array, empty key, blank actor refused)", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "mc-config-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const good = goodEnv(dir);
+  const codes = (r) => r.json.findings.filter(f => f.level === "FAIL").map(f => f.code);
+
+  for (const registry of ['["tok-a","tok-b"]', '{"": "pm-1"}', '{"tok-a": "  "}', '{"tok-a": 42}', "null", '"just-a-string"']) {
+    const r = run({ ...good, MISSION_CONTROL_ACTOR_TOKENS: registry });
+    assert.equal(r.code, 1, `registry ${registry} must be refused (the server would refuse to boot)`);
+    assert.ok(codes(r).includes("actor_tokens"), `registry ${registry} fails on actor_tokens`);
+  }
+});

@@ -45,11 +45,24 @@ try {
   report.checks.counts = tables;
   if (report.checks.integrity !== "ok") throw new Error(`integrity_check: ${report.checks.integrity}`);
 
-  const store = new MissionControlStore(scratch, {});
+  // verifyAuditChain returns a boolean verdict; false FAILS the drill
+  // (remediation 2026-11-16, QUINCEY F-1). Tenant resolves from
+  // MISSION_CONTROL_TENANT_ID (default "default"); a tenant that sees no
+  // projects in a non-empty backup fails loudly (QUINCEY F-3).
+  const tenantId = process.env.MISSION_CONTROL_TENANT_ID || "default";
+  const store = new MissionControlStore(scratch, { tenantId });
   const finance = new MissionControlFinance(store);
-  const projects = store.listProjects(store.defaultTenantId);
+  const projects = store.listProjects(tenantId);
+  if (tables.projects > 0 && projects.length === 0) {
+    store.close();
+    throw new Error(`tenant mismatch: backup holds ${tables.projects} project(s) but tenant "${tenantId}" sees none — set MISSION_CONTROL_TENANT_ID to the database's tenant`);
+  }
   let verified = 0;
-  for (const p of projects) { finance.verifyAuditChain(p.id); verified++; }
+  for (const p of projects) {
+    if (finance.verifyAuditChain(p.id, tenantId) !== true) { store.close(); throw new Error(`audit chain verification FAILED for project ${p.id}`); }
+    verified++;
+  }
+  report.checks.tenantId = tenantId;
   report.checks.projectsReadable = projects.length;
   report.checks.auditChainsVerified = verified;
   store.close();
