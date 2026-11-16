@@ -181,7 +181,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        "": "project:read", "preview/existing.svg": "project:read", "preview/proposed.svg": "project:read",
        "capture-plan": "capture:write", evidence: "capture:write", captures: "capture:write", "capture-review": "capture:write",
        measurements: "measurement:write", corrections: "measurement:correct", lock: "geometry:lock",
-       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write",
+       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write",
        comparison: "comparison:build", "quincey-packet": "export:read", export: "export:read"
      })[routeKey];
      const action = actionFor(sub);
@@ -257,6 +257,8 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        const preview = project.generatePreview({actor, mode: body.mode, sourceEvidenceRef: body.sourceEvidenceRef}); const {existingSvg, proposedSvg, ...rest} = preview; return done(200, {ok: true, preview: rest});
      }
      if (req.method === "POST" && sub === "furnishing") return done(200, {ok: true, plan: project.evaluateFurnishing({actor, items: body.items, minimumClearanceMeters: body.minimumClearanceMeters})});
+     if (req.method === "GET" && sub === "design-workspace") return send(res, 200, {ok: true, designWorkspace: project.designWorkspace});
+     if (req.method === "POST" && sub === "design-workspace") return done(200, {ok: true, designWorkspace: project.setDesignWorkspace({actor, workspace: body.workspace})});
      if (req.method === "POST" && sub === "comparison") return done(200, {ok: true, comparison: project.buildComparison({actor})});
      if (req.method === "POST" && sub === "quincey-packet") return done(200, {ok: true, ...project.buildReviewPacket({actor, commitSha: body.commitSha, prUrl: body.prUrl, studyId: body.studyId, ciRuns: body.ciRuns, testCount: body.testCount, readinessEvidence: body.readinessEvidence})});
      return send(res, 404, {ok: false, errors: ["route_not_found"]});
