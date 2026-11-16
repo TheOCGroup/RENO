@@ -340,7 +340,11 @@ function collectWorkspace() {
   const roomW = dimension($("roomWidth").value), roomD = dimension($("roomDepth").value);
   if (roomW === null || roomD === null) throw new Error("enter valid room width and depth before saving");
   const layouts = [];
+  const seenSlugs = new Set();
   for (const [name, s] of savedLayouts.entries()) {
+    const slug = slugify(name) || "layout";
+    if (seenSlugs.has(slug)) throw new Error("layout names '" + name + "' and another layout produce the same saved id '" + slug + "' — rename one before saving");
+    seenSlugs.add(slug);
     layouts.push({
       layoutId: slugify(name) || "layout", name, roomId: $("roomId").value.trim() || null,
       room: {widthMeters: toM(roomW), depthMeters: toM(roomD)},
@@ -356,7 +360,7 @@ function collectWorkspace() {
   const derivedLines = [];
   furnitureItems.forEach((item, i) => { if (item.priceCents > 0) derivedLines.push({lineId: "auto-" + (i + 1), categoryId: "furniture", label: item.name, productId: item._pid || null, estimatedCents: item.priceCents, actualCents: null, status: "planned"}); });
   let budget = wsBudget;
-  if (!budget) budget = {currency: "USD", totalBudgetCents: moneyCents($("designBudget").value), allocations: {}, lines: derivedLines};
+  if (!budget) { const rawBudget = $("designBudget").value; budget = {currency: "USD", totalBudgetCents: rawBudget === "" ? null : moneyCents(rawBudget), allocations: {}, lines: derivedLines}; }
   else if (!budget.lines.length && derivedLines.length) budget = {...budget, lines: derivedLines};
   return {
     format: "renovision-design-workspace/v1",
@@ -551,7 +555,7 @@ const budgetPanel = makePanel("Project budget", "Category allocations, estimated
 const budgetStatus = statusLine(budgetPanel);
 const budgetBody = document.createElement("div"); budgetPanel.append(budgetBody);
 function ensureBudget() {
-  if (!wsBudget) wsBudget = {currency: "USD", totalBudgetCents: moneyCents($("designBudget").value), allocations: {}, lines: []};
+  if (!wsBudget) { const raw = $("designBudget").value; wsBudget = {currency: "USD", totalBudgetCents: raw === "" ? null : moneyCents(raw), allocations: {}, lines: []}; }
   return wsBudget;
 }
 function renderBudget() {

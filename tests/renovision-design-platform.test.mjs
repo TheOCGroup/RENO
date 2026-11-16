@@ -263,6 +263,41 @@ test("budget: fractional cents and unknown categories fail closed with no totals
   assert.equal(validateProjectBudget(b2).valid, false);
 });
 
+/* ---------------- QUINCEY remediation regressions (U-1..U-3) ---------------- */
+
+test("U-1: budget totals fail closed at safe-integer overflow, never masked to 0", () => {
+  const b = createProjectBudget({totalBudgetCents: null});
+  b.lines.push({lineId: "m1", categoryId: "furniture", label: "A", estimatedCents: Number.MAX_SAFE_INTEGER, actualCents: null, status: "planned"});
+  b.lines.push({lineId: "m2", categoryId: "furniture", label: "B", estimatedCents: Number.MAX_SAFE_INTEGER, actualCents: null, status: "planned"});
+  const s = summarizeProjectBudget(b);
+  assert.equal(s.valid, true);
+  assert.equal(s.estimatedTotalCents, null);
+  assert.equal(s.totalsComplete, false);
+  assert.ok(s.alerts.some((a) => a.kind === "totals_overflow_withheld"));
+  const cmp = compareBudgetOptions(b, createProjectBudget({totalBudgetCents: 100}));
+  assert.equal(cmp.valid, false);
+  assert.ok(cmp.errors.includes("budget_totals_unavailable"));
+});
+
+test("U-2: validators return {valid:false} on non-iterable collection fields instead of throwing", () => {
+  assert.equal(validateRoomLayout({room: {widthMeters: 5, depthMeters: 4}, items: 5, openings: "x", obstacles: null}).valid, false);
+  assert.equal(validateDesignWorkspace({materialIds: 7, layouts: [], products: []}).valid, false);
+  assert.equal(validateDesignWorkspace({layouts: [], products: [], shoppingListIds: "nope"}).valid, false);
+  assert.equal(validateProjectBudget({lines: 3}).valid, false);
+  assert.equal(validateProjectBudget({allocations: [1, 2]}).valid, false);
+  assert.equal(summarizeProjectBudget({lines: "nope"}).valid, false);
+});
+
+test("U-3: obstacles and walkways must lie fully within the room", () => {
+  const l = baseLayout();
+  l.obstacles.push({id: "ob-out", kind: "column", xMeters: 4.8, yMeters: 0, widthMeters: 0.5, depthMeters: 0.5});
+  assert.equal(validateRoomLayout(l).valid, false);
+  const l2 = baseLayout();
+  l2.walkways.push({id: "wk-out", xMeters: 0, yMeters: 3.8, widthMeters: 2, depthMeters: 0.5});
+  assert.equal(validateRoomLayout(l2).valid, false);
+  assert.equal(validateRoomLayout(baseLayout()).valid, true);
+});
+
 /* ---------------- design library + layout evaluation routes ---------------- */
 
 test("routes: design-library serves the full library; evaluate-layout validates and diagnoses", async (t) => {
@@ -383,6 +418,41 @@ test("studio extension: appended design-platform script executes and its workspa
   assert.equal(ws.layouts[0].openings[0].kind, "door");
   assert.equal(ws.budget.totalBudgetCents, 500000);
   assert.equal(ws.budget.lines[0].estimatedCents, 129900);
+  // U-5b: layout names that slugify to the same saved id are refused with a
+  // clear message before anything is sent to the server.
+  runInContext("savedLayouts.set('My Layout', {f:[],o:[],p:[],w:[]}); savedLayouts.set('my-layout', {f:[],o:[],p:[],w:[]})", ctx);
+  assert.throws(() => runInContext("collectWorkspace()", ctx), /same saved id/);
+});
+
+test("studio extension U-4: an unset budget field persists as null, never as 0", () => {
+  const startMarker = "/* ===== RENOVISION design platform extension";
+  const endMarker = "$('room').addEventListener('change',()=>{furnitureItems.length=0;updateFurniturePlan()});updateFurniturePlan();";
+  const block = RENOVISION_STUDIO_HTML.slice(RENOVISION_STUDIO_HTML.indexOf(startMarker), RENOVISION_STUDIO_HTML.indexOf(endMarker));
+  const allElements = [];
+  const makeEl = (tag = "div") => {
+    const el = {tag, id: "", value: "", textContent: "", innerHTML: "", title: "", placeholder: "", type: "", className: "", checked: false, style: {}, children: [], options: [], dataset: {}, classList: {add() {}, remove() {}, toggle() {}}, setAttribute() {}, getAttribute() { return null; }, append(...k) { this.children.push(...k); }, appendChild(k) { this.children.push(k); return k; }, replaceChildren(...k) { this.children = [...k]; }, addEventListener() {}, removeEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; }, closest() { return null; }, scrollIntoView() {}, focus() {}};
+    allElements.push(el);
+    return el;
+  };
+  const byId = (id) => { let el = allElements.find((e) => e.id === id); if (!el) { el = makeEl("input"); el.id = id; } return el; };
+  for (const [id, v] of Object.entries({roomWidth: "240", roomDepth: "180", designBudget: "", roomId: "room-1", clearance: "30"})) byId(id).value = v;
+  byId("designStyle").options = [{text: "Japandi", value: "Japandi"}];
+  byId("designStyle").value = "Japandi";
+  byId("floorPlan").clientWidth = 800;
+  const sandbox = {
+    console, JSON, Math, Number, String, Boolean, Array, Object, Set, Map, Date, URL, Error, Promise, fetch: async () => { throw new Error("no network in test"); },
+    document: {createElement: (tag) => makeEl(tag), createTextNode: (text) => ({textContent: text}), getElementById: (id) => byId(id), querySelector: () => makeEl("main"), querySelectorAll: () => [], body: makeEl("body")},
+    furnitureItems: [], obstacles: [], selectedFurniture: -1, activeProjectId: "proj-1", idToken: "test-token",
+    dimension: (n) => { const v = Number(n); return n !== "" && n !== null && n !== undefined && Number.isFinite(v) && v > 0 && v <= 100000 ? v : null; },
+    moneyCents: (n) => { const v = Number(n); return Number.isFinite(v) && v >= 0 && Number.isSafeInteger(Math.round(v * 100)) && Math.abs(v * 100 - Math.round(v * 100)) < 0.000001 ? Math.round(v * 100) : null; },
+    drawFloorPlan: function () {}, updateFurniturePlan: function () {},
+  };
+  sandbox.$ = (id) => byId(id);
+  sandbox.window = sandbox;
+  const ctx = createContext(sandbox);
+  runInContext(block, ctx, {filename: "studio-extension.js"});
+  const ws = runInContext("collectWorkspace()", ctx);
+  assert.equal(ws.budget.totalBudgetCents, null);
 });
 
 import {RenovisionProject} from "../lib/renovision/project-workflow.mjs";
