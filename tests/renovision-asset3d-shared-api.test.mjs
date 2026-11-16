@@ -351,3 +351,139 @@ test("consumer SDK contracts (RENO, NOVA, OCG LAB) work end-to-end and enforce b
     await srv.close();
   }
 });
+
+import {createAsset3dAuthMiddleware} from "../lib/renovision/asset3d-auth.mjs";
+
+test("Q-1: memory storage rejects same-tenant, cross-tenant, and concurrent duplicate assetIds while preserving original", async () => {
+  const storage = createMemoryAsset3dStorage();
+  const glbA = buildMinimalGlb({ name: "original-sofa", widthMeters: 2.2, heightMeters: 0.8, depthMeters: 1.0 });
+  const glbB = buildMinimalGlb({ name: "attacker-box", widthMeters: 0.5, heightMeters: 0.5, depthMeters: 0.5 });
+
+  const first = await storage.putAsset({
+    assetId: "dup_asset_1",
+    tenantId: "tenant-alpha",
+    consumer: "reno",
+    category: "sofa_sectional",
+    glbBuffer: glbA,
+    metadata: { name: "Original Sofa" },
+  });
+  assert.equal(first.ok, true);
+
+  // Same-tenant duplicate
+  const sameTenantDup = await storage.putAsset({
+    assetId: "dup_asset_1",
+    tenantId: "tenant-alpha",
+    consumer: "reno",
+    category: "sofa_sectional",
+    glbBuffer: glbB,
+  });
+  assert.equal(sameTenantDup.ok, false);
+  assert.equal(sameTenantDup.error, "duplicate_asset_id");
+  assert.equal(sameTenantDup.asset, undefined);
+
+  // Cross-tenant duplicate (must not overwrite or disclose tenant-alpha's asset)
+  const crossTenantDup = await storage.putAsset({
+    assetId: "dup_asset_1",
+    tenantId: "tenant-beta",
+    consumer: "nova",
+    category: "prop",
+    glbBuffer: glbB,
+  });
+  assert.equal(crossTenantDup.ok, false);
+  assert.equal(crossTenantDup.error, "duplicate_asset_id");
+  assert.equal(crossTenantDup.asset, undefined);
+
+  // Original asset bytes and metadata remain intact
+  const got = await storage.getAsset({ assetId: "dup_asset_1", tenantId: "tenant-alpha", includeBuffer: true });
+  assert.equal(got.ok, true);
+  assert.equal(got.asset.name, "Original Sofa");
+  assert.equal(got.asset.digest, first.asset.digest);
+  assert.deepEqual(got.glbBuffer, glbA);
+
+  // Concurrent duplicate writes
+  const [c1, c2] = await Promise.all([
+    storage.putAsset({ assetId: "concurrent_1", tenantId: "tenant-alpha", consumer: "reno", category: "cabinet", glbBuffer: glbA }),
+    storage.putAsset({ assetId: "concurrent_1", tenantId: "tenant-beta", consumer: "nova", category: "prop", glbBuffer: glbB }),
+  ]);
+  const oks = [c1, c2].filter((r) => r.ok);
+  const errs = [c1, c2].filter((r) => !r.ok);
+  assert.equal(oks.length, 1);
+  assert.equal(errs.length, 1);
+  assert.equal(errs[0].error, "duplicate_asset_id");
+});
+
+test("Q-1: GCS storage enforces ifGenerationMatch=0 preconditions and cleans up partial writes", async () => {
+  const calls = [];
+  const glb = buildMinimalGlb({ name: "gcs-item" });
+
+  // Case 1: 412 Precondition Failed -> duplicate_asset_id
+  const gcsPrecond = createGcsAsset3dStorage({
+    enabled: true,
+    approved: true,
+    bucket: "approved-bucket",
+    getAccessToken: async () => "tok",
+    fetchImpl: async (url, init) => {
+      calls.push({ url, method: init.method });
+      return { ok: false, status: 412 };
+    },
+  });
+  const res1 = await gcsPrecond.putAsset({
+    assetId: "gcs_dup_1",
+    tenantId: "tenant-alpha",
+    consumer: "reno",
+    category: "cabinet",
+    glbBuffer: glb,
+  });
+  assert.equal(res1.ok, false);
+  assert.equal(res1.error, "duplicate_asset_id");
+  assert.ok(calls[0].url.includes("ifGenerationMatch=0"));
+
+  // Case 2: GLB succeeds, meta.json fails -> DELETE cleanup on GLB
+  const ops = [];
+  const gcsPartial = createGcsAsset3dStorage({
+    enabled: true,
+    approved: true,
+    bucket: "approved-bucket",
+    getAccessToken: async () => "tok",
+    fetchImpl: async (url, init) => {
+      ops.push({ url, method: init.method });
+      if (init.method === "POST" && url.includes(".glb")) return { ok: true, status: 200 };
+      if (init.method === "POST" && url.includes(".meta.json")) return { ok: false, status: 500 };
+      if (init.method === "DELETE") return { ok: true, status: 200 };
+      return { ok: false, status: 500 };
+    },
+  });
+  const res2 = await gcsPartial.putAsset({
+    assetId: "gcs_partial_1",
+    tenantId: "tenant-alpha",
+    consumer: "reno",
+    category: "cabinet",
+    glbBuffer: glb,
+  });
+  assert.equal(res2.ok, false);
+  assert.equal(res2.error, "storage_write_failed");
+  assert.ok(ops.some((o) => o.method === "DELETE" && o.url.includes("gcs_partial_1.glb")));
+});
+
+test("Q-2: production rejects custom authenticate overrides and unverified authenticator bypass stubs", async () => {
+  const prodOverride = createAsset3dAuthMiddleware({
+    nodeEnv: "production",
+    authenticate: async () => ({ authenticated: true, id: "bypass", tenantId: "tenant-alpha" }),
+  });
+  assert.equal(prodOverride.configured, false);
+  const r1 = await prodOverride.requireAuth({ headers: { authorization: "Bearer anything" } });
+  assert.equal(r1.ok, false);
+  assert.equal(r1.status, 503);
+
+  const stubBypass = createAsset3dAuthMiddleware({
+    nodeEnv: "production",
+    authenticator: {
+      configured: true,
+      authenticate: async () => ({ authenticated: true, id: "stub", tenantId: "tenant-alpha" }),
+    },
+  });
+  assert.equal(stubBypass.configured, false);
+  const r2 = await stubBypass.requireAuth({ headers: { authorization: "Bearer anything" } });
+  assert.equal(r2.ok, false);
+  assert.equal(r2.status, 503);
+});
