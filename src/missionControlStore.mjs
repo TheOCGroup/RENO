@@ -369,8 +369,11 @@ export class MissionControlStore {
       this.#migrate();
       this.ensureTenant(this.defaultTenantId);
     } catch (error) {
-      // A rejected corrupt database must not retain an open SQLite handle.
-      try { this.#db.close(); } catch { /* preserve original initialization error */ }
+      try {
+        this.#db.close();
+      } catch {
+        // Preserve the original initialization failure.
+      }
       throw error;
     }
   }
