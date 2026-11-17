@@ -3,7 +3,7 @@
  * The accuracy disclosure banner is permanent UI, not an optional label. */
 export const RENOVISION_APP_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RENOVISION AI — Renovation &amp; Furniture Visualization</title>
+<title>RENOVISION AI — Renovation &amp; Furniture Visualization</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23243c30'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' fill='%23e8e2d5' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#F5F9FC;color:#17375B}
 header{background:#17375B;color:#fff;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
