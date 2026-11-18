@@ -17,6 +17,9 @@ import {RENOVISION_APP_HTML} from "./renovisionUi.mjs";
 import {RENOVISION_STUDIO_HTML} from "./renovisionStudio.mjs";
 import {listDesignStyles, listDesignCategories, listDesignMaterials, listDesignPalettes, listRoomCollections} from "../lib/renovision/design-library.mjs";
 import {evaluateRoomLayout} from "../lib/renovision/room-layout.mjs";
+import {createAsset3dRouter} from "./asset3dServer.mjs";
+import {renderAsset3dViewerHtml} from "../lib/renovision/asset3d-viewer.mjs";
+import {evaluateAsset3dFurnishingFit} from "../lib/renovision/asset3d-furnishing-bridge.mjs";
 const MAX_BODY_BYTES = 32_000_000;
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
@@ -45,9 +48,10 @@ export function createMemoryApprovalRegistry() {
    get storageClass() { return "in-memory"; }
  };
 }
-export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
+export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode = "custom", webAuthConfig = null, asset3dOptions = null, cryptoApi = webcrypto} = {}) {
  if (typeof authenticate !== "function") throw new TypeError("authenticate function required");
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
+ const asset3dRouter = createAsset3dRouter(asset3dOptions ?? {});
  const projects = new Map();
  const keyFor = (actor, projectId) => actor.tenantId + "/" + projectId;
  /** Per-project write serialization. With a durable project store each
@@ -158,6 +162,12 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      const projectId = text(webAuthConfig?.projectId) ? webAuthConfig.projectId : null;
      return send(res, 200, {ok: true, identityMode, signIn: {provider: "google-identity-platform", configured: Boolean(apiKey && projectId), apiKey, projectId}});
    }
+   if (req.method === "GET" && path === "/3d-viewer") return send(res, 200, renderAsset3dViewerHtml({title: "RENOVISION AI — 3D Asset Studio"}), "text/html; charset=utf-8");
+   if (path.startsWith("/api/3d/")) {
+     const actor = await authenticate(req);
+     if (!actor || actor.authenticated !== true || !text(actor.id) || !text(actor.tenantId)) return send(res, 401, {ok: false, errors: ["authenticated_actor_required"]});
+     return asset3dRouter.handleAuthenticatedRequest({req, res, url, actor});
+   }
    if (!path.startsWith("/api/renovision")) return send(res, 404, {ok: false, errors: ["not_found"]});
    const actor = await authenticate(req);
    if (!actor || actor.authenticated !== true || !text(actor.id) || !text(actor.tenantId)) return send(res, 401, {ok: false, errors: ["authenticated_actor_required"]});
@@ -219,7 +229,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        "": "project:read", "preview/existing.svg": "project:read", "preview/proposed.svg": "project:read",
        "capture-plan": "capture:write", evidence: "capture:write", captures: "capture:write", "capture-review": "capture:write",
        measurements: "measurement:write", corrections: "measurement:correct", lock: "geometry:lock",
-       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write",
+       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write", "furnishing-3d": "furnishing:write",
        comparison: "comparison:build", "quincey-packet": "export:read", export: "export:read"
      })[routeKey];
      const action = actionFor(sub) ?? ((sub === "concepts" || sub.startsWith("concepts/")) ? (req.method === "GET" ? "project:read" : "preview:generate") : undefined);
@@ -345,6 +355,11 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && sub === "concepts/delete") {
        const removed = project.deleteConcept({actor, conceptId: body.conceptId});
        return done(200, {ok: true, deleted: removed.conceptId, note: "Concept record removed. Its image bytes are purged when their retention period expires.", concepts: conceptHistoryView(project.concepts)});
+     }
+     if (req.method === "POST" && sub === "furnishing-3d") {
+       const snap = project.snapshot();
+       const plan = evaluateAsset3dFurnishingFit({roomModel: snap.roomModel, lock: snap.lock, assets: body.assets, minimumClearanceMeters: body.minimumClearanceMeters});
+       return done(200, {ok: true, plan});
      }
      if (req.method === "POST" && sub === "comparison") return done(200, {ok: true, comparison: project.buildComparison({actor})});
      if (req.method === "POST" && sub === "quincey-packet") return done(200, {ok: true, ...project.buildReviewPacket({actor, commitSha: body.commitSha, prUrl: body.prUrl, studyId: body.studyId, ciRuns: body.ciRuns, testCount: body.testCount, readinessEvidence: body.readinessEvidence})});
