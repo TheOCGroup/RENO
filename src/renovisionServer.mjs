@@ -8,7 +8,9 @@
 import {createServer} from "node:http";
 import {webcrypto} from "node:crypto";
 import {RenovisionProject} from "../lib/renovision/project-workflow.mjs";
-import {persistFrameEvidence} from "../lib/renovision/evidence-repository.mjs";
+import {persistFrameEvidence, readFrameEvidence} from "../lib/renovision/evidence-repository.mjs";
+import {conceptHistoryView, CONCEPT_IMAGE_MIME_TYPES} from "../lib/renovision/concept-history.mjs";
+import {MAX_EVIDENCE_BYTES} from "../lib/renovision/frame-evidence.mjs";
 import {authorizeAction} from "../lib/renovision/access-control.mjs";
 import {buildExportPackage} from "../lib/renovision/export-package.mjs";
 import {RENOVISION_APP_HTML} from "./renovisionUi.mjs";
@@ -193,7 +195,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write",
        comparison: "comparison:build", "quincey-packet": "export:read", export: "export:read"
      })[routeKey];
-     const action = actionFor(sub);
+     const action = actionFor(sub) ?? ((sub === "concepts" || sub.startsWith("concepts/")) ? (req.method === "GET" ? "project:read" : "preview:generate") : undefined);
      if (!action) return send(res, 404, {ok: false, errors: ["route_not_found"]});
      const check = guard(action, scope);
      if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
@@ -268,6 +270,54 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      if (req.method === "POST" && sub === "furnishing") return done(200, {ok: true, plan: project.evaluateFurnishing({actor, items: body.items, minimumClearanceMeters: body.minimumClearanceMeters})});
      if (req.method === "GET" && sub === "design-workspace") return send(res, 200, {ok: true, designWorkspace: project.designWorkspace});
      if (req.method === "POST" && sub === "design-workspace") return done(200, {ok: true, designWorkspace: project.setDesignWorkspace({actor, workspace: body.workspace})});
+     if (req.method === "GET" && sub === "concepts") return send(res, 200, {ok: true, concepts: conceptHistoryView(project.concepts)});
+     if (req.method === "POST" && sub === "concepts") {
+       // Durable concept history: image bytes go to tenant-authorized
+       // evidence storage FIRST; the project record is written only after
+       // every byte is durably stored and digest-verified, so a storage
+       // failure can never leave a record pointing at missing images.
+       const conceptId = text(body.conceptId) ? body.conceptId : "concept-" + (cryptoApi.randomUUID?.() ?? Date.now().toString(36));
+       const conceptRoomId = text(body.roomId) ? body.roomId : project.roomId;
+       const retentionDays = body.retentionDays ?? 365;
+       const decodeImage = (img) => {
+         if (!img || typeof img.imageBase64 !== "string" || !CONCEPT_IMAGE_MIME_TYPES.includes(img.mimeType)) return null;
+         const bytes = Buffer.from(img.imageBase64, "base64");
+         if (!bytes.length || bytes.length > MAX_EVIDENCE_BYTES) return null;
+         return new Blob([bytes], {type: img.mimeType});
+       };
+       const storeImage = async (blob, captureId) => {
+         const digest = "sha256:" + Buffer.from(await cryptoApi.subtle.digest("SHA-256", await blob.arrayBuffer())).toString("hex");
+         const receipt = await persistFrameEvidence({ok: true, blob, artifact: {propertyId: project.propertyId, roomId: conceptRoomId, tenantId: actor.tenantId, captureId, digest, byteLength: blob.size}}, {storage: evidenceStorage, cryptoApi, actorId: actor.id, retentionDays});
+         return receipt.stored ? {storageRef: receipt.storageRef, digest, mimeType: blob.type} : null;
+       };
+       const conceptBlob = decodeImage(body.conceptImage);
+       if (!conceptBlob) return send(res, 422, {ok: false, errors: ["concept_image_invalid"]});
+       const conceptRef = await storeImage(conceptBlob, conceptId + "-concept");
+       if (!conceptRef) return send(res, 502, {ok: false, errors: ["concept_evidence_storage_failed"]});
+       let originalRef = null;
+       if (body.originalImage) {
+         const originalBlob = decodeImage(body.originalImage);
+         if (!originalBlob) return send(res, 422, {ok: false, errors: ["original_image_invalid"]});
+         originalRef = await storeImage(originalBlob, conceptId + "-original");
+         if (!originalRef) return send(res, 502, {ok: false, errors: ["concept_evidence_storage_failed"]});
+       }
+       const record = project.recordConcept({actor, concept: {conceptId, roomId: conceptRoomId, createdAt: new Date().toISOString(), prompt: body.prompt ?? "", selections: body.selections ?? {}, provider: body.provider ?? {}, disclosure: body.disclosure ?? "", verified: false, concept: conceptRef, original: originalRef, revisionOf: body.revisionOf ?? null, retentionDays}});
+       return done(201, {ok: true, concept: record, concepts: conceptHistoryView(project.concepts)});
+     }
+     if (req.method === "GET" && /^concepts\/[^/]+\/image\/(original|concept)$/.test(sub)) {
+       const parts = sub.split("/");
+       const record = project.concepts.find((c) => c.conceptId === decodeURIComponent(parts[1]));
+       const ref = record?.[parts[3]];
+       if (!record || !ref) return send(res, 404, {ok: false, errors: ["concept_image_not_found"]});
+       const read = await readFrameEvidence({storage: evidenceStorage, storageRef: ref.storageRef, expectedDigest: ref.digest, cryptoApi, actorId: actor.id});
+       if (!read.ok) return send(res, 404, {ok: false, errors: ["concept_image_unavailable"]});
+       const bytes = Buffer.from(await read.blob.arrayBuffer());
+       return send(res, 200, {ok: true, conceptId: record.conceptId, variant: parts[3], mimeType: ref.mimeType, digest: ref.digest, imageBase64: bytes.toString("base64")});
+     }
+     if (req.method === "POST" && sub === "concepts/delete") {
+       const removed = project.deleteConcept({actor, conceptId: body.conceptId});
+       return done(200, {ok: true, deleted: removed.conceptId, note: "Concept record removed. Its image bytes are purged when their retention period expires.", concepts: conceptHistoryView(project.concepts)});
+     }
      if (req.method === "POST" && sub === "comparison") return done(200, {ok: true, comparison: project.buildComparison({actor})});
      if (req.method === "POST" && sub === "quincey-packet") return done(200, {ok: true, ...project.buildReviewPacket({actor, commitSha: body.commitSha, prUrl: body.prUrl, studyId: body.studyId, ciRuns: body.ciRuns, testCount: body.testCount, readinessEvidence: body.readinessEvidence})});
      return send(res, 404, {ok: false, errors: ["route_not_found"]});
