@@ -288,6 +288,19 @@ test("U-2: validators return {valid:false} on non-iterable collection fields ins
   assert.equal(summarizeProjectBudget({lines: "nope"}).valid, false);
 });
 
+test("U-6: allocations-total overflow is flagged and marks totals incomplete", () => {
+  const b = createProjectBudget({totalBudgetCents: null});
+  b.allocations = {furniture: Number.MAX_SAFE_INTEGER, materials: Number.MAX_SAFE_INTEGER};
+  b.lines.push({lineId: "ok1", categoryId: "furniture", label: "Chair", estimatedCents: 1000, actualCents: null, status: "planned"});
+  const s = summarizeProjectBudget(b);
+  assert.equal(s.valid, true);
+  assert.equal(s.allocatedTotalCents, null);
+  assert.equal(s.totalsComplete, false);
+  assert.ok(s.alerts.some((a) => a.kind === "allocations_overflow_withheld"));
+  assert.equal(s.estimatedTotalCents, 1000); // line totals unaffected and exact
+  assert.ok(!s.alerts.some((a) => a.kind === "totals_overflow_withheld"));
+});
+
 test("U-3: obstacles and walkways must lie fully within the room", () => {
   const l = baseLayout();
   l.obstacles.push({id: "ob-out", kind: "column", xMeters: 4.8, yMeters: 0, widthMeters: 0.5, depthMeters: 0.5});

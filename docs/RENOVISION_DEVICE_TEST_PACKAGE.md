@@ -125,6 +125,37 @@ within-tolerance results, and prints **Certification: NOT GRANTED**. Exit code
 
 **Evidence bundle per case/benchmark:** raw captures (unaltered), manifest JSON with SHA-256 digests, device model + OS + build commit, detected sensor support, permission outcomes, coverage gaps, failure log including rejected captures, reference measurement sheet (three repeats per dimension, instrument ID, calibration reference), and the runner report. Any case without a complete bundle is recorded as NOT EXECUTED, never as passed.
 
+## 5b. Execution readiness verification — 2026-11-17 (prepared, NOT EXECUTED)
+
+Verified by document and code inspection on the completion dev branch. The
+benchmark and the device matrix remain **NOT EXECUTED**: no physical
+measurements exist, and nothing in this section may be quoted as a result.
+
+**Checklist (founder directive §5):**
+- Required measurement equipment — §5a kit (calibrated laser + certificate, steel tape cross-check). ✓ prepared
+- Human testing roles — §5a (reference measurer ≠ capture operator, evidence custodian, QUINCEY). ✓ prepared
+- Room and fixture measurement procedures — §5 + protocol (three capture positions incl. occluded corners; ≥10 independently measured reference distances in the executed fixture — the synthetic fixture's 4 are illustrative only). ✓ prepared
+- Reference measurement methodology — protocol: three repeats per dimension, instrument ID + calibration record, uncertainty estimate, SHA-256-sealed evidence. ✓ prepared
+- Acceptance thresholds (pre-registered) — the runner's enforced defaults: **absolute tolerance 0.05 m, relative tolerance 2%** (`toleranceMeters` / `relativeTolerance`). A dimension passes only when it is within **both** tolerances (the summary applies them conjunctively; an absolute-only figure also appears in per-dimension detail and is not the pass criterion). An executed fixture should declare both tolerances explicitly; whether declared or defaulted, the values recorded in the run's evidence bundle are the values of record, and QUINCEY verifies at evidence review that they equal the pre-registered thresholds — a run recorded with any other values is invalid (F2), not merely different. ✓ prepared
+- Evidence capture instructions — §5a bundle + §6 handling rules. ✓ prepared
+- Repeatability procedures — reference: three repeats per dimension; candidate: three independent captures per device case, with mean and maximum candidate error reported by the runner summary. A case counts only with a complete evidence bundle. ✓ prepared
+- Failure classification — taxonomy below. ✓ prepared
+- Final certification criteria — runner inputs valid AND all dimensions within tolerance AND QUINCEY's independent review of the sealed bundle against the exact executed commit. The runner prints "Certification: NOT GRANTED" by design; only QUINCEY's review of real evidence can change that. ✓ prepared
+- Device matrix — `buildCaptureQaMatrix()` verified in code: exactly **30 cases** (5 platforms × 6 conditions), each `executed:false` until a real device run is logged. ✓ prepared
+
+**Failure classification (record every occurrence; deleting failures invalidates the study):**
+- F1 Instrument invalid — calibration missing/expired or cross-check (laser vs tape) disagrees beyond instrument spec: study pauses until resolved.
+- F2 Provenance incomplete — missing operator, instrument, digest, or commit: runner inputs invalid (exit 2); no number may be quoted.
+- F3 Platform blocked — sensor unsupported or permission denied: the case is recorded BLOCKED, never as a failed measurement.
+- F4 Capture rejected/interrupted — kept in the failure log with reason; the case may be retried once, both attempts retained.
+- F5 Coverage insufficient — gaps prevent a dimension from being measured: recorded as missing, never estimated into the report.
+- F6 Out of tolerance — a candidate dimension outside the pre-registered thresholds: reported as measured; no re-measurement shopping.
+- F7 Integrity failure — any digest mismatch in the bundle: the entire study is invalid.
+
+**Execution prerequisites (founder-supplied, no spend authorized by this package):** the §5a kit, one consenting furnished room, and the four roles. Execute against a locally run build of the then-current QUINCEY-certified candidate; the executed commit SHA goes into the fixture provenance.
+
+**Superseded limitations:** §8's statements that project state is process-held, that authentication is demo-only, and that no GCP resources exist were true of the prototype and are superseded by the Founder Beta record (durable project store with restart recovery; Identity Platform token authentication; GCS-backed deployment live-accepted 2026-11-04). The benchmark itself is unaffected: it runs locally against source, not against the production service.
+
 ## 6. Evidence handling rules
 
 - Real capture media stays in private, tenant-isolated storage only — never in
