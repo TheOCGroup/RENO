@@ -21,8 +21,15 @@ completion is NOT release authorization.
 - Browser acceptance (local mock renderer, durable stores, mid-run server restart): **9 PASS / 0 FAIL** — evidence `~/workspace/renovision-c2-evidence/concept-history-results.json`, screenshots 11/12.
 - No paid rendering activated; the mock renderer is a local test double and its output is labeled simulated end-to-end.
 
-### 2. Accessibility (WCAG 2.2 AA audit + remediation) — IN PROGRESS
-### 3. Physical accuracy benchmark — package readiness verification pending; benchmark itself **NOT EXECUTED**
+### 2. Accessibility (WCAG 2.2 AA audit + remediation) — BUILT, awaiting QUINCEY
+- Commit `b5c03d5` on the dev branch. Report: `docs/RENOVISION_ACCESSIBILITY_AUDIT.md`.
+- Before: studio contrast violations on 21–22 nodes; 57 unlabeled operator controls (critical); teal/white 2.97:1; no reduced-motion support; unnamed photo input; prohibited aria-label.
+- After: axe **0 violations in all 5 states** (studio ×4 incl. 320px, operator); label censuses empty; Tab focus visible; placeholder 4.34→5.20:1; 4 axe-incomplete cases manually measured (15.02 / 5.58 / 5.20 / 21). Screen-reader AT walkthrough NOT performed — recorded as NOT VERIFIED, no conformance claim made.
+- Regression: full suite 653/653; C-2 browser battery re-run **36 PASS / 0 FAIL / 1 NOTE** (unchanged).
+
+### 3. Physical accuracy benchmark — READINESS VERIFIED, benchmark NOT EXECUTED
+- §5b added to `docs/RENOVISION_DEVICE_TEST_PACKAGE.md` (commit `b5c03d5`): directive checklist mapped to package sections; runner thresholds pre-registered (0.05 m absolute / 2% relative); failure taxonomy F1–F7; repeatability procedure (3 reference repeats, 3 candidate captures per case); device matrix verified in code at exactly 30 cases; stale §8 limitations superseded by the Founder Beta record.
+- Execution needs founder-supplied kit, room, and people (§5a). **NOT EXECUTED — no physical measurements exist; no accuracy claim.**
 ### 4. Customer-experience audit — pending (after accessibility)
 ### 5. Security/reliability regression — suite baseline maintained (647 → 653)
 
