@@ -39,8 +39,9 @@ completion is NOT release authorization.
 
 ## Known issues / harness notes
 - The C-2 browser harness intermittently failed its project-creation leg under CPU contention. Root cause (proven): the harness never killed its spawned server and its readiness probe only checked `/`, so looped runs could attach to a leftover orphan whose JWKS server was dead — every authenticated call 401'd and the studio kept the stale signed-out status text. Harness fixed (server killed at exit, authenticated readiness probe, poll-for-text waits, sign-in settle wait): **36/0/1 on three consecutive looped runs**. No product code was implicated or changed for this.
-### 4. Customer-experience audit — pending (after accessibility)
-### 5. Security/reliability regression — suite baseline maintained (647 → 653)
+### 5. Security/reliability regression — COMPLETE
+- Priority-5 probe battery (builder-run, dev branch): **14 PASS / 0 FAIL** — unauthenticated 401s, cross-tenant 404s, viewer-role 403 on writes, oversized/malformed bodies rejected without crash, write lock never wedges (missing-project POSTs answer in ms), parallel cross-project work unaffected.
+- **QUINCEY delta review (PR comment `6966189235`): Delta A (concept-history UF remediation) CERTIFIED WITH NOTES (Info-only; his 15/15 concurrency probe — 6/6 parallel saves persist, duplicate guard holds under race, lock deadlock-free by construction, UF-2 scoping upheld); Delta B (a11y UF-1) CERTIFIED; Delta C (§5b precision) CERTIFIED WITH NOTES; Delta D (CX guidance) CERTIFIED WITH NOTES (Info-only). His suite re-run 656/656, C-2 re-run 36/0/1.** Two Info wording/ARIA nits from that review (UF-C evidence-bundle phrasing, UF-D `aria-current="step"` on the journey strip) are applied in the final docs/code commit on top of the reviewed head.
 
 ## Physical benchmark status
 NOT EXECUTED. No physical measurements exist. Synthetic harness proof only (from the C-2 workstream). No accuracy claim is made or implied.

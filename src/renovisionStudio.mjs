@@ -701,7 +701,7 @@ function rvJourneyUpdate(){
   state.forEach((s,i)=>{
     const li=document.createElement('li');
     li.textContent=(s.done?'\u2713 ':'')+s.label;
-    if(s.done)li.className='done';else if(i===current)li.className='current';
+    if(s.done)li.className='done';else if(i===current){li.className='current';li.setAttribute('aria-current','step');}
     strip.appendChild(li);
   });
 }
