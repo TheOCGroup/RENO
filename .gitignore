@@ -1,0 +1,3 @@
+# Local RENOVISION service data (durable evidence + event stores live here in dev)
+data/
+node_modules/

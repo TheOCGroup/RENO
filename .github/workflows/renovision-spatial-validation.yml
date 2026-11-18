@@ -1,0 +1,27 @@
+name: RENOVISION Spatial Validation CI
+on:
+  pull_request:
+    paths:
+      - "lib/renovision/**"
+      - "src/renovision*.mjs"
+      - "scripts/renovision-*.mjs"
+      - "tests/renovision-*.test.mjs"
+      - "tests/fixtures/renovision-*.json"
+      - "infra/**"
+      - "docs/**"
+      - "package.json"
+      - ".github/workflows/renovision-spatial-validation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  spatial-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run repository tests
+        run: npm test
