@@ -13,23 +13,32 @@ completion is NOT release authorization.
 
 ## Workstreams
 
-### 1. Durable AI concept history — BUILT, awaiting QUINCEY
+### 1. Durable AI concept history — QUINCEY CERTIFIED WITH NOTES, findings remediated
 - Commit `12fb832` on the dev branch.
+- **QUINCEY: CERTIFIED WITH NOTES (PR comment `6965150232`)** — all 9 claims PASS on his own runs. Unlisted findings remediated in `0664248` (UF-1 write serialization, UF-2 duplicate-id restore rejection, UF-4 422 on separator ids); delta re-review requested.
 - Records on the project (prompt, selections, provider + simulated flag, disclosure, revisionOf chain, retention); image bytes in the existing tenant-authorized evidence storage — digest-verified write before record, integrity-verified read; storage failure leaves no record (502); cross-tenant access 404; deletion removes the record (bytes purge at retention expiry, disclosed); 100/project cap refuses rather than drops; restore re-validates every record and fails closed.
 - Studio: auto-save after each generation; history panel with View (restores comparison), Refine (records the next generation as a revision), Delete; SIMULATED labeling for non-production renderers.
 - Tests: 6 new (module honesty rules, revision depth, workflow cap/delete/fail-closed restore, routes incl. tenant isolation + storage-failure, restart persistence). Full suite **653/653**.
 - Browser acceptance (local mock renderer, durable stores, mid-run server restart): **9 PASS / 0 FAIL** — evidence `~/workspace/renovision-c2-evidence/concept-history-results.json`, screenshots 11/12.
 - No paid rendering activated; the mock renderer is a local test double and its output is labeled simulated end-to-end.
 
-### 2. Accessibility (WCAG 2.2 AA audit + remediation) — BUILT, awaiting QUINCEY
+### 2. Accessibility (WCAG 2.2 AA audit + remediation) — QUINCEY CERTIFIED WITH NOTES, finding remediated
 - Commit `b5c03d5` on the dev branch. Report: `docs/RENOVISION_ACCESSIBILITY_AUDIT.md`.
+- **QUINCEY: CERTIFIED WITH NOTES (PR comment `6965631584`)** — his independent axe run: 0 violations in all 5 states; every quantitative claim reproduced. His one LOW (operator rejection-reason input named by placeholder only) is fixed in commit `ce371e9` (explicit aria-label; audit wording corrected). Delta re-review requested.
 - Before: studio contrast violations on 21–22 nodes; 57 unlabeled operator controls (critical); teal/white 2.97:1; no reduced-motion support; unnamed photo input; prohibited aria-label.
 - After: axe **0 violations in all 5 states** (studio ×4 incl. 320px, operator); label censuses empty; Tab focus visible; placeholder 4.34→5.20:1; 4 axe-incomplete cases manually measured (15.02 / 5.58 / 5.20 / 21). Screen-reader AT walkthrough NOT performed — recorded as NOT VERIFIED, no conformance claim made.
-- Regression: full suite 653/653; C-2 browser battery re-run **36 PASS / 0 FAIL / 1 NOTE** (unchanged).
+- Regression: full suite 656/656; C-2 browser battery **36 PASS / 0 FAIL / 1 NOTE** (three consecutive runs after a harness fix — see Known issues).
 
-### 3. Physical accuracy benchmark — READINESS VERIFIED, benchmark NOT EXECUTED
+### 3. Physical accuracy benchmark — READINESS QUINCEY CERTIFIED WITH NOTES, benchmark NOT EXECUTED
 - §5b added to `docs/RENOVISION_DEVICE_TEST_PACKAGE.md` (commit `b5c03d5`): directive checklist mapped to package sections; runner thresholds pre-registered (0.05 m absolute / 2% relative); failure taxonomy F1–F7; repeatability procedure (3 reference repeats, 3 candidate captures per case); device matrix verified in code at exactly 30 cases; stale §8 limitations superseded by the Founder Beta record.
+- **QUINCEY: CERTIFIED WITH NOTES (PR comment `6965631584`)** — matrix executed by him (30 cases, all unexecuted), runner confirmed unable to grant certification, §8 supersession accurate. His three wording findings (UF-5/6/7: conjunctive tolerance semantics, tolerance-of-record rule, mean/max wording) are corrected in commit `0664248`. Delta re-review requested.
 - Execution needs founder-supplied kit, room, and people (§5a). **NOT EXECUTED — no physical measurements exist; no accuracy claim.**
+
+### 4. Customer experience — journey guidance shipped locally
+- Commit `d3dd6cd`. A walkthrough found the disabled Generate button explained nothing ("AI redesign not generated" in every blocked state): it now names the exact blocker (sign in / create or open a project / add a room photo / ready). A five-step journey progress strip tracks real state. Verified in-browser 7/7 across all states; QUINCEY review requested with the delta batch.
+
+## Known issues / harness notes
+- The C-2 browser harness intermittently failed its project-creation leg under CPU contention. Root cause (proven): the harness never killed its spawned server and its readiness probe only checked `/`, so looped runs could attach to a leftover orphan whose JWKS server was dead — every authenticated call 401'd and the studio kept the stale signed-out status text. Harness fixed (server killed at exit, authenticated readiness probe, poll-for-text waits, sign-in settle wait): **36/0/1 on three consecutive looped runs**. No product code was implicated or changed for this.
 ### 4. Customer-experience audit — pending (after accessibility)
 ### 5. Security/reliability regression — suite baseline maintained (647 → 653)
 
