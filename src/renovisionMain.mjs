@@ -15,6 +15,8 @@ import {createDurableSpatialEventStore} from "../lib/renovision/durable-spatial-
 import {createGcsSpatialEventStore} from "../lib/renovision/gcs-spatial-event-store.mjs";
 import {createFileProjectStore} from "../lib/renovision/project-store.mjs";
 import {createGcsProjectStore} from "../lib/renovision/gcs-project-store.mjs";
+import {createFileConceptStore} from "../lib/renovision/concept-store.mjs";
+import {createGcsConceptStore} from "../lib/renovision/gcs-concept-store.mjs";
 import {createGcsApprovalRegistry} from "../lib/renovision/gcs-approval-registry.mjs";
 import {createTokenAuthenticator} from "../lib/renovision/identity.mjs";
 import {authorizeAction} from "../lib/renovision/access-control.mjs";
@@ -93,6 +95,9 @@ const eventStore = process.env.RENOVISION_GCS_BUCKET
 const projectStore = process.env.RENOVISION_GCS_BUCKET
  ? createGcsProjectStore({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken})
  : createFileProjectStore({rootDir: join(dataDir, "projects")});
+const conceptStore = process.env.RENOVISION_GCS_BUCKET
+ ? createGcsConceptStore({bucket: process.env.RENOVISION_GCS_BUCKET, fetchImpl: (...args) => fetch(...args), getAccessToken: getGcsAccessToken})
+ : createFileConceptStore({rootDir: join(dataDir, "concepts")});
 // Approval authority: with a GCS bucket configured (always true on Cloud Run,
 // which refuses to start without one) approvals live in the durable,
 // generation-guarded GCS registry shared across instances. The process-local
@@ -108,7 +113,7 @@ const renderProvider = createRenderProvider({enabled: process.env.RENOVISION_PHO
 // token audience in token mode. Without the key the UI keeps the manual
 // ID-token field as its fallback.
 const webAuthConfig = {apiKey: process.env.RENOVISION_WEB_API_KEY || null, projectId: process.env.RENOVISION_TOKEN_AUDIENCE || null};
-const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode, webAuthConfig});
+const server = createRenovisionServer({authenticate, resolveApproval: approvals, evidenceStorage, eventStore, projectStore, conceptStore, renderProvider, photoRenderer, identityMode, webAuthConfig});
 console.log("RENOVISION approvals: " + (approvals ? approvals.storageClass : "not configured (fail closed)") + "; browser sign-in: " + (webAuthConfig.apiKey ? "configured" : "not configured (manual token fallback)"));
 const port = Number(process.env.PORT || 8787);
 // Header-based demo identity is trusted only on this machine; never expose it on LAN.

@@ -13,8 +13,12 @@ import {authorizeAction} from "../lib/renovision/access-control.mjs";
 import {buildExportPackage} from "../lib/renovision/export-package.mjs";
 import {RENOVISION_APP_HTML} from "./renovisionUi.mjs";
 import {RENOVISION_STUDIO_HTML} from "./renovisionStudio.mjs";
+import {buildConceptRecord, toPublicConcept, buildConceptComparison} from "../lib/renovision/concept-history.mjs";
+import {createMemoryConceptStore} from "../lib/renovision/concept-store.mjs";
 import {listDesignStyles, listDesignCategories, listDesignMaterials, listDesignPalettes, listRoomCollections} from "../lib/renovision/design-library.mjs";
 import {evaluateRoomLayout} from "../lib/renovision/room-layout.mjs";
+import {createProjectBudget, summarizeProjectBudget} from "../lib/renovision/project-budget.mjs";
+import {buildShoppingList} from "../lib/renovision/product-catalog.mjs";
 const MAX_BODY_BYTES = 32_000_000;
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
@@ -43,7 +47,11 @@ export function createMemoryApprovalRegistry() {
    get storageClass() { return "in-memory"; }
  };
 }
-export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, renderProvider, photoRenderer, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
+export function createRenovisionServer({authenticate, resolveApproval, evidenceStorage, eventStore, projectStore, conceptStore, renderProvider, photoRenderer, identityMode = "custom", webAuthConfig = null, cryptoApi = webcrypto} = {}) {
+ // Durable concept history: injected store in production (filesystem / GCS,
+ // wired in renovisionMain.mjs); the process-local memory store is the
+ // no-store fallback, exactly like the projects Map below.
+ const concepts = conceptStore ?? createMemoryConceptStore();
  if (typeof authenticate !== "function") throw new TypeError("authenticate function required");
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
@@ -123,7 +131,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    const path = url.pathname;
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
-   if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
+   if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", conceptStorageClass: concepts.storageClass ?? "unknown", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});
    if (req.method === "GET" && path === "/studio-capabilities") return send(res, 200, {ok:true, photoRendering:photoRenderer?.status?.() ?? {enabled:false}});
    if (req.method === "GET" && path === "/auth-config") {
      // Public browser sign-in configuration. The Identity Platform web API key
@@ -180,6 +188,32 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        else projects.set(keyFor(actor, project.projectId), project);
        return send(res, 201, {ok: true, project: project.snapshot()});
      }
+     if (req.method === "GET" && path === "/api/renovision/projects") {
+       // Project discovery: the actor's own tenant projects only. Tenant
+       // scope comes from the verified actor, never from the request; the
+       // store list is already tenant-namespaced, and every candidate is
+       // additionally resolved and scope-checked exactly like a single
+       // project read, so another tenant's projects can never appear.
+       // Summaries carry only the safe identity/scope fields the
+       // single-project GET exposes — never storage paths or records.
+       const check = guard("project:read");
+       if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
+       const ids = new Set();
+       if (projectStore && typeof projectStore.list === "function") {
+         for (const id of await projectStore.list(actor.tenantId)) ids.add(id);
+       }
+       const prefix = actor.tenantId + "/";
+       for (const key of projects.keys()) if (key.startsWith(prefix)) ids.add(key.slice(prefix.length));
+       const summaries = [];
+       for (const id of [...ids].sort()) {
+         const project = await resolveProject(id, actor);
+         if (!project || project.tenantId !== actor.tenantId) continue;
+         if (!guard("project:read", {propertyId: project.propertyId, roomId: project.roomId}).allowed) continue;
+         const snap = project.snapshot();
+         summaries.push({projectId: snap.projectId, tenantId: snap.tenantId, propertyId: snap.propertyId, roomId: snap.roomId, stage: snap.stage});
+       }
+       return send(res, 200, {ok: true, projects: summaries});
+     }
      const match = path.match(/^\/api\/renovision\/projects\/([^/]+)(?:\/(.+))?$/);
      if (!match) return send(res, 404, {ok: false, errors: ["not_found"]});
      const project = await resolveProject(decodeURIComponent(match[1]), actor);
@@ -190,10 +224,21 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        "": "project:read", "preview/existing.svg": "project:read", "preview/proposed.svg": "project:read",
        "capture-plan": "capture:write", evidence: "capture:write", captures: "capture:write", "capture-review": "capture:write",
        measurements: "measurement:write", corrections: "measurement:correct", lock: "geometry:lock",
-       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write",
+       proposals: "change:propose", preview: "preview:generate", "render-photo": "preview:generate", furnishing: "furnishing:write", "design-workspace": "furnishing:write", "budget-summary": "project:read",
        comparison: "comparison:build", "quincey-packet": "export:read", export: "export:read"
      })[routeKey];
-     const action = actionFor(sub);
+     let action = actionFor(sub);
+     // Durable concept-history routes are nested (concepts/<id>[/approve]),
+     // so they resolve dynamically rather than through the exact-match map.
+     let conceptRoute = null;
+     if (sub === "concepts") conceptRoute = {kind: "list", action: req.method === "POST" ? "concept:write" : "concept:read"};
+     else if (sub === "concepts/compare" && req.method === "POST") conceptRoute = {kind: "compare", action: "concept:read"};
+     else {
+       const cm = sub.match(/^concepts\/([^/]+)(\/approve)?$/);
+       if (cm && !cm[2] && req.method === "GET") conceptRoute = {kind: "get", action: "concept:read", conceptId: decodeURIComponent(cm[1])};
+       else if (cm && cm[2] && req.method === "POST") conceptRoute = {kind: "approve", action: "concept:approve", conceptId: decodeURIComponent(cm[1])};
+     }
+     if (!action && conceptRoute) action = conceptRoute.action;
      if (!action) return send(res, 404, {ok: false, errors: ["route_not_found"]});
      const check = guard(action, scope);
      if (!check.allowed) return send(res, 403, {ok: false, errors: check.errors});
@@ -204,6 +249,56 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        return send(res, status, responseBody, type);
      };
      if (req.method === "GET" && sub === "") return send(res, 200, {ok: true, project: project.snapshot()});
+     if (conceptRoute?.kind === "list" && req.method === "GET") {
+       const records = await concepts.list({tenantId: actor.tenantId, projectId: project.projectId});
+       return send(res, 200, {ok: true, concepts: records.map(toPublicConcept).filter(Boolean)});
+     }
+     if (conceptRoute?.kind === "list" && req.method === "POST") {
+       // Scope, provenance identity and timestamps are server-owned (from
+       // the verified actor + resolved project), never caller-supplied —
+       // the same rule the approvals route applies to tenantId/approvedBy.
+       let record;
+       try {
+         record = buildConceptRecord({
+           conceptId: text(body.conceptId) ? body.conceptId : "concept-" + cryptoApi.randomUUID(),
+           tenantId: actor.tenantId, projectId: project.projectId, propertyId: project.propertyId, roomId: project.roomId,
+           originalAssetRef: body.originalAssetRef, generatedAssetRef: body.generatedAssetRef ?? null,
+           model: body.model, provider: body.provider,
+           generationSettings: body.generationSettings ?? {},
+           status: body.status ?? "completed", failureReason: body.failureReason ?? null,
+           designRevision: body.designRevision ?? project.designWorkspace?.updatedAt ?? null,
+           geometryDigest: body.geometryDigest ?? project.lock?.geometryDigest ?? null,
+           provenance: {createdBy: actor.id, origin: text(body.provenance?.origin) ? body.provenance.origin : "concept-api", parentConceptId: body.provenance?.parentConceptId ?? body.parentConceptId ?? null},
+           isFixture: body.isFixture === true,
+           retentionDays: body.retentionDays ?? null,
+           now: new Date().toISOString()
+         });
+       } catch (error) { return send(res, 422, {ok: false, errors: Array.isArray(error?.errors) ? error.errors : [error?.message ?? "concept_invalid"]}); }
+       try { await concepts.create(record); }
+       catch (error) { if (error?.code === "CONCEPT_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["concept_already_exists"]}); throw error; }
+       return send(res, 201, {ok: true, concept: toPublicConcept(record)});
+     }
+     if (conceptRoute?.kind === "get") {
+       const record = await concepts.load({tenantId: actor.tenantId, projectId: project.projectId, conceptId: conceptRoute.conceptId});
+       if (!record) return send(res, 404, {ok: false, errors: ["concept_not_found"]});
+       return send(res, 200, {ok: true, concept: toPublicConcept(record)});
+     }
+     if (conceptRoute?.kind === "compare") {
+       const leftId = text(body.leftConceptId) ? body.leftConceptId : (Array.isArray(body.conceptIds) ? body.conceptIds[0] : null);
+       const rightId = text(body.rightConceptId) ? body.rightConceptId : (Array.isArray(body.conceptIds) ? body.conceptIds[1] : null);
+       if (!text(leftId) || !text(rightId)) return send(res, 400, {ok: false, errors: ["two_concept_ids_required"]});
+       const left = await concepts.load({tenantId: actor.tenantId, projectId: project.projectId, conceptId: leftId});
+       const right = await concepts.load({tenantId: actor.tenantId, projectId: project.projectId, conceptId: rightId});
+       if (!left || !right) return send(res, 404, {ok: false, errors: ["concept_not_found"]});
+       return send(res, 200, {ok: true, comparison: buildConceptComparison(left, right)});
+     }
+     if (conceptRoute?.kind === "approve") {
+       let record;
+       try { record = await concepts.approve({tenantId: actor.tenantId, projectId: project.projectId, conceptId: conceptRoute.conceptId, approvedBy: actor.id, approvedAt: new Date().toISOString()}); }
+       catch (error) { if (error?.code === "CONCEPT_WRITE_CONFLICT") return send(res, 409, {ok: false, conflict: true, errors: ["concept_write_conflict"]}); throw error; }
+       if (!record) return send(res, 404, {ok: false, errors: ["concept_not_found"]});
+       return send(res, 200, {ok: true, concept: toPublicConcept(record)});
+     }
      if (req.method === "GET" && sub === "export") return send(res, 200, {ok: true, export: buildExportPackage({projectData: project.serialize(), exportedBy: actor.id})});
      if (req.method === "GET" && (sub === "preview/existing.svg" || sub === "preview/proposed.svg")) {
        const svg = sub.includes("existing") ? project.preview?.existingSvg : project.preview?.proposedSvg;
@@ -267,6 +362,21 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      }
      if (req.method === "POST" && sub === "furnishing") return done(200, {ok: true, plan: project.evaluateFurnishing({actor, items: body.items, minimumClearanceMeters: body.minimumClearanceMeters})});
      if (req.method === "GET" && sub === "design-workspace") return send(res, 200, {ok: true, designWorkspace: project.designWorkspace});
+     if (req.method === "GET" && sub === "budget-summary") {
+       // Totals are computed HERE, by the fail-closed library, from the
+       // stored workspace — never by the caller. Library results are
+       // surfaced verbatim: an invalid budget/shopping list is a 422 with
+       // the library's own errors, and overflow-withheld totals stay null
+       // (with their alerts), never zeroed or estimated.
+       const ws = project.designWorkspace;
+       const budget = summarizeProjectBudget(ws?.budget ?? createProjectBudget({}));
+       const shoppingIds = Array.isArray(ws?.shoppingListIds) ? ws.shoppingListIds : [];
+       const shoppingList = shoppingIds.length ? buildShoppingList(Array.isArray(ws?.products) ? ws.products : [], shoppingIds) : null;
+       const budgetSummary = {computedBy: "server", hasDesignWorkspace: Boolean(ws), hasBudget: Boolean(ws?.budget), budget, shoppingList};
+       const errors = [...(budget.valid ? [] : budget.errors), ...(shoppingList && !shoppingList.valid ? shoppingList.errors : [])];
+       if (errors.length) return send(res, 422, {ok: false, errors, budgetSummary});
+       return send(res, 200, {ok: true, budgetSummary});
+     }
      if (req.method === "POST" && sub === "design-workspace") return done(200, {ok: true, designWorkspace: project.setDesignWorkspace({actor, workspace: body.workspace})});
      if (req.method === "POST" && sub === "comparison") return done(200, {ok: true, comparison: project.buildComparison({actor})});
      if (req.method === "POST" && sub === "quincey-packet") return done(200, {ok: true, ...project.buildReviewPacket({actor, commitSha: body.commitSha, prUrl: body.prUrl, studyId: body.studyId, ciRuns: body.ciRuns, testCount: body.testCount, readinessEvidence: body.readinessEvidence})});
@@ -280,5 +390,6 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  };
  const server = createServer((req, res) => { route(req, res).catch(() => { try { send(res, 500, {ok: false, errors: ["internal_error"]}); } catch {} }); });
  server.renovisionProjects = projects;
+ server.renovisionConcepts = concepts;
  return server;
 }

@@ -7,14 +7,14 @@ export const RENOVISION_APP_HTML = `<!doctype html>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#F5F9FC;color:#17375B}
 header{background:#17375B;color:#fff;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-header h1{font-size:18px;margin:0}.badge{background:#13A989;color:#fff;border-radius:10px;padding:2px 9px;font-size:12px}
+header h1{font-size:18px;margin:0}.badge{background:#0f846b;color:#fff;border-radius:10px;padding:2px 9px;font-size:12px}
 .banner{background:#fff3cd;border-bottom:2px solid #e6a800;padding:9px 20px;font-size:13px}
 main{max-width:1180px;margin:0 auto;padding:16px;display:grid;gap:16px}
 section{background:#fff;border:1px solid #d7e3ee;border-radius:10px;padding:14px 16px}
 h2{font-size:15px;margin:0 0 10px}label{font-size:12px;display:block;margin:6px 0 2px}
 input,select,textarea{width:100%;padding:6px;border:1px solid #b9c9d8;border-radius:6px;font-size:13px;box-sizing:border-box}
 button{background:#1769E0;color:#fff;border:0;border-radius:6px;padding:7px 13px;font-size:13px;cursor:pointer;margin:4px 4px 4px 0}
-button.alt{background:#13A989}button.warn{background:#b3261e}button:disabled{opacity:.5}
+button.alt{background:#0f846b}button.warn{background:#b3261e}button:disabled{opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
 table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid #d7e3ee;padding:5px 7px;text-align:left}
 pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:auto;font-size:11.5px;max-height:230px}
@@ -26,123 +26,123 @@ pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:aut
 <main>
 <section><h2>1 · Project &amp; session</h2>
 <div class="grid">
-<div><label>Actor ID (demo header auth)</label><input id="actorId" value="operator-1"></div>
-<div><label>Tenant ID</label><input id="tenantId" value="tenant-a"></div>
-<div><label>Project ID</label><input id="projectId" value="reno-demo-1"></div>
-<div><label>Property ID</label><input id="propertyId" value="property-1"></div>
-<div><label>Room ID</label><input id="roomId" value="room-1"></div>
-<div><label>Bearer ID token (fallback — normally use sign-in below)</label><input id="bearerToken" type="password" value=""></div>
+<div><label for="actorId">Actor ID (demo header auth)</label><input id="actorId" value="operator-1"></div>
+<div><label for="tenantId">Tenant ID</label><input id="tenantId" value="tenant-a"></div>
+<div><label for="projectId">Project ID</label><input id="projectId" value="reno-demo-1"></div>
+<div><label for="propertyId">Property ID</label><input id="propertyId" value="property-1"></div>
+<div><label for="roomId">Room ID</label><input id="roomId" value="room-1"></div>
+<div><label for="bearerToken">Bearer ID token (fallback — normally use sign-in below)</label><input id="bearerToken" type="password" value=""></div>
 </div>
 <div class="grid">
-<div><label>Email — RENOVISION account sign-in</label><input id="signInEmail" type="email" autocomplete="username"></div>
-<div><label>Password</label><input id="signInPassword" type="password" autocomplete="current-password"></div>
+<div><label for="signInEmail">Email — RENOVISION account sign-in</label><input id="signInEmail" type="email" autocomplete="username"></div>
+<div><label for="signInPassword">Password</label><input id="signInPassword" type="password" autocomplete="current-password"></div>
 </div>
 <button id="btnSignIn">Sign in</button><button id="btnSignOut" class="alt">Sign out</button>
-<span class="small" id="signInMsg">Checking sign-in configuration…</span>
+<span class="small" id="signInMsg" role="status">Checking sign-in configuration…</span>
 <button id="btnCreate">Create project</button><button id="btnOpen" class="alt">Open project</button>
-<span class="small" id="sessionMsg"></span></section>
+<span class="small" id="sessionMsg" role="status"></span></section>
 
 <section><h2>2 · Capture review</h2>
 <div class="grid">
-<div><label>Platform</label><select id="capPlatform"><option>web</option><option>ios</option><option>android</option><option>manual</option></select></div>
-<div><label>Camera permission</label><select id="capPerm"><option value="true">granted</option><option value="false">denied</option></select></div>
-<div><label>Depth supported</label><select id="capDepth"><option value="false">no</option><option value="true">yes</option></select></div>
-<div><label>RoomPlan supported</label><select id="capRoomplan"><option value="false">no</option><option value="true">yes</option></select></div>
-<div><label>Manual measurement available</label><select id="capManual"><option value="true">yes</option><option value="false">no</option></select></div>
+<div><label for="capPlatform">Platform</label><select id="capPlatform"><option>web</option><option>ios</option><option>android</option><option>manual</option></select></div>
+<div><label for="capPerm">Camera permission</label><select id="capPerm"><option value="true">granted</option><option value="false">denied</option></select></div>
+<div><label for="capDepth">Depth supported</label><select id="capDepth"><option value="false">no</option><option value="true">yes</option></select></div>
+<div><label for="capRoomplan">RoomPlan supported</label><select id="capRoomplan"><option value="false">no</option><option value="true">yes</option></select></div>
+<div><label for="capManual">Manual measurement available</label><select id="capManual"><option value="true">yes</option><option value="false">no</option></select></div>
 </div>
-<button id="btnPlan">Plan capture</button> <span class="small" id="planMsg"></span>
+<button id="btnPlan">Plan capture</button> <span class="small" id="planMsg" role="status"></span>
 <div class="grid">
-<div><label>Evidence photo (stored with SHA-256 digest)</label><input type="file" id="evidenceFile" accept="image/*"></div>
-<div><label>Capture ID</label><input id="captureId" value="capture-1"></div>
-<div><label>Device model</label><input id="deviceModel" value="browser-device"></div>
-<div><label>Calibration status</label><select id="calStatus"><option>pending</option><option>uncalibrated</option><option>calibrated</option><option>failed</option></select></div>
-<div><label>Coverage gaps (comma separated)</label><input id="coverageGaps" value=""></div>
-<div><label>Blur score 0–1</label><input id="blurScore" value="0.1"></div>
-<div><label>Depth coverage 0–1</label><input id="depthCov" value="0.5"></div>
+<div><label for="evidenceFile">Evidence photo (stored with SHA-256 digest)</label><input type="file" id="evidenceFile" accept="image/*"></div>
+<div><label for="captureId">Capture ID</label><input id="captureId" value="capture-1"></div>
+<div><label for="deviceModel">Device model</label><input id="deviceModel" value="browser-device"></div>
+<div><label for="calStatus">Calibration status</label><select id="calStatus"><option>pending</option><option>uncalibrated</option><option>calibrated</option><option>failed</option></select></div>
+<div><label for="coverageGaps">Coverage gaps (comma separated)</label><input id="coverageGaps" value=""></div>
+<div><label for="blurScore">Blur score 0–1</label><input id="blurScore" value="0.1"></div>
+<div><label for="depthCov">Depth coverage 0–1</label><input id="depthCov" value="0.5"></div>
 </div>
-<button id="btnEvidence">Upload evidence</button> <span class="small" id="evidenceMsg"></span>
-<label>Capture manifest (JSON) — built from the evidence receipt, editable before registering</label>
+<button id="btnEvidence">Upload evidence</button> <span class="small" id="evidenceMsg" role="status"></span>
+<label for="manifestJson">Capture manifest (JSON) — built from the evidence receipt, editable before registering</label>
 <textarea id="manifestJson" rows="7"></textarea>
 <button id="btnRegister">Register capture &amp; verify integrity</button>
 <button id="btnAccept" class="alt">Accept capture</button>
 <button id="btnReject" class="warn">Reject capture</button>
-<input id="rejectReason" placeholder="Rejection reason (required to reject)" style="margin-top:6px">
-<div class="small" id="captureMsg"></div></section>
+<label for="rejectReason">Rejection reason (required to reject)</label><input id="rejectReason" placeholder="Rejection reason (required to reject)" style="margin-top:6px">
+<div class="small" id="captureMsg" role="status"></div></section>
 
 <section><h2>3 · Measurements &amp; correction</h2>
 <table><thead><tr><th>Feature</th><th>Value</th><th>±</th><th>Method</th><th>Status</th><th>State</th></tr></thead><tbody id="measBody"><tr><td colspan="6" class="small">No measurements yet</td></tr></tbody></table>
 <div class="grid">
-<div><label>Feature</label><select id="mFeature"><option>width</option><option>depth</option><option>height</option><option>door_width</option><option>door_offset</option><option>window_width</option><option>window_offset</option><option>obstruction_offset</option></select></div>
-<div><label>Measurement ID</label><input id="mId" value="meas-width"></div>
-<div><label>Value</label><input id="mValue" value="3.6"></div>
-<div><label>Unit</label><select id="mUnit"><option>m</option><option>cm</option><option>mm</option><option>ft</option><option>in</option></select></div>
-<div><label>Uncertainty</label><input id="mUnc" value="0.02"></div>
-<div><label>Method</label><select id="mMethod"><option>manual_laser</option><option>manual_tape</option><option>roomplan_lidar</option><option>arcore_depth</option><option>photogrammetry</option><option>imported_plan</option></select></div>
-<div><label>Calibration</label><select id="mCal"><option>calibrated</option><option>uncalibrated</option><option>not_applicable</option></select></div>
-<div><label>Verification</label><select id="mVer"><option>estimated</option><option>verified</option></select></div>
-<div><label>Verified by (if verified)</label><input id="mVerifiedBy" value=""></div>
-<div><label>Semantic type</label><select id="mType"><option>wall</option><option>floor</option><option>ceiling</option><option>opening</option><option>obstruction</option></select></div>
-<div><label>Field measured</label><select id="mField"><option value="true">yes</option><option value="false">no</option></select></div>
+<div><label for="mFeature">Feature</label><select id="mFeature"><option>width</option><option>depth</option><option>height</option><option>door_width</option><option>door_offset</option><option>window_width</option><option>window_offset</option><option>obstruction_offset</option></select></div>
+<div><label for="mId">Measurement ID</label><input id="mId" value="meas-width"></div>
+<div><label for="mValue">Value</label><input id="mValue" value="3.6"></div>
+<div><label for="mUnit">Unit</label><select id="mUnit"><option>m</option><option>cm</option><option>mm</option><option>ft</option><option>in</option></select></div>
+<div><label for="mUnc">Uncertainty</label><input id="mUnc" value="0.02"></div>
+<div><label for="mMethod">Method</label><select id="mMethod"><option>manual_laser</option><option>manual_tape</option><option>roomplan_lidar</option><option>arcore_depth</option><option>photogrammetry</option><option>imported_plan</option></select></div>
+<div><label for="mCal">Calibration</label><select id="mCal"><option>calibrated</option><option>uncalibrated</option><option>not_applicable</option></select></div>
+<div><label for="mVer">Verification</label><select id="mVer"><option>estimated</option><option>verified</option></select></div>
+<div><label for="mVerifiedBy">Verified by (if verified)</label><input id="mVerifiedBy" value=""></div>
+<div><label for="mType">Semantic type</label><select id="mType"><option>wall</option><option>floor</option><option>ceiling</option><option>opening</option><option>obstruction</option></select></div>
+<div><label for="mField">Field measured</label><select id="mField"><option value="true">yes</option><option value="false">no</option></select></div>
 </div>
 <button id="btnAddMeas">Add measurement</button> <span class="small">Evidence digest is taken from the uploaded capture evidence.</span>
 <h2 style="margin-top:14px">Correct a measurement (append-only — the original is preserved)</h2>
 <div class="grid">
-<div><label>Target measurement ID</label><input id="cTarget" value="meas-width"></div>
-<div><label>New measurement ID</label><input id="cNewId" value="meas-width-corr-1"></div>
-<div><label>Corrected value</label><input id="cValue" value="3.62"></div>
-<div><label>Reason</label><input id="cReason" value="Re-measured with laser on site"></div>
+<div><label for="cTarget">Target measurement ID</label><input id="cTarget" value="meas-width"></div>
+<div><label for="cNewId">New measurement ID</label><input id="cNewId" value="meas-width-corr-1"></div>
+<div><label for="cValue">Corrected value</label><input id="cValue" value="3.62"></div>
+<div><label for="cReason">Reason</label><input id="cReason" value="Re-measured with laser on site"></div>
 </div>
 <button id="btnCorrect" class="alt">Apply correction</button>
-<button id="btnLock">Lock geometry</button> <span class="small" id="lockMsg"></span>
-<div class="small" id="measMsg"></div></section>
+<button id="btnLock">Lock geometry</button> <span class="small" id="lockMsg" role="status"></span>
+<div class="small" id="measMsg" role="status"></div></section>
 
 <section><h2>4 · Approved design proposal</h2>
 <div class="grid">
-<div><label>Approval ref</label><input id="aRef" value="approval-1"></div>
-<div><label>Approved by (must differ from proposer)</label><input id="aBy" value="founder"></div>
-<div><label>Feature ID</label><input id="pFeature" value="floor-main"></div>
-<div><label>Semantic type</label><select id="pType"><option>floor</option><option>wall</option><option>ceiling</option><option>opening</option><option>obstruction</option></select></div>
-<div><label>Scope item ID</label><input id="pScope" value="scope-floor-1"></div>
-<div><label>Label / finish</label><input id="pLabel" value="White oak flooring"></div>
-<div><label>Reason</label><input id="pReason" value="Approved renovation scope"></div>
+<div><label for="aRef">Approval ref</label><input id="aRef" value="approval-1"></div>
+<div><label for="aBy">Approved by (must differ from proposer)</label><input id="aBy" value="founder"></div>
+<div><label for="pFeature">Feature ID</label><input id="pFeature" value="floor-main"></div>
+<div><label for="pType">Semantic type</label><select id="pType"><option>floor</option><option>wall</option><option>ceiling</option><option>opening</option><option>obstruction</option></select></div>
+<div><label for="pScope">Scope item ID</label><input id="pScope" value="scope-floor-1"></div>
+<div><label for="pLabel">Label / finish</label><input id="pLabel" value="White oak flooring"></div>
+<div><label for="pReason">Reason</label><input id="pReason" value="Approved renovation scope"></div>
 </div>
 <button id="btnApproval">Register approval</button>
 <button id="btnRevokeApproval" class="warn">Revoke approval</button>
 <button id="btnPropose" class="alt">Propose change (approval-gated)</button>
-<div class="small" id="propMsg"></div></section>
+<div class="small" id="propMsg" role="status"></div></section>
 
 <section><h2>5 · Visualization — existing vs proposed</h2>
-<button id="btnPreview">Generate concept preview</button> <span class="small" id="previewMsg"></span>
-<div class="small" id="claimMsg"></div>
+<button id="btnPreview">Generate concept preview</button> <span class="small" id="previewMsg" role="status"></span>
+<div class="small" id="claimMsg" role="status"></div>
 <div class="svgs"><div><strong>Existing</strong><img id="svgExisting" alt="Existing floor plan"></div>
 <div><strong>Proposed</strong><img id="svgProposed" alt="Proposed floor plan"></div></div>
-<div class="small" id="warnMsg"></div></section>
+<div class="small" id="warnMsg" role="status"></div></section>
 
 <section><h2>6 · Dimension-aware furnishing</h2>
 <div class="grid">
-<div><label>Item ID</label><input id="fId" value="sofa-1"></div>
-<div><label>Product ID</label><input id="fProduct" value="sofa-3seat-001"></div>
-<div><label>Dimension source</label><input id="fSource" value="manufacturer-spec-sheet"></div>
-<div><label>Dimensions verified</label><select id="fDimsVer"><option value="true">yes</option><option value="false">no</option></select></div>
-<div><label>Width (m)</label><input id="fW" value="2.1"></div>
-<div><label>Depth (m)</label><input id="fD" value="0.95"></div>
-<div><label>X (m)</label><input id="fX" value="0.4"></div>
-<div><label>Y (m)</label><input id="fY" value="0.4"></div>
-<div><label>Uncertainty (m)</label><input id="fUnc" value="0.01"></div>
-<div><label>Clearance (m)</label><input id="fClear" value="0.3"></div>
+<div><label for="fId">Item ID</label><input id="fId" value="sofa-1"></div>
+<div><label for="fProduct">Product ID</label><input id="fProduct" value="sofa-3seat-001"></div>
+<div><label for="fSource">Dimension source</label><input id="fSource" value="manufacturer-spec-sheet"></div>
+<div><label for="fDimsVer">Dimensions verified</label><select id="fDimsVer"><option value="true">yes</option><option value="false">no</option></select></div>
+<div><label for="fW">Width (m)</label><input id="fW" value="2.1"></div>
+<div><label for="fD">Depth (m)</label><input id="fD" value="0.95"></div>
+<div><label for="fX">X (m)</label><input id="fX" value="0.4"></div>
+<div><label for="fY">Y (m)</label><input id="fY" value="0.4"></div>
+<div><label for="fUnc">Uncertainty (m)</label><input id="fUnc" value="0.01"></div>
+<div><label for="fClear">Clearance (m)</label><input id="fClear" value="0.3"></div>
 </div>
 <button id="btnFurnish">Evaluate furnishing plan</button>
 <table><thead><tr><th>Item</th><th>Verdict</th><th>Notes</th></tr></thead><tbody id="furnBody"><tr><td colspan="3" class="small">Not evaluated</td></tr></tbody></table>
-<div class="small" id="furnMsg"></div></section>
+<div class="small" id="furnMsg" role="status"></div></section>
 
 <section><h2>7 · Comparison &amp; QUINCEY handoff</h2>
 <button id="btnCompare">Build comparison</button>
 <table><thead><tr><th>Feature</th><th>Change</th><th>Approval</th></tr></thead><tbody id="cmpBody"><tr><td colspan="3" class="small">No comparison yet</td></tr></tbody></table>
 <div class="grid">
-<div><label>Commit SHA (40 hex)</label><input id="qSha" value=""></div>
-<div><label>PR URL</label><input id="qPr" value="https://github.com/TheOCGroup/RENO/pull/3"></div>
-<div><label>Study ID</label><input id="qStudy" value="renovision-e2e-001"></div>
-<div><label>Test count</label><input id="qTests" value=""></div>
+<div><label for="qSha">Commit SHA (40 hex)</label><input id="qSha" value=""></div>
+<div><label for="qPr">PR URL</label><input id="qPr" value="https://github.com/TheOCGroup/RENO/pull/3"></div>
+<div><label for="qStudy">Study ID</label><input id="qStudy" value="renovision-e2e-001"></div>
+<div><label for="qTests">Test count</label><input id="qTests" value=""></div>
 </div>
 <button id="btnPacket" class="alt">Build QUINCEY review packet</button>
 <button id="btnExport">Export evidence package (digest-bound)</button>

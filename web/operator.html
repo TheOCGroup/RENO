@@ -22,6 +22,7 @@
   button.secondary:hover { background: #eef3f9; }
   :focus-visible { outline: 3px solid #ffb900; outline-offset: 2px; }
   #connection-status { font-size: 14px; align-self: center; }
+  #connection-status.error { color: #f2a3a7; }
   .session-note { margin: 10px 0 0; font-size: 13px; color: #c8d2dd; max-width: 900px; }
   .session-note strong { color: #ffffff; }
   .layout { display: grid; grid-template-columns: minmax(250px, 330px) minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; align-items: start; }
@@ -85,7 +86,7 @@
   .write-form .hint { font-size: 12px; color: #424a54; }
   .write-form .check-list { display: grid; gap: 4px; }
   .write-form .check-list label { font-weight: 400; display: flex; gap: 7px; align-items: baseline; }
-  .write-form .check-list input { width: auto; }
+  .write-form .check-list input { width: 24px; height: 24px; flex: none; margin: 0; }
   .line-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 6px; margin-bottom: 6px; }
   .line-row input { min-width: 0; }
   .form-feedback { margin: 8px 0 0; font-size: 14px; min-height: 1.2em; }
@@ -140,7 +141,7 @@
         <span id="detail-stage" class="badge"></span>
         <span id="detail-scope" class="muted"></span>
       </p>
-      <div id="next-action" class="next-action" aria-label="Next action">
+      <div id="next-action" class="next-action" role="group" aria-label="Next action">
         <strong>Next action</strong>
         <span id="next-action-text">Select a project.</span>
       </div>
@@ -446,8 +447,10 @@ function buildSubmitInvoiceForm(d) {
     var row = el("div", "line-row");
     var desc = makeInput("", "text", "Description");
     desc.className = "li-desc";
+    desc.setAttribute("aria-label", "Line item description");
     var amount = makeInput("", "number", "Amount");
     amount.className = "li-amount";
+    amount.setAttribute("aria-label", "Line item amount");
     amount.min = "0"; amount.step = "0.01";
     amount.addEventListener("input", updateTotal);
     var remove = el("button", "secondary", "Remove");
