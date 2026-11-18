@@ -50,6 +50,28 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  if (!evidenceStorage || typeof evidenceStorage.put !== "function" || typeof evidenceStorage.get !== "function") throw new TypeError("evidence storage adapter required");
  const projects = new Map();
  const keyFor = (actor, projectId) => actor.tenantId + "/" + projectId;
+ /** Per-project write serialization. With a durable project store each
+  * request resolves its own copy of the project, so two concurrent writes
+  * to the same project would otherwise race load-modify-save and silently
+  * lose the earlier write (last-writer-wins). POSTs to a project therefore
+  * hold a keyed lock from resolution until the response finishes; writes
+  * to different projects still proceed in parallel. (QUINCEY UF-1.) */
+ const projectWriteLocks = new Map();
+ const acquireProjectWrite = async (key) => {
+   const prior = projectWriteLocks.get(key) ?? Promise.resolve();
+   let release;
+   const gate = new Promise((resolve) => { release = resolve; });
+   const chain = prior.then(() => gate);
+   projectWriteLocks.set(key, chain);
+   await prior;
+   let released = false;
+   return () => {
+     if (released) return;
+     released = true;
+     release();
+     if (projectWriteLocks.get(key) === chain) projectWriteLocks.delete(key);
+   };
+ };
  /** Bounded retry for transient store failures (a single GCS hiccup must not
   * fail a request whose workflow already committed elsewhere). Typed
   * generation conflicts are never retried — they are answers, not transients. */
@@ -184,6 +206,11 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
      }
      const match = path.match(/^\/api\/renovision\/projects\/([^/]+)(?:\/(.+))?$/);
      if (!match) return send(res, 404, {ok: false, errors: ["not_found"]});
+     if (req.method === "POST") {
+       const releaseWrite = await acquireProjectWrite(actor.tenantId + "/" + decodeURIComponent(match[1]));
+       res.once("finish", releaseWrite);
+       res.once("close", releaseWrite);
+     }
      const project = await resolveProject(decodeURIComponent(match[1]), actor);
      if (!project || project.tenantId !== actor.tenantId) return send(res, 404, {ok: false, errors: ["project_not_found"]});
      const sub = match[2] ?? "";
@@ -277,6 +304,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
        // every byte is durably stored and digest-verified, so a storage
        // failure can never leave a record pointing at missing images.
        const conceptId = text(body.conceptId) ? body.conceptId : "concept-" + (cryptoApi.randomUUID?.() ?? Date.now().toString(36));
+       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(conceptId)) return send(res, 422, {ok: false, errors: ["concept_id_invalid"]});
        const conceptRoomId = text(body.roomId) ? body.roomId : project.roomId;
        const retentionDays = body.retentionDays ?? 365;
        const decodeImage = (img) => {

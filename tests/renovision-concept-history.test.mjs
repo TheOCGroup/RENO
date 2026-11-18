@@ -156,6 +156,39 @@ test("routes: invalid input and storage failure never leave a record", async (t)
   assert.equal(list2.concepts.length, 0, "storage failure leaves no dangling record");
 });
 
+test("routes: concurrent concept saves all persist (per-project write serialization, QUINCEY UF-1)", async (t) => {
+  const {base} = await boot(t);
+  await post(base, "/api/renovision/projects", HA, {projectId: "p1", propertyId: "property-1", roomId: "room-1"});
+  const saves = await Promise.all(Array.from({length: 6}, (_, i) =>
+    post(base, "/api/renovision/projects/p1/concepts", HA, conceptBody({conceptId: "parallel-" + i}))));
+  assert.deepEqual(saves.map((s) => s.status), [201, 201, 201, 201, 201, 201]);
+  const list = await (await fetch(base + "/api/renovision/projects/p1/concepts", {headers: HA})).json();
+  assert.equal(list.concepts.length, 6, "no acknowledged save may be silently lost");
+  assert.deepEqual(list.concepts.map((c) => c.conceptId).sort(), ["parallel-0", "parallel-1", "parallel-2", "parallel-3", "parallel-4", "parallel-5"]);
+});
+
+test("routes: separator-bearing concept id is a 422 and records nothing (QUINCEY UF-4)", async (t) => {
+  const {base} = await boot(t);
+  await post(base, "/api/renovision/projects", HA, {projectId: "p1", propertyId: "property-1", roomId: "room-1"});
+  const res = await post(base, "/api/renovision/projects/p1/concepts", HA, conceptBody({conceptId: "bad/id"}));
+  assert.equal(res.status, 422);
+  const list = await (await fetch(base + "/api/renovision/projects/p1/concepts", {headers: HA})).json();
+  assert.equal(list.concepts.length, 0);
+});
+
+test("workflow: restore rejects duplicate concept ids but tolerates deleted parents (QUINCEY UF-2)", () => {
+  const project = new RenovisionProject({projectId: "p1", tenantId: "tenant-a", propertyId: "property-1", roomId: "room-1", createdBy: "operator-1"});
+  project.recordConcept({actor: actorA, concept: baseRecord()});
+  const dup = project.serialize();
+  dup.concepts = [baseRecord(), baseRecord()];
+  assert.throws(() => RenovisionProject.restore(dup), /concept_history_inconsistent/);
+  // A revision whose parent was later deleted is a legitimate stored state.
+  const orphan = project.serialize();
+  orphan.concepts = [baseRecord({conceptId: "concept-x", revisionOf: "concept-1"})];
+  orphan.concepts = orphan.concepts.filter((c) => c.conceptId !== "concept-1");
+  assert.equal(RenovisionProject.restore(orphan).concepts.length, 1);
+});
+
 test("routes: concept history survives a server restart (durable stores)", async (t) => {
   const first = await boot(t);
   await post(first.base, "/api/renovision/projects", HA, {projectId: "p1", propertyId: "property-1", roomId: "room-1"});
