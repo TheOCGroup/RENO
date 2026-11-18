@@ -46,8 +46,10 @@ assistive-technology testing were NOT performed and remain NOT VERIFIED.
 - Studio signed-out / project-loaded / with-concept-history / 320px:
   **0 violations** in every state.
 - Operator: **0 violations**.
-- Label censuses (studio + operator): **empty** — every input, select, and
-  textarea has an accessible name.
+- Label censuses (studio + operator): every input, select, and textarea
+  has an accessible name. One refinement found by QUINCEY's independent
+  review: the operator rejection-reason input was named by its placeholder
+  only — it now carries an explicit `aria-label` as well.
 - Keyboard traversal: Tab stops across the studio show a solid visible
   outline on every stop.
 - 320px reflow: no horizontal overflow. Reduced motion: media query

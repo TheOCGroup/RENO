@@ -66,7 +66,7 @@ pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:aut
 <button id="btnRegister">Register capture &amp; verify integrity</button>
 <button id="btnAccept" class="alt">Accept capture</button>
 <button id="btnReject" class="warn">Reject capture</button>
-<input id="rejectReason" placeholder="Rejection reason (required to reject)" style="margin-top:6px">
+<input id="rejectReason" aria-label="Rejection reason (required to reject)" placeholder="Rejection reason (required to reject)" style="margin-top:6px">
 <div class="small" id="captureMsg"></div></section>
 
 <section><h2>3 · Measurements &amp; correction</h2>
