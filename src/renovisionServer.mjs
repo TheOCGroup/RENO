@@ -45,6 +45,19 @@ const BRAND_ASSETS = (() => {
  }
  return map;
 })();
+/** Client engine modules for the studio's guided platform features
+ * (concierge, conversions, cost engine, furnish, plan ingestion, property
+ * profile). Served from a fixed allowlist — the browser imports the exact
+ * same modules the server and tests use, so there is one implementation.
+ * Relative imports between them resolve under /lib/renovision/. */
+const LIB_MODULE_FILES = ["concierge.mjs", "property-profile.mjs", "plan-ingestion.mjs", "conversions.mjs", "conversion-costs.mjs", "furnish.mjs", "design-library.mjs", "product-catalog.mjs", "project-budget.mjs", "uncertain-furniture-fit.mjs"];
+const LIB_MODULES = (() => {
+ const map = new Map();
+ for (const file of LIB_MODULE_FILES) {
+   try { map.set("/lib/renovision/" + file, {bytes: readFileSync(new URL(`../lib/renovision/${file}`, import.meta.url)), type: "text/javascript; charset=utf-8"}); } catch { /* module absent: route stays unregistered */ }
+ }
+ return map;
+})();
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
  const approvals = new Map();
@@ -174,6 +187,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    const url = new URL(req.url, "http://localhost");
    const path = url.pathname;
    if (req.method === "GET" && BRAND_ASSETS.has(path)) { const asset = BRAND_ASSETS.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
+   if (req.method === "GET" && LIB_MODULES.has(path)) { const asset = LIB_MODULES.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});

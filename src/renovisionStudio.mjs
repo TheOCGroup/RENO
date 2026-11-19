@@ -195,6 +195,19 @@ details.quiet:not([open])>summary::after{content:" +"}
   .journey-card strong{font-size:18px}
   .material-grid{grid-template-columns:1fr}
 }
+
+/* ---- Guided platform components (2026-11-19) ---- */
+.gx-rate-row{display:grid;grid-template-columns:auto 130px 90px 84px 1fr 110px;gap:8px;align-items:center;margin:6px 0}
+.gx-rate-row label.gx-rate-use{margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:600}
+.gx-rate-row input[type="checkbox"]{width:16px;height:16px}
+.gx-layout-card{border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;background:#fff}
+.gx-layout-stage{position:relative;width:100%;background:var(--ivory);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.gx-zone{position:absolute;border:1.5px dashed var(--accent);background:rgba(49,83,107,.08);color:var(--accent-deep);font-size:10.5px;font-weight:700;padding:3px 5px;overflow:hidden}
+.gx-furn-block{position:absolute;background:#d5e2d8;border:1px solid #6c645b;border-radius:4px;color:#243c30;font-size:10px;font-weight:600;padding:2px 4px;overflow:hidden}
+#gxConciergePanel textarea{width:100%}
+#gxConciergeSummary{margin:10px 0 4px}
+#gxNextActions>div{margin:6px 0}
+@media(max-width:760px){.gx-rate-row{grid-template-columns:auto 1fr 84px;grid-auto-rows:auto}}
 </style></head><body>
 <header><h1><img src="/brand/icon-192.png" alt="" width="34" height="34" style="border-radius:8px;vertical-align:-7px;margin-right:10px">RENOVISION <span style="color:#729b86">AI</span></h1><a href="/operator">Operator workspace</a></header>
 <main><section class="intro"><div><div class="eyebrow">The renovation design atelier · RENOVISION AI</div><h2>Spaces, <em>reimagined.</em></h2></div><div><p>Thoughtful transformations begin with a vision. Explore materials, finishes and architectural character—starting with a photograph of your own space.</p><div class="intro-meta">01 / Your space &nbsp; · &nbsp; 02 / Your vision &nbsp; · &nbsp; 03 / Your concept</div></div></section>
@@ -553,9 +566,11 @@ function collectWorkspace() {
     layouts, activeLayoutId: slugify(activeLayoutName) || "layout",
     products: wsProducts, shoppingListIds: [...wsShopping], budget,
     notes: wsNotesInput.value || "",
+    guided: typeof guidedCollect === "function" ? guidedCollect() : null,
   };
 }
 function hydrateWorkspace(ws) {
+  if (ws.guided && typeof guidedRestore === "function") guidedRestore(ws.guided);
   wsProducts = ws.products || [];
   wsShopping = new Set(ws.shoppingListIds || []);
   wsBudget = ws.budget || null;
@@ -929,5 +944,371 @@ document.addEventListener('change',()=>setTimeout(rvJourneyUpdate,350));
   }catch(e){}
 })();
 
+/* ---- Guided platform: concierge, property, plan ingestion, conversions, cost engine, furnish (master directive 2026-11-19) ---- */
+const guidedState = { context: null, property: null, planUploads: [], screening: null, layouts: null, rateBook: null, estimate: null, furnishRequest: null, furnishProposal: null, templateId: null };
+function guidedCollect() {
+  try { return JSON.parse(JSON.stringify({ context: guidedState.context, property: guidedState.property, planUploads: guidedState.planUploads, screening: guidedState.screening, layouts: guidedState.layouts, rateBook: guidedState.rateBook, estimate: guidedState.estimate, furnishRequest: guidedState.furnishRequest, furnishProposal: guidedState.furnishProposal, templateId: guidedState.templateId })); } catch (e) { return null; }
+}
+function guidedRestore(g) {
+  if (!g) return;
+  guidedState.context = g.context || null; guidedState.property = g.property || null; guidedState.planUploads = g.planUploads || [];
+  guidedState.screening = g.screening || null; guidedState.layouts = g.layouts || null; guidedState.rateBook = g.rateBook || null;
+  guidedState.estimate = g.estimate || null; guidedState.furnishRequest = g.furnishRequest || null; guidedState.furnishProposal = g.furnishProposal || null;
+  guidedState.templateId = g.templateId || null;
+  if (typeof gxRenderAll === "function") gxRenderAll();
+}
+const gxMoney = (c) => c === null || c === undefined ? "—" : "USD " + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const gxEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+function gxBuildPanels() {
+  const RV = window.RV;
+  /* ---------- Concierge (right rail, below concept history) ---------- */
+  const conciergePanel = document.createElement("section");
+  conciergePanel.id = "gxConciergePanel";
+  conciergePanel.innerHTML = '<h3 class="rail-title">Design concierge</h3>';
+  const cNote = gxEl("p", "note", "A guided assistant that works with your project’s real planner, budget and catalog. It is a rule-based guide, not a generative AI, and it never invents prices, dimensions or records.");
+  cNote.id = "gxConciergeNote";
+  const cInput = document.createElement("textarea"); cInput.id = "gxConciergeInput"; cInput.rows = 3; cInput.setAttribute("aria-label", "Describe your project for the design concierge");
+  cInput.placeholder = "Describe what you want — e.g. “I have a two-car garage and want to convert it into a one-bedroom guest suite with a bathroom. My renovation budget is $35,000. I want a warm modern design.”";
+  const cBtn = gxEl("button", "", "Guide my project"); cBtn.id = "gxGuideBtn"; cBtn.type = "button";
+  const cSummary = gxEl("div", ""); cSummary.id = "gxConciergeSummary";
+  const cActions = gxEl("div", ""); cActions.id = "gxNextActions";
+  const cJourney = gxEl("p", "note", ""); cJourney.id = "gxJourneyLine";
+  conciergePanel.append(cNote, cInput, cBtn, cSummary, cActions, cJourney);
+  const historySection = $("conceptHistoryHeading") ? $("conceptHistoryHeading").closest("section") : null;
+  const rail = $("renderPanel").parentElement;
+  if (historySection && historySection.parentElement === rail) rail.insertBefore(conciergePanel, historySection.nextSibling); else rail.append(conciergePanel);
+
+  /* ---------- Property & floor plans ---------- */
+  const propPanel = makePanel("Your property & floor plans", "Address and property facts are stored with their source. Address lookup and property-record services are not connected, so nothing is inferred from an address — every fact below is exactly what you enter, labeled by provenance.");
+  propPanel.id = "gxPropertyPanel";
+  const propAddr = field(propPanel, "Property address", textInput("gxPropAddress", "Street, city, state"));
+  const propFacts = gxEl("div", "layout"); propPanel.append(propFacts);
+  const factDefs = [["areaSqFt", "Building area (sq ft)"], ["bedrooms", "Bedrooms"], ["bathrooms", "Bathrooms"], ["yearBuilt", "Year built"]];
+  const factInputs = {};
+  for (const [key, label] of factDefs) {
+    const wrap = gxEl("div");
+    const inp = numInput("gxProp_" + key, ""); inp.min = "0"; inp.step = key === "areaSqFt" || key === "yearBuilt" ? "1" : "0.5";
+    field(wrap, label, inp);
+    const prov = selInput("gxProv_" + key, ["user_supplied", "estimate"]); prov.value = "user_supplied";
+    field(wrap, "Source", prov);
+    const hint = gxEl("p", "note", "“Verified record” is unavailable until a records service is connected.");
+    wrap.append(hint); propFacts.append(wrap); factInputs[key] = { inp, prov };
+  }
+  const propBtn = actionButton(propPanel, "Save property facts"); propBtn.id = "gxPropSave";
+  const propStatus = statusLine(propPanel); propStatus.id = "gxPropStatus";
+  const propSummary = gxEl("div", ""); propSummary.id = "gxPropSummary"; propPanel.append(propSummary);
+  const planBox = gxEl("div", ""); planBox.style.marginTop = "18px"; propPanel.append(planBox);
+  planBox.append(gxEl("h4", "", "Floor plan upload"));
+  planBox.append(gxEl("p", "note", "Upload a PDF or image floor plan. The original is preserved with a revision history. Automated plan detection is NOT AVAILABLE — dimensions are confirmed by you below and only then used as room geometry."));
+  const planFile = document.createElement("input"); planFile.type = "file"; planFile.id = "gxPlanFile"; planFile.accept = ".pdf,.png,.jpg,.jpeg,.webp"; planFile.setAttribute("aria-label", "Floor plan file (PDF or image)");
+  const planReg = gxEl("button", "secondary", "Register plan upload"); planReg.id = "gxPlanRegister"; planReg.type = "button";
+  const planStatus = gxEl("p", "status", ""); planStatus.id = "gxPlanStatus";
+  const planDims = gxEl("div", "layout");
+  const pw = numInput("gxPlanWidth", "e.g. 240"); const pd = numInput("gxPlanDepth", "e.g. 240");
+  const pwrap1 = gxEl("div"); field(pwrap1, "Plan width (inches)", pw); planDims.append(pwrap1);
+  const pwrap2 = gxEl("div"); field(pwrap2, "Plan depth (inches)", pd); planDims.append(pwrap2);
+  const psrc = selInput("gxPlanSource", ["user_measured", "plan_stated"]);
+  const pwrap3 = gxEl("div"); field(pwrap3, "Dimension source", psrc); planDims.append(pwrap3);
+  const planConfirm = gxEl("button", "secondary", "Confirm dimensions"); planConfirm.id = "gxPlanConfirm"; planConfirm.type = "button";
+  const planApply = gxEl("button", "secondary", "Use as room geometry"); planApply.id = "gxPlanApply"; planApply.type = "button";
+  planBox.append(planFile, planReg, planStatus, planDims, planConfirm, planApply);
+  const main = document.querySelector("main");
+  const stagePlanEl = document.getElementById("stagePlan");
+  if (stagePlanEl) main.insertBefore(propPanel, stagePlanEl); else main.append(propPanel);
+
+  /* ---------- Transform ---------- */
+  const trPanel = makePanel("Transform your space", "Choose a conversion to generate conceptual layouts and a feasibility screening. Screening flags what needs professional review — it never approves a design for construction or permits.");
+  trPanel.id = "gxTransformPanel";
+  const tplSel = selInput("gxTplSelect", []); field(trPanel, "Conversion", tplSel);
+  const screenBox = gxEl("div", ""); screenBox.id = "gxScreenBox"; trPanel.append(screenBox);
+  const screenBtn = actionButton(trPanel, "Run feasibility screening"); screenBtn.id = "gxScreenBtn";
+  const screenResult = gxEl("div", ""); screenResult.id = "gxScreenResult"; trPanel.append(screenResult);
+  const layoutBtn = actionButton(trPanel, "Generate concept layouts", "secondary"); layoutBtn.id = "gxLayoutBtn";
+  const layoutBox = gxEl("div", ""); layoutBox.id = "gxLayoutBox"; trPanel.append(layoutBox);
+  const trStatus = statusLine(trPanel); trStatus.id = "gxTransformStatus";
+
+  /* ---------- Estimate ---------- */
+  const estPanel = makePanel("Conversion estimate", "Preliminary, fail-closed estimating. A total is produced only when every in-scope category has a rate with a named source — rates are planning assumptions until verified, and the estimate says so.");
+  estPanel.id = "gxEstimatePanel";
+  const demoBtn = actionButton(estPanel, "Load demonstration assumptions", "secondary"); demoBtn.id = "gxDemoRates";
+  estPanel.append(gxEl("p", "note", "Demonstration assumptions are editable planning figures labeled ASSUMPTION — not market data and not a quote."));
+  const rateBox = gxEl("div", ""); rateBox.id = "gxRateBox"; estPanel.append(rateBox);
+  const estBtn = actionButton(estPanel, "Build estimate"); estBtn.id = "gxEstBtn";
+  const estResult = gxEl("div", ""); estResult.id = "gxEstResult"; estPanel.append(estResult);
+  const estImport = actionButton(estPanel, "Add estimate lines to project budget", "secondary"); estImport.id = "gxEstImport";
+  const estStatus = statusLine(estPanel); estStatus.id = "gxEstStatus";
+
+  /* ---------- Furnish ---------- */
+  const fuPanel = makePanel("Furnish my space", "Coordinated furnishings proposed from your project catalog, checked against the room geometry. Retailer connections (Wayfair, Walmart, IKEA, Target, Home Depot) are NOT CONNECTED — no live prices, stock or purchase links are shown or invented.");
+  fuPanel.id = "gxFurnishPanel";
+  const fuBudget = field(fuPanel, "Furnishing budget ($, blank = no budget set)", numInput("gxFuBudget", "e.g. 6000"));
+  const fuQuality = field(fuPanel, "Quality level", selInput("gxFuQuality", ["value", "mid", "premium"]));
+  const fuBtn = actionButton(fuPanel, "Propose furnishings"); fuBtn.id = "gxFuBtn";
+  const fuResult = gxEl("div", ""); fuResult.id = "gxFuResult"; fuPanel.append(fuResult);
+  const fuStatus = statusLine(fuPanel); fuStatus.id = "gxFuStatus";
+
+  if (stagePlanEl) { stagePlanEl.append(trPanel, estPanel); }
+  const stageFinishEl = document.getElementById("stageFinish");
+  if (stageFinishEl) stageFinishEl.append(fuPanel);
+
+  /* ---------- Wiring ---------- */
+  if (!RV) { cNote.textContent += " (Guided engine failed to load — the rest of the studio is unaffected.)"; return; }
+  const { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish } = RV;
+
+  for (const t of conversions.CONVERSION_TEMPLATES) { const o = document.createElement("option"); o.value = t.id; o.textContent = t.label; tplSel.append(o); }
+  tplSel.value = guidedState.templateId || "garage-guest-suite";
+  const GX_DEMO_RATES = { demolition: [3, "sqft"], framing: [10, "sqft"], insulation: [3, "sqft"], drywall: [5, "sqft"], flooring: [8, "sqft"], electrical: [9, "sqft"], plumbing: [12, "sqft"], hvac: [7, "sqft"], "windows-doors": [1600, "lump"], fixtures: [2400, "lump"], finishes: [6, "sqft"], labor: [15, "sqft"], permits: [800, "lump"], contingency: [null, "lump"] };
+  function gxRenderRates() {
+    rateBox.innerHTML = "";
+    for (const cat of conversionCosts.CONVERSION_COST_CATEGORIES) {
+      const row = gxEl("div", "gx-rate-row");
+      const use = document.createElement("input"); use.type = "checkbox"; use.id = "gxUse_" + cat.id; use.checked = cat.id !== "contingency";
+      const useL = gxEl("label", "", cat.label); useL.htmlFor = use.id; useL.className = "gx-rate-use";
+      const amt = numInput("gxRate_" + cat.id, "$"); amt.step = "0.01"; amt.min = "0"; amt.setAttribute("aria-label", cat.label + " rate in dollars");
+      const unit = selInput("gxUnit_" + cat.id, ["sqft", "lump", "each"]); unit.setAttribute("aria-label", cat.label + " rate unit");
+      const src = textInput("gxSrc_" + cat.id, "Rate source (required)"); src.setAttribute("aria-label", cat.label + " rate source");
+      const conf = selInput("gxConf_" + cat.id, ["assumption", "sourced", "verified"]); conf.setAttribute("aria-label", cat.label + " rate confidence");
+      row.append(use, useL, amt, unit, src, conf); rateBox.append(row);
+      const saved = guidedState.rateBook && guidedState.rateBook.rates[cat.id];
+      if (saved) { amt.value = saved.amountCents / 100; unit.value = saved.unit; src.value = saved.source; conf.value = saved.confidence; }
+    }
+  }
+  function gxRoomDims() {
+    const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+    return w !== null && d !== null ? { widthIn: w, depthIn: d } : null;
+  }
+  function gxRenderConcierge() {
+    const ctx = guidedState.context;
+    cSummary.innerHTML = ""; cActions.innerHTML = "";
+    if (!ctx) { cJourney.textContent = "Journey: Describe → Discover → Capture → Design → Transform → Estimate → Furnish → Review → Export. Tell the concierge what you want to begin."; return; }
+    const chips = [];
+    if (ctx.objective) chips.push("Objective: " + ctx.objective);
+    if (ctx.conversionType) { const t = conversions.getConversionTemplate(ctx.conversionType); if (t) chips.push(t.label); }
+    if (ctx.style) { const st = RV.designLibrary.getDesignStyle(ctx.style); chips.push("Style: " + (st ? st.name : ctx.style)); }
+    if (ctx.budgetCents) chips.push("Budget: " + gxMoney(ctx.budgetCents));
+    for (const c of chips) { const s = gxEl("span", "pill", c); cSummary.append(s, document.createTextNode(" ")); }
+    const acts = concierge.nextActions(ctx);
+    if (acts.length) cActions.append(gxEl("p", "note", "Recommended next steps:"));
+    const targets = { describe: "gxConciergePanel", discover: "stageProject", capture: "stageVision", design: "stageConcept", transform: "gxTransformPanel", estimate: "gxEstimatePanel", furnish: "gxFurnishPanel", review: "stageFinish", export: "stageFinish" };
+    for (const a of acts) {
+      const b = gxEl("button", "secondary", a.label); b.type = "button";
+      b.onclick = () => { const el = document.getElementById(targets[a.stage] || "stagePlan"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      const line = gxEl("div", ""); line.append(b, gxEl("span", "note", " " + (a.reason || ""))); cActions.append(line);
+    }
+    cJourney.textContent = "Journey stage: " + ctx.stage + " · Decisions remembered: " + ctx.decisions.length + " · Still needed: " + (ctx.missing && ctx.missing.length ? ctx.missing.join(", ") : "nothing outstanding") + ".";
+  }
+  cBtn.onclick = () => {
+    const text = cInput.value.trim(); if (!text) { cSummary.textContent = "Describe your project first."; return; }
+    try {
+      const intent = concierge.parseIntent(text);
+      guidedState.context = concierge.applyIntent(guidedState.context || concierge.createConciergeContext(activeProjectId || "draft"), intent);
+      if (intent.conversionType) { guidedState.templateId = intent.conversionType; tplSel.value = intent.conversionType; gxRenderScreening(); }
+      if (intent.style) { const st = RV.designLibrary.getDesignStyle(intent.style); const styleName = st ? st.name : intent.style; const match = [...$("designStyle").options].find((o) => o.text.toLowerCase() === styleName.toLowerCase()); if (match) { $("designStyle").value = match.value; $("designStyle").dispatchEvent(new Event("change")); } }
+      gxRenderConcierge();
+    } catch (e) { cSummary.textContent = "The concierge could not use that: " + e.message; }
+  };
+  propBtn.onclick = () => {
+    try {
+      let profile = guidedState.property || propertyProfile.createPropertyProfile(propAddr.value.trim());
+      profile.address = propAddr.value.trim();
+      for (const [key] of factDefs) {
+        const { inp, prov } = factInputs[key];
+        const v = inp.value === "" ? null : Number(inp.value);
+        profile = propertyProfile.setPropertyFact(profile, key, v, v === null ? "unknown" : prov.value);
+      }
+      guidedState.property = profile;
+      const s = propertyProfile.summarizePropertyProfile(profile);
+      propSummary.innerHTML = "";
+      for (const f of s.facts) { const line = gxEl("p", "status", f.key + ": " + (f.value === null ? "unknown" : f.value) + " · source: " + f.provenance); propSummary.append(line); }
+      propSummary.append(gxEl("p", "note", "Geocoding: UNAVAILABLE · Property records: UNAVAILABLE — no data was fetched or inferred."));
+      propStatus.textContent = "Property facts saved with this project (use Save workspace).";
+    } catch (e) { propStatus.textContent = "Not saved: " + e.message; }
+  };
+  let gxPlanFileObj = null;
+  planReg.onclick = async () => {
+    const f = planFile.files && planFile.files[0]; if (!f) { planStatus.textContent = "Choose a plan file first."; return; }
+    try {
+      const buf = await f.arrayBuffer();
+      const hash = await crypto.subtle.digest("SHA-256", buf);
+      const digest = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      gxPlanFileObj = planIngestion.createPlanUpload({ fileName: f.name, mediaType: f.type || "application/pdf", sizeBytes: f.size, digest });
+      guidedState.planUploads = [gxPlanFileObj, ...guidedState.planUploads.filter((u) => u.id !== gxPlanFileObj.id)];
+      planStatus.textContent = "Registered " + gxPlanFileObj.fileName + " · revision 1 (original preserved) · digest " + digest.slice(0, 12) + "… · automated detection NOT AVAILABLE — confirm dimensions below.";
+    } catch (e) { planStatus.textContent = "Registration failed: " + e.message; }
+  };
+  planConfirm.onclick = () => {
+    if (!gxPlanFileObj) { planStatus.textContent = "Register a plan first."; return; }
+    try {
+      gxPlanFileObj = planIngestion.confirmPlanDimensions(gxPlanFileObj, { widthIn: Number(pw.value), depthIn: Number(pd.value), source: psrc.value });
+      guidedState.planUploads = guidedState.planUploads.map((u) => u.id === gxPlanFileObj.id ? gxPlanFileObj : u);
+      planStatus.textContent = "Dimensions confirmed (" + pw.value + " × " + pd.value + " in, source: " + psrc.value + ").";
+    } catch (e) { planStatus.textContent = "Not confirmed: " + e.message; }
+  };
+  planApply.onclick = () => {
+    const g = gxPlanFileObj && planIngestion.planToRoomGeometry(gxPlanFileObj);
+    if (!g) { planStatus.textContent = "Confirm the plan dimensions first."; return; }
+    $("roomWidth").value = g.widthIn; $("roomDepth").value = g.depthIn;
+    $("roomWidth").dispatchEvent(new Event("change")); $("roomDepth").dispatchEvent(new Event("change"));
+    drawFloorPlan(); planStatus.textContent = "Room geometry set from the confirmed plan dimensions.";
+  };
+  function gxRenderScreening() {
+    const t = conversions.getConversionTemplate(tplSel.value); if (!t) return;
+    guidedState.templateId = t.id;
+    screenBox.innerHTML = "";
+    for (const q of t.screening) {
+      const wrap = gxEl("div");
+      const sel = selInput("gxQ_" + q.id, ["", "yes", "no", "unknown"]); sel.dataset.qid = q.id;
+      field(wrap, q.topic + " — " + q.question, sel); screenBox.append(wrap);
+      if (guidedState.screening && guidedState.screening.answers && guidedState.screening.answers[q.id]) sel.value = guidedState.screening.answers[q.id];
+    }
+  }
+  tplSel.onchange = () => { gxRenderScreening(); screenResult.innerHTML = ""; layoutBox.innerHTML = ""; };
+  screenBtn.onclick = () => {
+    const t = conversions.getConversionTemplate(tplSel.value); if (!t) return;
+    const answers = {};
+    screenBox.querySelectorAll("select").forEach((s) => { if (s.value) answers[s.dataset.qid] = s.value; });
+    const res = conversions.screenFeasibility(t, answers);
+    guidedState.screening = { templateId: t.id, answers, result: res };
+    if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "feasibility", true, "customer"); } catch (e) {} }
+    screenResult.innerHTML = "";
+    for (const f of res.flags) { const line = gxEl("p", "status", ""); const tag = gxEl("span", "tag", f.level.replace("_", " ")); line.append(tag, document.createTextNode(" " + f.topic + " — " + f.note)); screenResult.append(line); }
+    screenResult.append(gxEl("p", "note", res.disclaimer));
+    gxRenderConcierge();
+  };
+  layoutBtn.onclick = () => {
+    const t = conversions.getConversionTemplate(tplSel.value); const dims = gxRoomDims();
+    if (!t) return;
+    if (!dims) { trStatus.textContent = "Enter the room width and depth in the planner (or confirm plan dimensions) first — layouts are generated only from confirmed dimensions."; return; }
+    const layouts = conversions.generateConceptLayouts(t, dims);
+    if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "measurements", true, "customer"); } catch (e) {} }
+    guidedState.layouts = layouts;
+    layoutBox.innerHTML = "";
+    for (const layout of layouts) {
+      const card = gxEl("div", "gx-layout-card");
+      card.append(gxEl("h4", "", layout.name));
+      const stage = gxEl("div", "gx-layout-stage"); stage.style.aspectRatio = (dims.widthIn / dims.depthIn).toFixed(3);
+      for (const item of layout.items) {
+        const b = gxEl("div", item.kind === "zone" ? "gx-zone" : "gx-furn-block", item.label);
+        b.style.left = (item.x / dims.widthIn * 100) + "%"; b.style.top = (item.y / dims.depthIn * 100) + "%";
+        b.style.width = (item.width / dims.widthIn * 100) + "%"; b.style.height = (item.depth / dims.depthIn * 100) + "%";
+        stage.append(b);
+      }
+      card.append(stage, gxEl("p", "note", layout.disclosure));
+      const use = gxEl("button", "secondary", "Use this layout in the planner"); use.type = "button";
+      use.onclick = () => {
+        for (const item of layout.items) {
+          if (item.kind === "furniture") furnitureItems.push({ name: item.label, retailer: "", url: "", width: item.width, depth: item.depth, priceCents: 0, x: item.x, y: item.y, rotated: false });
+          else obstacles.push({ type: "fixed", x: item.x, y: item.y, width: item.width, depth: item.depth });
+        }
+        drawFloorPlan(); updateFurniturePlan();
+        trStatus.textContent = "Layout applied to the planner as editable blocks and zones. Verify every dimension before relying on it.";
+      };
+      card.append(use); layoutBox.append(card);
+    }
+    trStatus.textContent = "Two conceptual alternatives generated from the confirmed room dimensions.";
+  };
+  demoBtn.onclick = () => {
+    gxRenderRates();
+    for (const [id, [amt, unit]] of Object.entries(GX_DEMO_RATES)) {
+      if (amt === null) continue;
+      $("gxRate_" + id).value = amt; $("gxUnit_" + id).value = unit;
+      $("gxSrc_" + id).value = "Demonstration planning assumptions — not market data"; $("gxConf_" + id).value = "assumption";
+    }
+    estStatus.textContent = "Demonstration assumptions loaded (editable). They are labeled ASSUMPTION and are not a quote.";
+  };
+  estBtn.onclick = () => {
+    const dims = gxRoomDims();
+    if (!dims) { estStatus.textContent = "Enter confirmed room dimensions in the planner first — the estimate needs an area."; return; }
+    try {
+      let book = conversionCosts.createRateBook();
+      const required = [];
+      for (const cat of conversionCosts.CONVERSION_COST_CATEGORIES) {
+        if (!$("gxUse_" + cat.id).checked) continue;
+        required.push(cat.id);
+        const amt = $("gxRate_" + cat.id).value;
+        if (amt === "") continue;
+        book = conversionCosts.setRate(book, cat.id, { amountCents: Math.round(Number(amt) * 100), unit: $("gxUnit_" + cat.id).value, source: $("gxSrc_" + cat.id).value, sourceDate: new Date().toISOString().slice(0, 10), confidence: $("gxConf_" + cat.id).value });
+      }
+      guidedState.rateBook = book;
+      const areaSqFt = dims.widthIn * dims.depthIn / 144;
+      const est = conversionCosts.buildConversionEstimate({ areaSqFt, rateBook: book, requiredCategories: required, quantities: {} });
+      guidedState.estimate = est;
+      if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "measurements", true, "customer"); guidedState.context = concierge.recordDecision(guidedState.context, "estimateRates", true, "customer"); gxRenderConcierge(); } catch (e) {} }
+      estResult.innerHTML = "";
+      if (est.status !== "estimated") {
+        estResult.append(gxEl("p", "status", "No total yet — the estimate is incomplete (fail-closed). Missing rates for: " + (est.missing || []).join(", ") + "."));
+      } else {
+        const tbl = gxEl("table", "");
+        tbl.innerHTML = "<tr><th>Category</th><th>Basis</th><th>Amount</th></tr>";
+        for (const line of est.lines) { const tr = document.createElement("tr"); tr.innerHTML = "<td></td><td></td><td></td>"; tr.children[0].textContent = line.categoryId; tr.children[1].textContent = line.basis; tr.children[2].textContent = gxMoney(line.amountCents); tbl.append(tr); }
+        estResult.append(tbl);
+        estResult.append(gxEl("p", "status", "Subtotal " + gxMoney(est.subtotalCents) + " · Total " + gxMoney(est.totalCents) + " · Confidence: " + est.confidence + " · Estimated " + String(est.estimatedAt).slice(0, 10)));
+        for (const a of est.assumptions || []) estResult.append(gxEl("p", "note", a));
+        estResult.append(gxEl("p", "note", est.disclaimer));
+        if (guidedState.context) for (const line of concierge.explainTradeoffs(guidedState.context, est)) estResult.append(gxEl("p", "status", line));
+      }
+      estStatus.textContent = "Estimate built from the rates above. Use Save workspace to keep it with the project.";
+    } catch (e) { estStatus.textContent = "Estimate not built: " + e.message; }
+  };
+  estImport.onclick = () => {
+    const est = guidedState.estimate;
+    if (!est || est.status !== "estimated") { estStatus.textContent = "Build a complete estimate first."; return; }
+    const lines = conversionCosts.estimateToBudgetLines(est);
+    const base = wsBudget || { currency: "USD", totalBudgetCents: guidedState.context && guidedState.context.budgetCents ? guidedState.context.budgetCents : null, allocations: {}, lines: [] };
+    wsBudget = { ...base, lines: [...(base.lines || []), ...lines] };
+    renderBudget();
+    estStatus.textContent = lines.length + " estimate lines added to the project budget below.";
+  };
+  fuBtn.onclick = () => {
+    const dims = gxRoomDims();
+    if (!dims) { fuStatus.textContent = "Enter confirmed room dimensions in the planner first — fit checks need the real geometry."; return; }
+    try {
+      const budgetRaw = fuBudget.value;
+      const request = furnish.createFurnishRequest({ roomId: $("roomId").value.trim() || "room", style: $("designStyle").value || null, budgetCents: budgetRaw === "" ? null : Math.round(Number(budgetRaw) * 100), quality: fuQuality.value });
+      const proposal = furnish.proposeFurnishing({ request, products: wsProducts, room: { widthIn: dims.widthIn, depthIn: dims.depthIn, clearanceIn: Number($("clearance").value) || 0 } });
+      guidedState.furnishRequest = request; guidedState.furnishProposal = proposal;
+      gxRenderFurnish();
+      fuStatus.textContent = wsProducts.length ? "Proposal built from your project catalog." : "Your project catalog is empty — add products in the catalog panel and they will be proposed here with fit checks.";
+    } catch (e) { fuStatus.textContent = "Proposal failed: " + e.message; }
+  };
+  function gxRenderFurnish() {
+    const p = guidedState.furnishProposal; if (!p) return;
+    fuResult.innerHTML = "";
+    if (!p.selections.length) fuResult.append(gxEl("p", "status", "No products selected yet."));
+    for (const s of p.selections) {
+      const line = gxEl("p", "status", "");
+      const fitTxt = s.fit && s.fit.status ? s.fit.status : "unknown";
+      line.append(gxEl("span", "tag", "fit: " + fitTxt), document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
+      fuResult.append(line);
+    }
+    fuResult.append(gxEl("p", "status", "Total: " + gxMoney(p.totalCents) + (p.remainingCents !== null && p.remainingCents !== undefined ? " · Remaining: " + gxMoney(p.remainingCents) : "")));
+    for (const n of p.notes || []) fuResult.append(gxEl("p", "note", n));
+    if (p.unfilledCategories && p.unfilledCategories.length) fuResult.append(gxEl("p", "note", "No catalog product yet for: " + p.unfilledCategories.join(", ") + "."));
+    fuResult.append(gxEl("p", "note", "Retailer connections are UNAVAILABLE — these are your catalog products with their recorded sources; verify price and availability with the retailer before purchase."));
+  }
+  window.gxRenderAll = function () {
+    gxRenderConcierge(); gxRenderRates(); gxRenderScreening();
+    if (guidedState.property) { propAddr.value = guidedState.property.address || ""; for (const [key] of factDefs) { const f = guidedState.property.facts[key]; if (f !== null && f !== undefined) factInputs[key].inp.value = f; const pv = guidedState.property.provenance[key]; if (pv && pv !== "unknown") factInputs[key].prov.value = pv; } }
+    if (guidedState.estimate) estStatus.textContent = "Estimate restored from the saved workspace.";
+    if (guidedState.furnishProposal) gxRenderFurnish();
+    if (guidedState.screening) screenBtn.click();
+  };
+  gxRenderRates(); gxRenderScreening(); gxRenderConcierge();
+}
+if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuildPanels, { once: true });
+
 rvJourneyUpdate();
-</script></body></html>`;
+</script>
+<script type="module">
+import * as concierge from "/lib/renovision/concierge.mjs";
+import * as propertyProfile from "/lib/renovision/property-profile.mjs";
+import * as planIngestion from "/lib/renovision/plan-ingestion.mjs";
+import * as conversions from "/lib/renovision/conversions.mjs";
+import * as conversionCosts from "/lib/renovision/conversion-costs.mjs";
+import * as furnish from "/lib/renovision/furnish.mjs";
+import * as designLibrary from "/lib/renovision/design-library.mjs";
+window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, designLibrary };
+window.dispatchEvent(new Event("rv-ready"));
+</script>
+</body></html>`;
