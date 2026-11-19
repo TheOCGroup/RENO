@@ -4,7 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "start:renovision": "node src/renovisionMain.mjs",
+    "start:3d-engine": "node src/asset3dMain.mjs",
+    "samples:3d-engine": "node scripts/generate-sample-3d-assets.mjs",
+    "benchmark:renovision": "node scripts/renovision-benchmark-runner.mjs",
+    "backup:renovision": "node scripts/renovision-backup.mjs"
   },
   "engines": {
     "node": ">=24"

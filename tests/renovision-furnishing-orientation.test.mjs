@@ -1,0 +1,41 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {buildRoomModel, lockRoomGeometry} from "../lib/renovision/room-model.mjs";
+import {evaluateFurnishingPlan} from "../lib/renovision/furnishing-plan.mjs";
+import {createRenderProvider} from "../lib/renovision/render-provider.mjs";
+const digest = "sha256:" + createHash("sha256").update("evidence").digest("hex");
+const actor = {id: "operator-1", tenantId: "tenant-a", authenticated: true};
+const mk = (featureId, value) => ({propertyId: "property-1", roomId: "room-1", measurementId: "meas-" + featureId, featureId, captureId: "capture-1", deviceModel: "laser-x", platform: "web", timestamp: "2026-10-26T10:00:00Z", coordinateFrame: "local", evidenceRef: digest, semanticType: "wall", method: "manual_laser", value, unit: "m", uncertainty: 0.02, calibrationStatus: "calibrated", verificationStatus: "verified", verifiedBy: "verifier-1", verifiedAt: "2026-10-26T11:00:00Z", geometryState: "EXISTING", fieldMeasured: true});
+const roomModel = buildRoomModel({measurements: [mk("width", 3.6), mk("depth", 4.2), mk("height", 2.7)], propertyId: "property-1", roomId: "room-1"});
+const lock = lockRoomGeometry({roomModel, manifestVerified: true, actor});
+test("orientation rotates the footprint: a wide item fits only when rotated", () => {
+ const table = {id: "table-1", productId: "table-001", dimensionSource: "manufacturer-spec", dimensionsVerified: true, width: 3.9, depth: 0.8, x: 0.1, y: 0.1, clearance: 0.05};
+ const straight = evaluateFurnishingPlan({roomModel, lock, items: [table]});
+ assert.equal(straight.items[0].verdict, "does_not_fit");
+ const rotated = evaluateFurnishingPlan({roomModel, lock, items: [{...table, orientation: "rotated"}]});
+ assert.notEqual(rotated.items[0].verdict, "does_not_fit");
+ assert.equal(rotated.items[0].orientation, "rotated");
+ assert.equal(rotated.items[0].verified, false);
+});
+test("missing dimensions and provenance are explained field by field", () => {
+ const plan = evaluateFurnishingPlan({roomModel, lock, items: [{id: "x-1", width: 1.0}]});
+ const item = plan.items[0];
+ assert.equal(item.verdict, "blocked_unverified_dimensions");
+ assert.ok(item.missing.includes("productId"));
+ assert.ok(item.missing.includes("depth"));
+ assert.ok(item.reasons.some((r) => r.startsWith("missing or invalid fields:")));
+});
+test("render provider is disabled without flag, founder approval and provider", async () => {
+ const off = createRenderProvider({});
+ assert.equal(off.status().enabled, false);
+ assert.equal((await off.render({})).ok, false);
+ const flagOnly = createRenderProvider({enabled: true, provider: async () => ({imageRef: "img-1"})});
+ assert.equal(flagOnly.status().enabled, false);
+ assert.equal((await flagOnly.render({})).ok, false);
+ const on = createRenderProvider({enabled: true, founderApproved: true, provider: async () => ({imageRef: "img-1"})});
+ const result = await on.render({});
+ assert.equal(result.ok, true);
+ assert.equal(result.verified, false);
+ assert.equal(result.accuracyClaimAuthorized, false);
+});

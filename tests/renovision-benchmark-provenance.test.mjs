@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {validateBenchmarkProvenance} from "../lib/renovision/benchmark-provenance.mjs";
+const record={propertyId:"p",roomId:"r",referenceOperatorId:"reference",captureOperatorId:"capture",instrumentId:"laser",instrumentCalibrationRef:"calibration",captureCommit:"abc",evidenceDigest:"sha256:"+"a".repeat(64),referenceRepeats:[3,3.01,3.02],failureLog:[],computeCostUsd:0};
+test("complete provenance remains uncertified",()=>{const r=validateBenchmarkProvenance(record);assert.equal(r.valid,true);assert.equal(r.independentlyCertified,false);});
+test("same capture and reference operator rejected",()=>assert.equal(validateBenchmarkProvenance({...record,captureOperatorId:"reference"}).valid,false));
+test("insufficient reference repeats rejected",()=>assert.equal(validateBenchmarkProvenance({...record,referenceRepeats:[3,3.1]}).valid,false));
+test("missing failure log rejected",()=>assert.equal(validateBenchmarkProvenance({...record,failureLog:undefined}).valid,false));
+test("negative cost rejected",()=>assert.equal(validateBenchmarkProvenance({...record,computeCostUsd:-1}).valid,false));
+test("invalid evidence digest rejected",()=>assert.equal(validateBenchmarkProvenance({...record,evidenceDigest:"invalid"}).valid,false));
