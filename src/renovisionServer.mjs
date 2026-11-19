@@ -58,6 +58,18 @@ const LIB_MODULES = (() => {
  }
  return map;
 })();
+/** Style-gallery imagery for the visual studio: one illustrative concept
+ * image per design family, generated for RENOVISION and shipped in the
+ * repository (src/assets/styles). Fixed allowlist; an absent file leaves
+ * its route unregistered and the studio falls back to a palette panel. */
+const STYLE_ASSET_IDS = ["warm-modern", "timeless-elegance", "organic-contemporary", "modern-sophistication", "transitional", "scandinavian", "contemporary-luxury", "mid-century-modern", "traditional", "coastal", "industrial", "minimalist"];
+const STYLE_ASSETS = (() => {
+ const map = new Map();
+ for (const id of STYLE_ASSET_IDS) {
+   try { map.set("/assets/styles/" + id + ".jpg", {bytes: readFileSync(new URL(`./assets/styles/${id}.jpg`, import.meta.url)), type: "image/jpeg"}); } catch { /* asset absent: route stays unregistered */ }
+ }
+ return map;
+})();
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
  const approvals = new Map();
@@ -188,6 +200,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
    const path = url.pathname;
    if (req.method === "GET" && BRAND_ASSETS.has(path)) { const asset = BRAND_ASSETS.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
    if (req.method === "GET" && LIB_MODULES.has(path)) { const asset = LIB_MODULES.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
+   if (req.method === "GET" && STYLE_ASSETS.has(path)) { const asset = STYLE_ASSETS.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});

@@ -1286,7 +1286,25 @@ function gxBuildPanels() {
         const tier = window.RV && window.RV.fitTiers ? window.RV.fitTiers.assessFit({ product: prod, room: { widthIn: Number($("roomWidth").value) || 0, depthIn: Number($("roomDepth").value) || 0, clearanceIn: Number($("clearance").value) || 0, confirmed: !!window.__rvRoomConfirmed } }) : null;
         if (tier) tierTxt = " · tier: " + tier.tier.replaceAll("_", " ");
       } catch (e) { /* tier is additive detail; the base fit status already renders */ }
-      line.append(gxEl("span", "tag", "fit: " + fitTxt + tierTxt), document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
+      const tagSpan = gxEl("span", "tag", "fit: " + fitTxt + tierTxt);
+      if (tierTxt) { const tl = tierTxt.toUpperCase(); tagSpan.className = "tag vx-tier " + (tl.includes("VERIFIED FIT") ? "vx-tier-verified" : tl.includes("POTENTIAL") ? "vx-tier-potential" : tl.includes("DOES NOT FIT") ? "vx-tier-no" : "vx-tier-unknown"); }
+      line.append(tagSpan, document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
+      const swapAlts = (typeof wsProducts !== "undefined" ? wsProducts : []).filter((x) => x.productId !== s.productId);
+      if (swapAlts.length) {
+        const swapSel = document.createElement("select"); swapSel.setAttribute("aria-label", "Replace " + s.name + " with another catalog product"); swapSel.style.marginLeft = "8px";
+        const keep = document.createElement("option"); keep.value = ""; keep.textContent = "Replace with…"; swapSel.append(keep);
+        for (const alt of swapAlts) { const o = document.createElement("option"); o.value = alt.productId; o.textContent = alt.name + " — " + gxMoney(alt.priceCents); swapSel.append(o); }
+        swapSel.onchange = () => {
+          const alt = swapAlts.find((x) => x.productId === swapSel.value); if (!alt) return;
+          const budgetBefore = (p.totalCents || 0) + (p.remainingCents || 0);
+          s.productId = alt.productId; s.name = alt.name; s.priceCents = alt.priceCents; s.category = alt.type || alt.category || s.category; s.fit = null;
+          if (Array.isArray(p._selectedProducts)) { const ix = p._selectedProducts.findIndex((x) => x.productId === alt.productId); if (ix < 0) p._selectedProducts.push(alt); }
+          p.totalCents = p.selections.reduce((a, x) => a + (x.priceCents || 0), 0);
+          p.remainingCents = budgetBefore - p.totalCents;
+          gxRenderFurnish();
+        };
+        line.append(swapSel);
+      }
       fuResult.append(line);
     }
     fuResult.append(gxEl("p", "status", "Total: " + gxMoney(p.totalCents) + (p.remainingCents !== null && p.remainingCents !== undefined ? " · Remaining: " + gxMoney(p.remainingCents) : "")));
@@ -1310,7 +1328,7 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
    Design Harmony Engine UI, optional assistant, Deal Scout scope import. Additive: reuses the certified
    panels and engines; the manual journey never depends on this block. ==== */
 (function rvVisualStudio() {
-  var css = ".vx-stage{margin:0 0 8px}.vx-stage-head{display:flex;align-items:baseline;gap:12px;margin:26px 0 4px}.vx-stage-head .n{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.14em;color:var(--accent)}"
+  var css = ".vx-stage{margin:0 0 8px;scroll-margin-top:64px}.vx-stage-head{display:flex;align-items:baseline;gap:12px;margin:26px 0 4px}.vx-stage-head .n{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.14em;color:var(--accent)}"
   + ".vx-stage-head h2{font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:600;margin:0;color:var(--ink)}"
   + ".vx-start-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}"
   + ".vx-start-card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;font:inherit;color:var(--ink)}"
@@ -1329,7 +1347,35 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
   + ".vx-combo{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.vx-combo div{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;overflow:hidden}"
   + ".vx-combo i{display:block;height:52px}.vx-combo span{display:block;font-size:11px;padding:6px 8px;background:var(--card)}"
   + ".vx-findings{margin:8px 0}.vx-findings li{margin:3px 0}"
-  + "@media (max-width:760px){.vx-start-grid{grid-template-columns:1fr}}";
+  + ".vx-hero{position:relative;border-radius:16px;overflow:hidden;margin:14px 0 4px;min-height:180px;background:#2c2620 center/cover no-repeat;display:flex;align-items:flex-end}"
+  + ".vx-hero-in{padding:22px 24px;color:#fdfbf7;background:linear-gradient(0deg,rgba(24,20,16,.72),rgba(24,20,16,0) 70%);width:100%}"
+  + ".vx-hero-in strong{display:block;font-family:Fraunces,Georgia,serif;font-size:30px;font-weight:600;line-height:1.15}"
+  + ".vx-hero-in span{display:block;margin-top:6px;font-size:14px;opacity:.92;max-width:560px;line-height:1.5}"
+  + ".vx-ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:16px;margin:12px 0}"
+  + ".vx-gcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0;overflow:hidden;cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%}"
+  + ".vx-gcard:hover{border-color:var(--accent)} .vx-gcard[aria-pressed='true']{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}"
+  + ".vx-gcard img{display:block;width:100%;height:168px;object-fit:cover}"
+  + ".vx-gph{height:168px;background:repeating-linear-gradient(45deg,#e9eff3,#e9eff3 10px,#f3eee5 10px,#f3eee5 20px);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px;letter-spacing:.08em}"
+  + ".vx-gbody{padding:12px 14px 14px}.vx-gbody strong{display:block;font-size:15px;margin-bottom:4px}.vx-gbody small{color:var(--ink-2);font-size:12px;line-height:1.45;display:block}"
+  + ".vx-gbody .vx-swatches{height:10px;margin:10px 0 8px}.vx-gdir{font-size:11px;color:var(--ink-2);line-height:1.5}"
+  + ".vx-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}"
+  + ".vx-tile h4{margin:0;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}"
+  + ".vx-tvis{height:58px;border-radius:10px;margin:10px 0 8px;border:1px solid var(--line)}"
+  + ".vx-tval{font-size:12px;color:var(--ink-2);line-height:1.45;min-height:34px}"
+  + ".vx-talts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.vx-talts button{font-size:11px;padding:5px 8px}"
+  + ".vx-talts i{display:inline-block;width:18px;height:18px;border-radius:5px;border:1px solid var(--line);vertical-align:middle}"
+  + ".vx-lockbtn{font-size:11px;padding:4px 8px}.vx-lockbtn[aria-pressed='true']{background:var(--accent);color:#fff;border-color:var(--accent)}"
+  + ".vx-tier{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em}"
+  + ".vx-tier-verified{background:#1e5c3a;color:#fff}.vx-tier-potential{background:#b97f16;color:#fff}.vx-tier-unknown{background:#6b7280;color:#fff}.vx-tier-no{background:#fff;color:#b3261e;border:1px solid #b3261e}"
+  + ".vx-review-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-review-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.vx-review-card h4{margin:0 0 6px;font-size:13px}.vx-review-card p{margin:3px 0;font-size:12px;color:var(--ink-2);line-height:1.5}"
+  + ".vx-export-list{margin:8px 0;padding-left:18px}.vx-export-list li{margin:4px 0;font-size:13px}"
+  + ".vx-gcard:focus-visible,.vx-start-card:focus-visible,.vx-swatch:focus-visible,.vx-tile button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"
+  + "#floorPlan{height:min(460px,62vh)!important}"
+  + "@media (max-width:760px){.vx-start-grid{grid-template-columns:1fr}.vx-hero-in strong{font-size:24px}.vx-board{grid-template-columns:1fr 1fr}#floorPlan{height:300px!important}}"
+  + "@media (max-width:520px){.vx-board{grid-template-columns:1fr}.vx-ggrid{grid-template-columns:1fr}}"
+  + "@media (prefers-reduced-motion:reduce){.vx-stage *,#journeyStrip *{transition:none!important}html{scroll-behavior:auto!important}}";
   var styleEl = document.createElement("style"); styleEl.textContent = css; document.head.appendChild(styleEl);
 
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
@@ -1341,7 +1387,7 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
 
   /* --- Reorganization + panel construction run on rv-ready, AFTER the guided block has built its
      panels (its insertions assume the certified stage blocks are still children of <main>). --- */
-  var harmonyPanel, dsPanel, dsStatus, dsText, dsBtn, dsResult, famGrid, comboBox, atmoSel, paintChips, swatchGrid, selLine, lockBtn, harmonyStatus, proposalBox, verLabel, verBtn, verList;
+  var harmonyPanel, dsPanel, dsStatus, dsText, dsBtn, dsResult, famGrid, comboBox, atmoSel, paintChips, swatchGrid, selLine, lockBtn, harmonyStatus, proposalBox, verLabel, verBtn, verList, boardGrid, reviewGrid, exportList;
   var conciergePanel = null, reopenBtn = null;
   function field2(label, input) { var w = el("div", "field"); var l = el("label", "", label); l.htmlFor = input.id || ""; w.append(l, input); return w; }
   function vxBuild() {
@@ -1367,7 +1413,12 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
     cardPlan.append(el("strong", "", "Upload floor plan"), el("span", "", "PDF or image. Your original is preserved, and you confirm the measurements yourself — nothing is guessed from a drawing."));
     var cardAddr = el("button", "vx-start-card"); cardAddr.type = "button"; cardAddr.id = "vxStartAddress";
     cardAddr.append(el("strong", "", "Enter property address"), el("span", "", "Start from the property itself. Only information you provide or verify is recorded — an address alone never invents room sizes."));
-    startGrid.append(cardPlan, cardAddr); startWrap.append(startGrid);
+    startGrid.append(cardPlan, cardAddr);
+    var hero = el("div", "vx-hero"); hero.setAttribute("role", "img"); hero.setAttribute("aria-label", "Warm modern living room in warm ivory and natural oak — RENOVISION style inspiration");
+    hero.style.backgroundImage = "url(/assets/styles/warm-modern.jpg)";
+    var heroIn = el("div", "vx-hero-in");
+    heroIn.append(el("strong", "", "Design a home you love."), el("span", "", "Begin with a floor plan or your address. Choose an atmosphere, coordinate paint and materials, furnish with confidence — and watch one cohesive design take shape."));
+    hero.append(heroIn); startWrap.append(hero); startWrap.append(startGrid);
     var altRow = el("div", "vx-alt");
     var altPhoto = el("button", "secondary", "Start with a room photo"); altPhoto.type = "button"; altPhoto.id = "vxStartPhoto";
     var altRoom = el("button", "secondary", "Create a room manually"); altRoom.type = "button"; altRoom.id = "vxStartRoom";
@@ -1381,16 +1432,24 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
     var matSection = null;
     main.querySelectorAll(":scope > section.panel").forEach(function (s) { var h = s.querySelector("h3"); if (h && h.textContent.indexOf("Material library") === 0) matSection = s; });
     if (matSection) designWrap.append(matSection);
+    var plannerSection = document.getElementById("interiorPlanner");
+    if (plannerSection) transformWrap.append(plannerSection);
     if (stageVision) transformWrap.append(stageVision);
     if (transformPanel) transformWrap.append(transformPanel);
     var catalogPanel = null;
     main.querySelectorAll(":scope > section.panel").forEach(function (s) { if (s.id === "catalogPanel") catalogPanel = s; });
     if (furnishPanel) furnishWrap.append(furnishPanel);
     if (catalogPanel) furnishWrap.append(catalogPanel);
+    var reviewBoard = makePanel("Your design at a glance", "The selected design, coordinated materials, furnishing plan and budget — one coherent picture. Open the panels below only when you want the underlying detail.");
+    reviewGrid = el("div", "vx-review-grid"); reviewGrid.id = "vxReviewGrid"; reviewBoard.append(reviewGrid);
+    reviewWrap.append(reviewBoard);
     if (stagePlan) reviewWrap.append(stagePlan);
     if (estimatePanel && estimatePanel.parentElement !== reviewWrap) { /* estimate already lives inside stagePlan */ }
     var budgetPanel = document.getElementById("budgetPanel"); if (budgetPanel) reviewWrap.append(budgetPanel);
     if (stageFinish) exportWrap.append(stageFinish);
+    var exportPanel = makePanel("Your project package", "Everything RENOVISION can actually deliver today, assembled from your project. The downloads above are the supported exports — no other formats are claimed.");
+    exportList = el("ul", "vx-export-list"); exportList.id = "vxExportList"; exportPanel.append(exportList);
+    exportWrap.append(exportPanel);
     [stageVision, stagePlan, stageFinish].forEach(function (b) { if (!b) return; var h = b.querySelector(".stage-head"); if (h) h.style.display = "none"; });
     var spHead = stageProject.querySelector(".chapter"); if (spHead) spHead.textContent = "Or begin with a room";
     var view3d = el("a", "secondary", "Open the 3D Asset Studio"); view3d.href = "/3d-viewer"; view3d.target = "_blank"; view3d.rel = "noopener"; view3d.id = "vxView3d"; view3d.style.display = "inline-block"; view3d.style.margin = "10px 0";
@@ -1445,6 +1504,9 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
   verBtn = el("button", "secondary", "Save design version"); verBtn.type = "button"; verBtn.id = "vxSaveVersion";
   harmonyPanel.append(field2("Design versions", verLabel), verBtn);
   verList = el("div"); verList.id = "vxVersionList"; harmonyPanel.append(verList);
+  harmonyPanel.append(el("h3", "", "Design harmony board"));
+  harmonyPanel.append(el("p", "note", "Every coordinated element of your design, together. Alternatives come from the style families — blend freely; locked elements are never overwritten silently, and screen colors and finishes are approximate."));
+  boardGrid = el("div", "vx-board"); boardGrid.id = "vxBoard"; harmonyPanel.append(boardGrid);
   harmonyPanel.append(el("p", "note", "Paint colors are digital references and read approximately on screen; they are not manufacturer products. Verify against a physical sample before purchasing paint."));
   /* --- Deal Scout scope panel (Review) --- */
   dsPanel = makePanel("Deal Scout renovation scope", "Deal Scout owns general renovation scope. RENOVISION imports an approved scope document with its provenance and never regenerates or edits it.");
@@ -1486,16 +1548,74 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
     var sel = designState.selections || {};
     selLine.textContent = "Selections: " + (sel.paintHex ? "wall " + sel.paintHex : "no wall color yet") + (designState.locked && designState.locked.paintHex ? " (locked)" : "") + (sel.flooringKeyword ? " · flooring: " + sel.flooringKeyword : "") + (sel.lighting ? " · lighting: " + sel.lighting : "") + ".";
     lockBtn.textContent = designState.locked && designState.locked.paintHex ? "Unlock wall color" : "Lock wall color";
+    renderBoard(); renderReview(); renderExport();
+  }
+  /* --- Design harmony board: every coordinated element, lockable, blendable --- */
+  function toneDir(fam, warm, neutral, cool) { return fam && fam.undertone === "cool" ? cool : fam && fam.undertone === "neutral" ? neutral : warm; }
+  function unionOf(field, cap) { var out = []; for (const f of H.HARMONY_STYLE_FAMILIES) { for (const v of f[field] || []) { if (!out.includes(v)) out.push(v); } } return out.slice(0, cap || 10); }
+  var BOARD_CATS = [
+    { key: "trimHex", label: "Trim paint", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.trim : "#f5f0e6"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.trim : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette; }).map(function (f) { return { label: f.name, value: f.palette.trim, hex: f.palette.trim }; }); } },
+    { key: "ceilingHex", label: "Ceiling paint", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.ceiling : "#ffffff"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.ceiling : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette; }).map(function (f) { return { label: f.name, value: f.palette.ceiling, hex: f.palette.ceiling }; }); } },
+    { key: "accentHex", label: "Accent color", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.accent : "#8a6d4f"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.accent : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette; }).map(function (f) { return { label: f.name, value: f.palette.accent, hex: f.palette.accent }; }); } },
+    { key: "flooringKeyword", label: "Flooring", visual: function () { return "linear-gradient(90deg,#b98d5e,#a1763f 45%,#c49a6c)"; }, value: function (fam, sel) { return { text: sel || (fam && fam.flooringKeywords ? fam.flooringKeywords[0] : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("flooringKeywords").map(function (v) { return { label: v, value: v }; }); } },
+    { key: "cabinetry", label: "Cabinetry", visual: function (fam) { return "linear-gradient(135deg," + (fam && fam.palette ? fam.palette.accent : "#8a6d4f") + "," + (fam && fam.palette ? fam.palette.wall : "#e8dfca") + ")"; }, value: function (fam, sel) { return { text: sel || (fam && fam.cabinetKeywords ? fam.cabinetKeywords[0] : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("cabinetKeywords").map(function (v) { return { label: v, value: v }; }); } },
+    { key: "countertop", label: "Countertops", visual: function () { return "linear-gradient(120deg,#efe9dd,#ddd3bf 55%,#f4efe4)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Light stone with warm veining", "Honed stone with soft grey veining", "Crisp quartz with cool veining"), isDefault: !sel }; }, alternatives: function () { return ["Light stone with warm veining", "Honed stone with soft grey veining", "Crisp quartz with cool veining"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "tile", label: "Tile", visual: function () { return "repeating-linear-gradient(0deg,#e7dfd0 0 10px,#d9cfb8 10px 11px),repeating-linear-gradient(90deg,#e7dfd0 0 10px,#d9cfb8 10px 11px)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Handmade-look ceramic, warm glaze", "Large-format matte porcelain", "Gloss ceramic, cool glaze"), isDefault: !sel }; }, alternatives: function () { return ["Handmade-look ceramic, warm glaze", "Large-format matte porcelain", "Gloss ceramic, cool glaze"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "hardware", label: "Hardware", visual: function () { return "linear-gradient(90deg,#8c6a2f,#c9a227,#8c6a2f)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Brushed brass", "Matte black", "Polished nickel"), isDefault: !sel }; }, alternatives: function () { return ["Brushed brass", "Aged bronze", "Matte black", "Polished nickel"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "fixtures", label: "Fixtures", visual: function () { return "linear-gradient(120deg,#d8d2c4,#b6ad99)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Warm metal with opal glass", "Sculptural matte fixtures", "Chrome with clear glass"), isDefault: !sel }; }, alternatives: function () { return ["Warm metal with opal glass", "Sculptural matte fixtures", "Chrome with clear glass"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "lighting", label: "Lighting", visual: function (fam, sel) { var t = sel || (fam ? fam.lighting : "warm"); return t === "cool" ? "linear-gradient(120deg,#dfe9f2,#b9c9d8)" : t === "neutral" ? "linear-gradient(120deg,#efe9dc,#d9d2c0)" : "linear-gradient(120deg,#f6dfae,#eda93f)"; }, value: function (fam, sel) { return { text: (sel || (fam ? fam.lighting : "warm")) + " light", isDefault: !sel }; }, alternatives: function () { return ["warm", "neutral", "cool"].map(function (v) { return { label: v + " light", value: v }; }); } },
+    { key: "upholstery", label: "Upholstery", visual: function () { return "linear-gradient(120deg,#e5d9c3,#cbb896)"; }, value: function (fam, sel) { var tags = fam && fam.furnitureTags ? fam.furnitureTags : []; var d = tags.includes("velvet") ? "Tailored velvet" : tags.includes("leather") ? "Full-grain leather" : tags.includes("linen") ? "Natural linen" : "Woven cotton"; return { text: sel || d, isDefault: !sel }; }, alternatives: function () { return ["Natural linen", "Tailored velvet", "Textured boucle", "Full-grain leather", "Woven cotton"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "furnitureTag", label: "Furniture direction", visual: function () { return "linear-gradient(120deg,#a98d68,#7d6242)"; }, value: function (fam, sel) { return { text: sel || (fam && fam.furnitureTags ? fam.furnitureTags.join(", ") : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("furnitureTags").map(function (v) { return { label: v, value: v }; }); } }
+  ];
+  function renderBoard() {
+    if (!H || !designState || !boardGrid) return;
+    var fam = H.getHarmonyFamily(designFamilyId);
+    boardGrid.innerHTML = "";
+    for (const cat of BOARD_CATS) {
+      var sel = designState.selections ? designState.selections[cat.key] : undefined;
+      var locked = !!(designState.locked && designState.locked[cat.key]);
+      var tile = el("div", "vx-tile");
+      var head = el("h4"); head.append(el("span", "", cat.label));
+      var lb = el("button", "vx-lockbtn", locked ? "Locked" : "Lock"); lb.type = "button"; lb.id = "vxLock_" + cat.key; lb.setAttribute("aria-pressed", locked ? "true" : "false");
+      lb.onclick = (function (c2, was) { return function () { designState = was ? H.unlockSelection(designState, c2.key) : H.lockSelection(designState, c2.key); renderBoard(); renderHarmonyStatus(); }; })(cat, locked);
+      head.append(lb); tile.append(head);
+      var vis = el("div", "vx-tvis"); var bg = cat.visual(fam, sel); if (bg) vis.style.background = bg; tile.append(vis);
+      var val = cat.value(fam, sel);
+      tile.append(el("div", "vx-tval", val.text + (val.isDefault ? " — style direction" : " — your selection")));
+      var alts = el("div", "vx-talts");
+      for (const a of cat.alternatives(fam)) {
+        var b = el("button", "secondary"); b.type = "button"; b.title = a.label;
+        if (a.hex) { var swi = document.createElement("i"); swi.style.background = a.hex; b.append(swi); }
+        else b.textContent = a.label;
+        b.onclick = (function (c2, alt) { return function () { proposeOrSet(c2.key, alt.value, c2.label + ": " + alt.label); }; })(cat, a);
+        alts.append(b);
+      }
+      tile.append(alts);
+      boardGrid.append(tile);
+    }
   }
   function renderFamilies() {
     if (!H) return; famGrid.innerHTML = "";
+    famGrid.className = "vx-ggrid";
     for (const fam of H.HARMONY_STYLE_FAMILIES) {
-      var card = el("button", "vx-family-card"); card.type = "button"; card.id = "vxFam_" + fam.id;
+      var card = el("button", "vx-gcard"); card.type = "button"; card.id = "vxFam_" + fam.id;
       card.setAttribute("aria-pressed", fam.id === designFamilyId ? "true" : "false");
-      var sw = el("div", "vx-swatches");
-      if (fam.palette) { for (const k of ["wall", "trim", "ceiling", "accent"]) { var i = document.createElement("i"); i.style.background = fam.palette[k]; sw.append(i); } }
-      else { var i2 = document.createElement("i"); i2.style.background = "repeating-linear-gradient(45deg,#e9eff3,#e9eff3 8px,#f3eee5 8px,#f3eee5 16px)"; sw.append(i2); }
-      card.append(sw, el("strong", "", fam.name), el("small", "", fam.description || ""));
+      if (fam.palette && fam.id !== "custom-mixed") {
+        var img = document.createElement("img"); img.src = "/assets/styles/" + fam.id + ".jpg"; img.alt = fam.name + " interior — illustrative concept imagery"; img.loading = "lazy";
+        img.onerror = function () { var ph = el("div", "vx-gph", "STYLE INSPIRATION"); this.replaceWith(ph); };
+        card.append(img);
+      } else {
+        card.append(el("div", "vx-gph", "BLEND YOUR OWN"));
+      }
+      var body = el("div", "vx-gbody");
+      body.append(el("strong", "", fam.name), el("small", "", fam.description || ""));
+      if (fam.palette) { var sw = el("div", "vx-swatches"); for (const k of ["wall", "trim", "ceiling", "accent"]) { var i = document.createElement("i"); i.style.background = fam.palette[k]; sw.append(i); } body.append(sw); }
+      var dir = [];
+      if (fam.flooringKeywords && fam.flooringKeywords[0]) dir.push("Flooring: " + fam.flooringKeywords[0]);
+      if (fam.lighting) dir.push("Light: " + fam.lighting);
+      if (fam.furnitureTags && fam.furnitureTags.length) dir.push("Furniture: " + fam.furnitureTags.slice(0, 2).join(", "));
+      if (dir.length) body.append(el("div", "vx-gdir", dir.join(" · ")));
+      card.append(body);
       card.onclick = function () {
         designFamilyId = fam.id; designChosen = true;
         var mapped = STYLE_MAP[fam.id]; var sel = $("designStyle");
@@ -1504,6 +1624,9 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
       };
       famGrid.append(card);
     }
+    var cap = el("p", "note", "Style imagery is illustrative concept imagery created for RENOVISION to convey each atmosphere — it is not a photograph of your space, and screen colors are approximate.");
+    cap.style.gridColumn = "1 / -1";
+    famGrid.append(cap);
   }
   function renderCombo() {
     if (!H) return; comboBox.innerHTML = "";
@@ -1570,15 +1693,60 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
       row.append(r); verList.append(row);
     }
   }
+  function renderReview() {
+    if (!reviewGrid) return;
+    reviewGrid.innerHTML = "";
+    var fam = H ? H.getHarmonyFamily(designFamilyId) : null;
+    var sel = designState && designState.selections ? designState.selections : {};
+    var locks = designState && designState.locked ? Object.keys(designState.locked).filter(function (k) { return designState.locked[k]; }).length : 0;
+    var c1 = el("div", "vx-review-card"); c1.append(el("h4", "", "Design"));
+    c1.append(el("p", "", "Style: " + (fam ? fam.name : designFamilyId)));
+    c1.append(el("p", "", "Wall: " + (sel.paintHex || "not chosen yet")));
+    c1.append(el("p", "", locks + " approved selection" + (locks === 1 ? "" : "s") + " locked"));
+    var c2 = el("div", "vx-review-card"); c2.append(el("h4", "", "Materials"));
+    c2.append(el("p", "", "Flooring: " + (sel.flooringKeyword || (fam && fam.flooringKeywords ? fam.flooringKeywords[0] + " (direction)" : "—"))));
+    c2.append(el("p", "", "Cabinetry: " + (sel.cabinetry || (fam && fam.cabinetKeywords ? fam.cabinetKeywords[0] + " (direction)" : "—"))));
+    c2.append(el("p", "", "Countertop: " + (sel.countertop || "style direction")));
+    var c3 = el("div", "vx-review-card"); c3.append(el("h4", "", "Furnishing"));
+    var fp = typeof guidedState !== "undefined" ? guidedState.furnishProposal : null;
+    if (fp && fp.selections) { c3.append(el("p", "", fp.selections.length + " items · total " + gxMoney(fp.totalCents))); if (fp.remainingCents !== null && fp.remainingCents !== undefined) c3.append(el("p", "", "Remaining budget: " + gxMoney(fp.remainingCents))); }
+    else c3.append(el("p", "", "Not proposed yet — open Furnish My Space in the Furnish stage."));
+    var c4 = el("div", "vx-review-card"); c4.append(el("h4", "", "Budget"));
+    var lines = [];
+    var est = typeof guidedState !== "undefined" ? guidedState.estimate : null;
+    if (est) lines.push("Conversion estimate: " + (est.totalCents === null || est.totalCents === undefined ? "incomplete — rates missing (fail-closed)" : gxMoney(est.totalCents)));
+    if (fp) lines.push("Furnishing: " + gxMoney(fp.totalCents));
+    if (dsScope && window.RV && window.RV.dealScout) { var sm = window.RV.dealScout.summarizeScope(dsScope); lines.push("Imported Deal Scout scope: " + gxMoney(sm.knownTotalCents) + (sm.totalIsComplete ? "" : " (partial)")); }
+    if (!lines.length) lines.push("No budget figures yet.");
+    for (const t of lines) c4.append(el("p", "", t));
+    reviewGrid.append(c1, c2, c3, c4);
+  }
+  function renderExport() {
+    if (!exportList) return;
+    exportList.innerHTML = "";
+    var fp = typeof guidedState !== "undefined" ? guidedState.furnishProposal : null;
+    var plans = typeof guidedState !== "undefined" && guidedState.planUploads ? guidedState.planUploads.length : 0;
+    var items = [
+      [plans > 0, "Floor plan — registered original preserved, with your confirmed dimensions"],
+      [designChosen, "Design selections — style, paint and materials with revision history"],
+      [designChosen, "Paint & material schedule — included in the design brief download"],
+      [!!fp, "Furniture schedule — items, fit classifications and prices from your catalog"],
+      [!!(fp || (typeof guidedState !== "undefined" && guidedState.estimate) || dsScope), "Budget summary — estimates and totals with their sources"],
+      [!!dsScope, "Deal Scout scope — imported with provenance intact"],
+      [true, "Verification notes — what is verified, estimated, or still unknown"]
+    ];
+    for (const [ok, label] of items) exportList.append(el("li", "", (ok ? "✓ " : "— ") + label + (ok ? "" : " (not yet)")));
+  }
   function renderDealScout() {
     if (!window.RV || !window.RV.dealScout) return;
     var info = window.RV.dealScout.DEAL_SCOUT_INTEGRATION;
     dsStatus.textContent = "Connection: " + info.status + " (manual import). " + info.note;
     dsResult.innerHTML = "";
-    if (!dsScope) { dsResult.append(el("p", "note", "No scope imported. Design, conversion, and furnishing work continues without one.")); return; }
+    if (!dsScope) { dsResult.append(el("p", "note", "No scope imported. Design, conversion, and furnishing work continues without one.")); renderReview(); renderExport(); return; }
     var sum = window.RV.dealScout.summarizeScope(dsScope);
     dsResult.append(el("p", "status", "Imported scope — source: Deal Scout · version " + dsScope.version + " · exported " + dsScope.exportedAt + " · " + sum.itemCount + " items · priced total: " + gxMoney(sum.knownTotalCents) + (sum.totalIsComplete ? " (complete)" : " (partial — " + sum.unpricedCount + " unpriced)")));
     for (const it of dsScope.items) dsResult.append(el("p", "status", "• " + it.label + " (" + it.category + ")" + (it.estimatedCents === null ? " — unpriced" : " — " + gxMoney(it.estimatedCents))));
+    renderReview(); renderExport();
   }
   function vxInit() {
     if (!window.RV || !window.RV.harmony) return;
