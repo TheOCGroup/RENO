@@ -1282,7 +1282,7 @@ function gxBuildPanels() {
       const fitTxt = s.fit && s.fit.status ? s.fit.status : "unknown";
       let tierTxt = "";
       try {
-        const prod = (p._selectedProducts || []).find((x) => x.id === s.productId) || s;
+        const prod = (p._selectedProducts || []).find((x) => x.productId === s.productId) || s;
         const tier = window.RV && window.RV.fitTiers ? window.RV.fitTiers.assessFit({ product: prod, room: { widthIn: Number($("roomWidth").value) || 0, depthIn: Number($("roomDepth").value) || 0, clearanceIn: Number($("clearance").value) || 0, confirmed: !!window.__rvRoomConfirmed } }) : null;
         if (tier) tierTxt = " · tier: " + tier.tier.replaceAll("_", " ");
       } catch (e) { /* tier is additive detail; the base fit status already renders */ }
@@ -1413,12 +1413,12 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
   /* --- Optional assistant: open/close control (the manual journey never depends on it) --- */
   conciergePanel = document.getElementById("gxConciergePanel");
   reopenBtn = el("button", "secondary", "Show design assistant"); reopenBtn.type = "button"; reopenBtn.id = "vxAssistantOpen"; reopenBtn.style.display = "none";
-  function vxSetAssistant(open) {
+  vxSetAssistantImpl = function (open) {
     assistantOpen = !!open;
     if (conciergePanel) conciergePanel.style.display = assistantOpen ? "" : "none";
     reopenBtn.style.display = assistantOpen ? "none" : "";
     try { guidedState.assistantOpen = assistantOpen; } catch (e) {}
-  }
+  };
   if (conciergePanel) {
     var hideBtn = el("button", "secondary", "Hide assistant"); hideBtn.type = "button"; hideBtn.id = "vxAssistantHide";
     hideBtn.onclick = function () { vxSetAssistant(false); };
@@ -1466,6 +1466,8 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
   };
   }
   var assistantOpen = true;
+  var vxSetAssistantImpl = null;
+  function vxSetAssistant(open) { if (vxSetAssistantImpl) vxSetAssistantImpl(open); }
 
   /* --- State + rendering (engines arrive via rv-ready) --- */
   var H = null, designState = null, designFamilyId = "warm-modern", designChosen = false, dsScope = null, paintFamilyId = "warm-whites", pendingProposal = null, pendingRestore = null;
