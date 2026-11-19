@@ -3,26 +3,209 @@ export const RENOVISION_STUDIO_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RENOVISION AI | Design Studio</title><link rel="icon" type="image/png" sizes="32x32" href="/brand/icon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/brand/icon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="/brand/icon-180.png"><link rel="manifest" href="/brand/manifest.webmanifest">
 <style>
-:root{font-family:Inter,system-ui,Arial,sans-serif;color:#1b2931;background:#f5f6f4}*{box-sizing:border-box}body{margin:0}header{display:flex;align-items:center;justify-content:space-between;padding:22px clamp(20px,5vw,80px);background:white;border-bottom:1px solid #e5e8e5}h1{font-size:19px;letter-spacing:.12em;margin:0}header a{color:#425e56;font-size:13px}main{max-width:1440px;margin:auto;padding:36px clamp(20px,5vw,70px)}.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#52796d;font-weight:700}h2{font-size:clamp(32px,4vw,56px);line-height:1.1;letter-spacing:-.05em;margin:12px 0}p{color:#607078;line-height:1.6}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.85fr);gap:24px;margin-top:32px}.surface,.panel{background:white;border:1px solid #e2e7e3;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px #22372c09}.stage{min-height:410px;background:linear-gradient(140deg,#e8eee9,#cddbd5);display:grid;place-items:center;position:relative;overflow:hidden}.stage img{width:100%;height:100%;position:absolute;inset:0;object-fit:contain}.empty{text-align:center;max-width:360px;padding:32px}.empty svg{width:56px;height:56px;color:#52796d}.empty strong{display:block;font-size:20px;margin-top:10px}.toolbar{padding:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.pill{background:#eff4ef;border-radius:99px;padding:7px 11px;font-size:12px;color:#486a57}.panel{padding:26px}h3{margin:0 0 8px;font-size:19px}label{font-size:12px;font-weight:700;display:block;margin:20px 0 8px;color:#45534c}input,select,textarea{width:100%;border:1px solid #d5ded7;background:#fafbf9;border-radius:10px;padding:13px;font:inherit;color:#273c33}textarea{min-height:110px;resize:vertical}button,.button{background:#254b3d;border:0;color:white;border-radius:10px;padding:13px 20px;font:inherit;font-weight:650;cursor:pointer}button.secondary{background:#edf3ef;color:#254b3d}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{font-size:12px;color:#6a746f;padding:16px 20px;border-top:1px solid #e4e9e4;background:#f8faf8}.status{font-size:13px;margin-top:14px;color:#365d4b}.hidden{display:none!important}.swatches{display:flex;gap:8px}.swatch{width:38px;height:38px;border-radius:50%;border:2px solid #fff;outline:1px solid #ccd5ce;cursor:pointer}.swatch[aria-pressed=true]{outline:3px solid #254b3d}.preview{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#f6f8f5;font-size:13px}.file{display:none}@media(max-width:850px){.layout{grid-template-columns:1fr}.stage{min-height:330px}}
+/* ============ RENOVISION AI — Design System (UX replacement 2026-11-19) ============ */
+:root{
+  --paper:#faf8f3; --ivory:#f3eee5; --card:#fffdf9; --line:#e4ddcf; --line-soft:#ede7da;
+  --ink:#211d18; --ink-2:#575046; --ink-3:#6e6656;
+  --accent:#31536b; --accent-deep:#264256; --accent-tint:#e9eff3;
+  --brand:#243c30;
+  --warn:#8a5a16; --warn-bg:#f7ecd2; --danger:#8c3a30; --danger-bg:#f6e3de; --ok:#33624a; --ok-bg:#e6efe8;
+  --shadow:0 1px 2px rgba(33,29,24,.04),0 14px 34px -18px rgba(33,29,24,.14);
+  --r-card:16px; --r-ctl:10px;
+  font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink); background:var(--paper);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+::placeholder{color:#71685a;opacity:1}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.hidden{display:none!important}
+img{max-width:100%}
 
-/* RENOVISION architectural studio — restrained editorial design */
-:root{font-family:Arial,Helvetica,sans-serif;color:#252620;background:#f8f6f2}body{background:#f8f6f2;color:#252620}header{background:#f8f6f2;border-bottom:1px solid #dedbd4;padding:25px clamp(22px,5vw,90px)}header h1{font-size:17px;letter-spacing:.2em;font-weight:750}header h1 span{color:#7c6447!important}header a{color:#59594f;text-decoration:none;letter-spacing:.04em}main{max-width:1560px;padding:42px clamp(22px,5vw,90px) 100px}.eyebrow{color:#79644c;letter-spacing:.24em;font-size:11px}.intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.55fr);gap:36px;align-items:end;padding:25px 0 43px;border-bottom:1px solid #dedbd4}.intro h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(49px,6.3vw,104px);font-weight:400;letter-spacing:-.065em;line-height:.98;margin:21px 0 0;max-width:900px}.intro h2 em{font-weight:400;color:#77644f}.intro p{max-width:440px;font-size:16px;line-height:1.85;color:#6a6962;margin:0 0 7px}.intro-meta{font-size:10px;color:#6c675e;letter-spacing:.2em;text-transform:uppercase;margin-top:20px}.layout{grid-template-columns:minmax(0,1.55fr) minmax(325px,.73fr);gap:27px;margin-top:34px;align-items:start}.surface,.panel{border:1px solid #e0ddd5;background:#fffdfa;border-radius:3px;box-shadow:0 16px 45px #3e34240b}.stage{min-height:550px;background:radial-gradient(ellipse at 80% 15%,#e9e0d1,transparent 60%),linear-gradient(145deg,#e7e1d7,#c9c0b3);border-bottom:1px solid #e5dfd5}.stage img{object-fit:contain}.empty{max-width:430px;padding:38px}.empty svg{color:#967e60;width:48px;height:48px}.empty strong{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;letter-spacing:-.025em;margin-top:20px}.empty p{color:#69675f;font-size:14px;line-height:1.75}.toolbar{padding:17px 24px}.pill{background:#f2eee7;color:#786a58;letter-spacing:.04em}.panel{padding:34px}.panel h3{font-family:Georgia,'Times New Roman',serif;font-size:35px;font-weight:400;letter-spacing:-.045em;margin:10px 0}.panel>p{font-size:14px;color:#6a665e}.panel label{margin:23px 0 9px;color:#5b594f;font-size:11px;letter-spacing:.1em;text-transform:uppercase}input,select,textarea{background:#faf8f4;border:1px solid #dedbd3;border-radius:3px;color:#302f2b;padding:14px}input:focus,select:focus,textarea:focus{outline:2px solid #ae997d;outline-offset:1px}button,.button{border-radius:3px;background:#343b32;color:#fff;padding:14px 19px;font-size:13px;letter-spacing:.02em}button:hover:not(:disabled){background:#586251}button.secondary{background:#f0ede7;color:#514b42}button.secondary:hover:not(:disabled){background:#e6e0d6}.swatch[aria-pressed=true]{outline-color:#78634c}.notice{background:#f8f6f2;color:#6a6660;border-top:1px solid #e4e0d9;line-height:1.7}.preview{background:#faf8f4;color:#736e64}.status{color:#6a645a}.studio-kicker{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid #e8e4dc;background:#fffdfa}.studio-kicker strong{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#4e5146}.studio-kicker span{font-size:11px;color:#776653;letter-spacing:.08em}.chapter{margin:0 0 14px;color:#79644b;font-size:11px;letter-spacing:.18em;text-transform:uppercase}.studio-footer{margin-top:36px;display:flex;justify-content:space-between;gap:20px;border-top:1px solid #dedbd4;padding-top:22px;font-size:12px;color:#6c6860}.studio-footer strong{color:#545148;letter-spacing:.12em}@media(max-width:920px){.intro{grid-template-columns:1fr;gap:18px}.layout{grid-template-columns:1fr}.stage{min-height:390px}.intro h2{font-size:clamp(48px,9vw,78px)}.panel{padding:25px}}@media(max-width:520px){main{padding-top:22px}.intro{padding-bottom:30px}.stage{min-height:340px}.intro h2{font-size:49px}.toolbar{padding:14px}.studio-kicker{padding:14px}}
+/* ---- Shell ---- */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px clamp(20px,4vw,44px);background:rgba(250,248,243,.92);border-bottom:1px solid var(--line-soft);position:relative;z-index:40}
+header h1{font-size:15px;letter-spacing:.22em;font-weight:700;margin:0}
+header h1 img{border-radius:8px;margin-right:11px;vertical-align:middle}
+header h1 span{color:var(--accent)!important}
+header a{color:var(--ink-2);text-decoration:none;font-size:13px}
+header a:hover{color:var(--accent)}
+main{max-width:1240px;margin:0 auto;padding:0 clamp(18px,4vw,44px) 8px}
 
-/* Material library and comparison — no remote images or fabricated concepts */
-.material-library{margin-top:42px;padding:28px 0 4px;border-top:1px solid #dedbd4}.material-head{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}.material-head h3{font-family:Georgia,'Times New Roman',serif;font-size:clamp(29px,3vw,43px);font-weight:400;letter-spacing:-.04em;margin:8px 0}.material-head p{font-size:13px;max-width:390px;margin:0}.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:24px}.material-card{border:1px solid #e0ddd5;background:#fffdfa;padding:0;text-align:left;overflow:hidden;color:#333;min-width:0}.material-card .texture{height:125px;display:block;position:relative}.material-card .texture:after{content:'';position:absolute;inset:0;background:linear-gradient(145deg,#ffffff48,transparent 42%,#0000000d)}.material-card strong{display:block;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;padding:15px 15px 4px}.material-card small{display:block;font-size:11px;color:#6e685e;padding:0 15px 16px;line-height:1.5}.material-card[aria-pressed=true]{outline:2px solid #9d8060;outline-offset:2px}.texture-oak{background:repeating-linear-gradient(91deg,#c3a782 0px,#ddc6a1 4px,#c8ae8c 12px,#e2cba8 22px,#bfa07c 28px)}.texture-stone{background:linear-gradient(135deg,transparent 42%,#b5ada259 42.4%,transparent 43%),linear-gradient(24deg,#ddd9d1,#f1eee7 55%,#bcb7ac)}.texture-sage{background:linear-gradient(125deg,#8e9a88,#b7c1ae 50%,#84917f)}.texture-charcoal{background:linear-gradient(140deg,#303532,#555b54 54%,#242a28)}.comparison{margin-top:20px;border:1px solid #e4ded4;background:#f8f6f2;padding:18px}.comparison-stage{position:relative;width:100%;height:420px;overflow:hidden;background:#ded8cd}.comparison-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.comparison-stage .comparison-top{clip-path:inset(0 50% 0 0)}.comparison-divider{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;box-shadow:0 0 8px #0005;pointer-events:none}.comparison-stage .comparison-label{position:absolute;top:12px;background:#fffdf0e8;color:#292923;padding:7px 10px;font-size:11px;letter-spacing:.07em}.comparison-stage .comparison-label.before{left:12px}.comparison-stage .comparison-label.after{right:12px}.comparison input[type=range]{width:100%;margin:17px 0 5px;accent-color:#75674f}.comparison .comparison-hint{font-size:12px;color:#6c675e;margin:0}@media(max-width:760px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.comparison-stage{height:300px}}@media(max-width:420px){.material-card .texture{height:95px}.comparison-stage{height:240px}}
-.room-journeys{margin-top:34px;border-top:1px solid #dedbd4;padding-top:29px}.journey-heading{font-family:Georgia,'Times New Roman',serif;font-size:clamp(27px,3vw,38px);font-weight:400;letter-spacing:-.04em;margin:10px 0 7px}.journey-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:19px}.journey-card{border:1px solid #dedbd4;background:#fffdfa;color:#393a33;padding:20px 16px;text-align:left;min-height:136px;display:flex;flex-direction:column;justify-content:space-between}.journey-card strong{font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400}.journey-card small{color:#6d665d;line-height:1.5;font-size:11px}.journey-card[aria-pressed=true]{border-color:#8d775e;box-shadow:inset 0 0 0 1px #8d775e;background:#f3eee5}.journey-card:hover{border-color:#8d775e;background:#f6f2ec}@media(max-width:760px){.journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.journey-card{min-height:115px;padding:14px}.journey-card strong{font-size:19px}}
-.scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}.scope-option{display:flex;align-items:center;gap:10px;background:#faf8f4;border:1px solid #e2ddd5;padding:12px;font-size:12px;color:#555249;cursor:pointer}.scope-option:has(input:checked){border-color:#947b60;background:#f2ebe1}.scope-option input{width:16px;height:16px;accent-color:#7d6b52;flex:none;margin:0}.scope-description{font-size:12px;color:#8c8274;margin:8px 0 0}@media(max-width:440px){.scope-grid{grid-template-columns:1fr}}
-:focus-visible{outline:3px solid #7c6447!important;outline-offset:2px}@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}::placeholder{color:#6a6962;opacity:1}.journey{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;margin:18px 0 0;padding:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6c675e}.journey li.done{color:#3f7d4e}.journey li.current{color:#252620;font-weight:700;text-decoration:underline;text-underline-offset:4px}</style></head><body>
+/* ---- Intro ---- */
+.intro{display:grid;grid-template-columns:1.25fr .75fr;gap:26px;align-items:end;padding:38px 0 6px}
+.eyebrow,.chapter{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.intro h2,.journey-heading{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.02em}
+.intro h2{font-size:clamp(38px,4.6vw,58px);line-height:1.04;margin:10px 0 0}
+.intro h2 em{font-style:italic;color:var(--ink-2)}
+.intro p{color:var(--ink-2);font-size:15px;margin:0}
+.intro-meta{margin-top:14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- Journey rail (real navigation) ---- */
+nav[aria-label="Design journey progress"]{position:sticky;top:0;z-index:35;background:rgba(250,248,243,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line-soft);margin:14px calc(-1*clamp(18px,4vw,44px)) 0;padding:0 clamp(18px,4vw,44px)}
+.journey{display:flex;flex-wrap:nowrap;gap:4px 26px;list-style:none;margin:0 auto;padding:11px 0;max-width:1240px;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);overflow-x:auto;scrollbar-width:none}
+.journey::-webkit-scrollbar{display:none}
+.journey li{white-space:nowrap;cursor:pointer;padding:2px 0;border-bottom:2px solid transparent;transition:color .16s ease,border-color .16s ease}
+.journey li:hover{color:var(--accent)}
+.journey li.done{color:var(--ok)}
+.journey li.done::before{content:"✓ "}
+.journey li.current{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+
+/* ---- Stage scaffolding ---- */
+.stage-block{max-width:1240px;margin:36px auto 0;padding:0 clamp(18px,4vw,44px)}
+.stage-head{display:flex;align-items:baseline;gap:14px;margin:0 0 6px}
+.stage-head .stage-num{font-family:"Fraunces",Georgia,serif;font-style:italic;font-size:20px;color:var(--accent)}
+.stage-head h2{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(24px,2.6vw,31px);letter-spacing:-.015em;margin:0}
+.stage-head p{color:var(--ink-2);margin:0;font-size:13.5px}
+
+/* ---- Cards & panels ---- */
+.panel,.surface{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:26px}
+.panel h3{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;font-size:23px;letter-spacing:-.01em;margin:0 0 8px}
+.panel p{color:var(--ink-2)}
+section.panel{margin-top:22px}
+aside.panel{background:transparent;border:none;box-shadow:none;padding:0}
+aside .panel,aside section{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:22px;margin-top:18px}
+aside>.chapter{margin-top:4px}
+.rail-title{font-family:"Fraunces",Georgia,serif;font-weight:400;font-size:20px;margin:0 0 6px}
+
+/* ---- Room journey cards ---- */
+.room-journeys{margin-top:30px;border-top:1px solid var(--line-soft);padding-top:26px}
+.journey-heading{font-size:clamp(26px,3vw,36px);margin:8px 0 6px}
+.journey-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.journey-card{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:18px 16px;text-align:left;min-height:124px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.journey-card strong{font-family:"Fraunces",Georgia,serif;font-size:21px;font-weight:400}
+.journey-card small{color:var(--ink-3);font-size:11.5px;line-height:1.5}
+.journey-card:hover{border-color:var(--accent);background:#fff}
+.journey-card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-tint)}
+
+/* ---- Workspace (photo + rail) ---- */
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.workspace{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(300px,.88fr);gap:22px;align-items:start;margin-top:26px}
+.workspace .surface{padding:0;overflow:hidden}
+.studio-kicker{display:flex;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line-soft);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.studio-kicker strong{color:var(--ink);font-weight:700}
+.stage{background:var(--ivory);min-height:430px;display:flex;align-items:center;justify-content:center;position:relative}
+.stage img#photo{width:100%;height:100%;max-height:560px;object-fit:contain;display:block}
+.empty{text-align:center;color:var(--ink-2);padding:38px 26px;max-width:420px}
+.empty svg{width:44px;height:44px;color:var(--ink-3);margin-bottom:10px}
+.empty strong{display:block;font-family:"Fraunces",Georgia,serif;font-size:22px;font-weight:400;color:var(--ink);margin-bottom:6px}
+.empty p{margin:0 0 16px;font-size:13.5px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.preview{display:flex;justify-content:space-between;gap:12px;padding:11px 20px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--ink-3)}
+.preview strong{color:var(--ink-2);font-weight:600}
+#resultPanel{padding:22px 20px!important;border-top:1px solid var(--line-soft)}
+#resultPanel>strong{font-family:"Fraunces",Georgia,serif;font-size:21px;font-weight:400}
+#resultPhoto{border-radius:12px!important}
+.comparison{margin-top:14px}
+.comparison-stage{position:relative;border-radius:12px;overflow:hidden;background:var(--ivory)}
+.comparison-stage img{width:100%;display:block}
+.comparison-top{position:absolute;inset:0;height:100%;object-fit:cover}
+.comparison-divider{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(33,29,24,.25)}
+.comparison-label{position:absolute;top:12px;font-size:10.5px;letter-spacing:.14em;font-weight:700;padding:5px 9px;border-radius:999px;background:rgba(250,248,243,.92);color:var(--ink)}
+.comparison-label.before{left:12px}.comparison-label.after{right:12px;color:var(--accent-deep)}
+.comparison-hint{font-size:12.5px;color:var(--ink-3)}
+input[type="range"]{width:100%;accent-color:var(--accent)}
+
+/* ---- Controls ---- */
+label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:15px 0 6px}
+label>input,label>select,label>textarea{margin-top:0}
+input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);padding:11px 12px;font:inherit;font-size:14px;color:var(--ink);transition:border-color .16s ease,box-shadow .16s ease}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint);outline:none}
+textarea{min-height:84px;resize:vertical}
+input[type="checkbox"],input[type="radio"]{width:auto;accent-color:var(--accent)}
+button{font:inherit;font-size:13.5px;font-weight:600;background:var(--ink);color:#fdfcf9;border:1px solid var(--ink);border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .16s ease,border-color .16s ease,color .16s ease}
+button:hover{background:#000;border-color:#000}
+button:disabled{opacity:.42;cursor:not-allowed}
+button.secondary,.secondary button,a.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.secondary:hover,a.secondary:hover{background:#fff;border-color:var(--accent);color:var(--accent-deep)}
+.actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
+.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--ivory);border:1px solid var(--line-soft);border-radius:999px;padding:5px 11px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:3px 8px;vertical-align:2px}
+.status{font-size:13px;color:var(--ink-2)}
+.note{font-size:12.5px;color:var(--ink-3)}
+.notice{font-size:13px;color:var(--ink-2);background:#f6f1e7;border:1px solid var(--line-soft);border-radius:10px;padding:11px 14px;margin:8px 0}
+.file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+
+/* ---- Swatches & materials ---- */
+.swatches{display:flex;gap:9px;margin-top:4px}
+.swatch{width:38px;height:38px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);padding:0;cursor:pointer}
+.swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.scope-option{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);padding:10px 12px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:500;margin:0}
+.scope-description{font-size:12.5px;color:var(--ink-3)}
+.material-library{margin-top:40px;padding:28px 0 4px;border-top:1px solid var(--line-soft)}
+.material-head{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.material-head h3{font-family:"Fraunces",Georgia,serif;font-size:clamp(24px,2.6vw,32px);font-weight:400;margin:6px 0 0}
+.material-head p{color:var(--ink-2);max-width:520px;margin:0;font-size:13.5px}
+.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.material-card{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:7px;cursor:pointer;color:var(--ink);font-weight:500}
+.material-card strong{font-family:"Fraunces",Georgia,serif;font-size:18px;font-weight:400}
+.material-card small{color:var(--ink-3);font-size:11.5px}
+.material-card .texture{height:64px;border-radius:9px;display:block}
+.material-card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.texture-oak{background:linear-gradient(135deg,#c8a878,#a9854f)}
+.texture-stone{background:linear-gradient(135deg,#ddd6c8,#c2b8a4)}
+.texture-sage{background:linear-gradient(135deg,#a8b39a,#8a987c)}
+.texture-charcoal{background:linear-gradient(135deg,#4a4a48,#2c2c2a)}
+
+/* ---- Planner ---- */
+#interiorPlanner{margin-top:0}
+#floorPlan{border:1.5px solid var(--ink-3)!important;border-radius:12px!important;background-color:#fffdf9!important;box-shadow:inset 0 1px 6px rgba(33,29,24,.05)}
+#floorPlan button{border-radius:8px;border:1px solid var(--line);background:var(--ivory);color:var(--ink);font-size:12px;font-weight:600;padding:4px 6px;box-shadow:0 1px 3px rgba(33,29,24,.12)}
+#floorPlan button:hover{border-color:var(--accent)}
+#furnitureItems .row,#furnitureItems>div{border-top:1px solid var(--line-soft);padding:10px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);text-align:left;font-weight:600}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line-soft)}
+
+/* ---- Budget summary band ---- */
+#budgetPanel .status:first-of-type,#budgetPanel p.status{background:var(--ivory);border:1px solid var(--line-soft);border-radius:12px;padding:13px 16px;font-size:14px;color:var(--ink)}
+
+/* ---- Concept history filmstrip ---- */
+#conceptHistoryList{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:12px}
+#conceptHistoryList .room-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+#conceptHistoryList img{border-radius:8px;width:100%}
+
+/* ---- Quiet disclosures (progressive disclosure, open by default) ---- */
+details.quiet{border-top:1px solid var(--line-soft);margin-top:16px;padding-top:4px}
+details.quiet>summary{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:700;cursor:pointer;padding:9px 0;list-style:none}
+details.quiet>summary::-webkit-details-marker{display:none}
+details.quiet>summary::after{content:" –";color:var(--ink-3)}
+details.quiet:not([open])>summary::after{content:" +"}
+
+.studio-footer{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:38px 0 6px;padding-top:18px;border-top:1px solid var(--line-soft);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- Responsive ---- */
+@media(max-width:1020px){
+  .workspace{grid-template-columns:1fr}
+  .intro{grid-template-columns:1fr;align-items:start}
+  .material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .layout{grid-template-columns:1fr}
+  .panel,.surface{padding:20px}
+  .stage{min-height:300px}
+  header{padding:12px 18px}
+}
+@media(max-width:420px){
+  .journey-card{min-height:108px;padding:14px}
+  .journey-card strong{font-size:18px}
+  .material-grid{grid-template-columns:1fr}
+}
+</style></head><body>
 <header><h1><img src="/brand/icon-192.png" alt="" width="34" height="34" style="border-radius:8px;vertical-align:-7px;margin-right:10px">RENOVISION <span style="color:#729b86">AI</span></h1><a href="/operator">Operator workspace</a></header>
 <main><section class="intro"><div><div class="eyebrow">The renovation design atelier · RENOVISION AI</div><h2>Spaces, <em>reimagined.</em></h2></div><div><p>Thoughtful transformations begin with a vision. Explore materials, finishes and architectural character—starting with a photograph of your own space.</p><div class="intro-meta">01 / Your space &nbsp; · &nbsp; 02 / Your vision &nbsp; · &nbsp; 03 / Your concept</div></div></section>
 <nav aria-label="Design journey progress"><ol id="journeyStrip" class="journey"></ol></nav>
-<section class="room-journeys" aria-labelledby="journeyTitle"><div class="chapter">Choose a room to transform</div><h3 id="journeyTitle" class="journey-heading">Where shall we begin?</h3><p style="margin:0;font-size:13px">Select a room to tailor the renovation brief. Your photograph remains yours.</p><div class="journey-grid"><button type="button" class="journey-card" data-room="Kitchen" aria-pressed="false"><strong>Kitchen</strong><small>Cabinetry · surfaces · light</small></button><button type="button" class="journey-card" data-room="Bathroom" aria-pressed="false"><strong>Bathroom</strong><small>Tile · fixtures · sanctuary</small></button><button type="button" class="journey-card" data-room="Living room" aria-pressed="true"><strong>Living room</strong><small>Flow · furnishings · comfort</small></button><button type="button" class="journey-card" data-room="Bedroom" aria-pressed="false"><strong>Bedroom</strong><small>Texture · tranquility · layers</small></button></div></section><div class="layout"><div class="surface"><div class="studio-kicker"><strong>01 — Your existing space</strong><span>THE STARTING POINT</span></div><div class="stage" id="stage"><div class="empty" id="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><strong>Every space has potential.</strong><p>Choose a clear, well-lit room photograph to begin your renovation brief.</p><button id="choose">Upload room photo</button></div><img id="photo" class="hidden" alt="Original room photograph"></div><div class="toolbar"><span class="pill" id="photoStatus">No photo selected</span><div class="actions" style="margin:0"><button class="secondary" id="replace">Change photo</button><button class="secondary" id="clear">Clear</button></div></div><div class="preview"><span>Original photograph</span><strong id="renderState">AI redesign not generated</strong></div><div id="resultPanel" class="hidden" style="padding:20px;border-top:1px solid #e4e9e4"><strong>AI renovation concept</strong><p>Compare this concept with the original photo. Architectural details and dimensions require verification.</p><img id="resultPhoto" alt="AI-generated renovation concept" style="width:100%;max-height:470px;object-fit:contain;border-radius:10px"><div id="comparison" class="comparison hidden"><div class="comparison-stage"><img id="comparisonOriginal" alt="Original renovation source photo"><img id="comparisonConcept" class="comparison-top" alt="Generated design concept"><div class="comparison-divider" id="comparisonDivider"></div><span class="comparison-label before">BEFORE</span><span class="comparison-label after">CONCEPT</span></div><label for="comparisonRange">Compare original and concept</label><input id="comparisonRange" type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after"><p class="comparison-hint">Move the slider to compare your original photo with the generated concept. Geometry is not verified.</p></div><div class="actions"><button class="secondary" id="downloadResult">Download concept</button><button class="secondary" id="showOriginal">View original</button><button class="secondary" id="showResult">View concept</button><button class="secondary" id="refineResult">Refine this concept</button></div></div><div class="notice">Your source photo stays on this device until you choose Generate. Generating sends the photo to the configured AI provider and may incur charges. Results are concepts, not construction drawings.</div></div>
+<section class="room-journeys" id="stageProject" aria-labelledby="journeyTitle"><div class="chapter">Choose a room to transform</div><h3 id="journeyTitle" class="journey-heading">Where shall we begin?</h3><p style="margin:0;font-size:13px">Select a room to tailor the renovation brief. Your photograph remains yours.</p><div class="journey-grid"><button type="button" class="journey-card" data-room="Kitchen" aria-pressed="false"><strong>Kitchen</strong><small>Cabinetry · surfaces · light</small></button><button type="button" class="journey-card" data-room="Bathroom" aria-pressed="false"><strong>Bathroom</strong><small>Tile · fixtures · sanctuary</small></button><button type="button" class="journey-card" data-room="Living room" aria-pressed="true"><strong>Living room</strong><small>Flow · furnishings · comfort</small></button><button type="button" class="journey-card" data-room="Bedroom" aria-pressed="false"><strong>Bedroom</strong><small>Texture · tranquility · layers</small></button></div></section><div class="layout workspace" id="stageVision"><div class="surface" id="stageConcept"><div class="studio-kicker"><strong>01 — Your existing space</strong><span>THE STARTING POINT</span></div><div class="stage" id="stage"><div class="empty" id="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><strong>Every space has potential.</strong><p>Choose a clear, well-lit room photograph to begin your renovation brief.</p><button id="choose">Upload room photo</button></div><img id="photo" class="hidden" alt="Original room photograph"></div><div class="toolbar"><span class="pill" id="photoStatus">No photo selected</span><div class="actions" style="margin:0"><button class="secondary" id="replace">Change photo</button><button class="secondary" id="clear">Clear</button></div></div><div class="preview"><span>Original photograph</span><strong id="renderState">AI redesign not generated</strong></div><div id="resultPanel" class="hidden" style="padding:20px;border-top:1px solid #e4e9e4"><strong>AI renovation concept</strong><p>Compare this concept with the original photo. Architectural details and dimensions require verification.</p><img id="resultPhoto" alt="AI-generated renovation concept" style="width:100%;max-height:470px;object-fit:contain;border-radius:10px"><div id="comparison" class="comparison hidden"><div class="comparison-stage"><img id="comparisonOriginal" alt="Original renovation source photo"><img id="comparisonConcept" class="comparison-top" alt="Generated design concept"><div class="comparison-divider" id="comparisonDivider"></div><span class="comparison-label before">BEFORE</span><span class="comparison-label after">CONCEPT</span></div><label for="comparisonRange">Compare original and concept</label><input id="comparisonRange" type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after"><p class="comparison-hint">Move the slider to compare your original photo with the generated concept. Geometry is not verified.</p></div><div class="actions"><button class="secondary" id="downloadResult">Download concept</button><button class="secondary" id="showOriginal">View original</button><button class="secondary" id="showResult">View concept</button><button class="secondary" id="refineResult">Refine this concept</button></div></div><div class="notice">Your source photo stays on this device until you choose Generate. Generating sends the photo to the configured AI provider and may incur charges. Results are concepts, not construction drawings.</div></div>
 <aside class="panel"><div class="chapter">02 — Curate your vision</div><h3>Your design story.</h3><p>Shape the atmosphere with thoughtful materials, color and the details that make a space feel like yours.</p>
 <label for="room">Room type</label><select id="room"><option>Living room</option><option>Kitchen</option><option>Bathroom</option><option>Bedroom</option><option>Basement</option><option>Other</option></select>
 <label for="style">Design style</label><select id="style"><option>Warm modern</option><option>Contemporary</option><option>Transitional</option><option>Modern farmhouse</option><option>Minimalist</option><option>Traditional</option></select>
 <label>Palette</label><div class="swatches" id="swatches"><button class="swatch" style="background:#e9dfce" data-color="Warm neutral" aria-label="Warm neutral" aria-pressed="true"></button><button class="swatch" style="background:#d9ded7" data-color="Soft sage" aria-label="Soft sage" aria-pressed="false"></button><button class="swatch" style="background:#8d9ca6" data-color="Coastal blue" aria-label="Coastal blue" aria-pressed="false"></button><button class="swatch" style="background:#b6a58f" data-color="Natural oak" aria-label="Natural oak" aria-pressed="false"></button></div>
 <label>Renovation priorities</label><p class="scope-description">Select the work you are considering. These are planning ideas, not a contractor estimate.</p><div class="scope-grid" id="scopeGrid" role="group" aria-label="Renovation scope selections"></div><label for="changes">What would you change?</label><textarea id="changes" placeholder="For example: replace flooring with light oak, brighten the walls, update cabinets and add contemporary furniture."></textarea>
-<div class="actions"><button id="save">Download design brief</button><button class="secondary" id="downloadScope">Download contractor scope</button><button class="secondary" id="reviewScope">Enter contractor estimates</button></div><section id="renderPanel"><p id="renderAvailability" class="status">Checking image-generation availability...</p><label for="projectId">Project ID</label><input id="projectId" autocomplete="off" placeholder="e.g. kitchen-refresh-01"><label for="propertyId">Property ID</label><input id="propertyId" autocomplete="off" placeholder="Your property record ID"><label for="roomId">Room ID</label><input id="roomId" autocomplete="off" placeholder="e.g. kitchen"><div class="actions"><button class="secondary" id="createProject">Create / open project</button><span id="projectState" class="status">No project selected</span></div><label for="renderEmail">Account email</label><input id="renderEmail" type="email" autocomplete="username" placeholder="Your RENOVISION account email"><label for="renderPassword">Password</label><input id="renderPassword" type="password" autocomplete="current-password" placeholder="Your account password"><div class="actions"><button class="secondary" id="signIn">Sign in securely</button><button class="secondary" id="requestPasswordReset" type="button">Reset password</button><button class="secondary" id="signOut" disabled>Sign out</button><span id="authState" class="status">Not signed in</span></div><div class="actions"><button id="generate" disabled>Generate renovation concept</button></div><p>AI concepts are visual ideas, not verified geometry or construction drawings. Generation may incur Google Cloud charges.</p></section><section aria-labelledby="conceptHistoryHeading"><h2 id="conceptHistoryHeading">Concept history</h2><p class="note">Generated concepts saved to this project, with the photo and brief that produced them. Concepts are design visualizations only — never verified measurements or construction documents. Simulated concepts (from test renderers) are labeled.</p><div class="row"><button id="loadConceptHistory" type="button">Load concept history</button></div><p id="conceptHistoryStatus" class="note" role="status"></p><div id="conceptHistoryList"></div></section><div class="status" id="status" role="status"></div></aside></div>
+<div class="actions"><button id="save">Download design brief</button><button class="secondary" id="downloadScope">Download contractor scope</button><button class="secondary" id="reviewScope">Enter contractor estimates</button></div><section id="renderPanel"><h3 class="rail-title">Project &amp; concept</h3><p id="renderAvailability" class="status">Checking image-generation availability...</p><details class="quiet" open><summary>Project details</summary><label for="projectId">Project ID</label><input id="projectId" autocomplete="off" placeholder="e.g. kitchen-refresh-01"><label for="propertyId">Property ID</label><input id="propertyId" autocomplete="off" placeholder="Your property record ID"><label for="roomId">Room ID</label><input id="roomId" autocomplete="off" placeholder="e.g. kitchen"><div class="actions"><button class="secondary" id="createProject">Create / open project</button><span id="projectState" class="status">No project selected</span></div></details><details class="quiet" open><summary>Account</summary><label for="renderEmail">Account email</label><input id="renderEmail" type="email" autocomplete="username" placeholder="Your RENOVISION account email"><label for="renderPassword">Password</label><input id="renderPassword" type="password" autocomplete="current-password" placeholder="Your account password"><div class="actions"><button class="secondary" id="signIn">Sign in securely</button><button class="secondary" id="requestPasswordReset" type="button">Reset password</button><button class="secondary" id="signOut" disabled>Sign out</button><span id="authState" class="status">Not signed in</span></div></details><div class="actions"><button id="generate" disabled>Generate renovation concept</button></div><p>AI concepts are visual ideas, not verified geometry or construction drawings. Generation may incur Google Cloud charges.</p></section><section aria-labelledby="conceptHistoryHeading"><h2 id="conceptHistoryHeading">Concept history</h2><p class="note">Generated concepts saved to this project, with the photo and brief that produced them. Concepts are design visualizations only — never verified measurements or construction documents. Simulated concepts (from test renderers) are labeled.</p><div class="row"><button id="loadConceptHistory" type="button">Load concept history</button></div><p id="conceptHistoryStatus" class="note" role="status"></p><div id="conceptHistoryList"></div></section><div class="status" id="status" role="status"></div></aside></div>
 <section class="material-library" aria-labelledby="materialTitle"><div class="material-head"><div><div class="chapter">03 — Material inspiration</div><h3 id="materialTitle">A palette of possibilities.</h3></div><p>Explore a few timeless material directions. Select a finish to inform your renovation brief; these are illustrative swatches, not product samples.</p></div><div class="material-grid"><button type="button" class="material-card" data-material="Natural oak flooring and warm wood finishes" aria-pressed="false"><span class="texture texture-oak" aria-hidden="true"></span><strong>Natural oak</strong><small>Warmth · organic texture</small></button><button type="button" class="material-card" data-material="Light limestone and soft natural stone surfaces" aria-pressed="false"><span class="texture texture-stone" aria-hidden="true"></span><strong>Soft stone</strong><small>Quiet luxury · tactile surfaces</small></button><button type="button" class="material-card" data-material="Muted sage cabinetry and earthy accents" aria-pressed="false"><span class="texture texture-sage" aria-hidden="true"></span><strong>Muted sage</strong><small>Grounded · calming color</small></button><button type="button" class="material-card" data-material="Charcoal accents and refined dark metal finishes" aria-pressed="false"><span class="texture texture-charcoal" aria-hidden="true"></span><strong>Charcoal</strong><small>Contrast · architectural depth</small></button></div></section><div class="studio-footer"><strong>RENOVISION AI / DESIGN STUDIO</strong><span>Imagined with intention. Built with care.</span></div><input class="file" type="file" id="file" aria-label="Upload a room photo" accept="image/png,image/jpeg,image/webp"></main>
 <section class="panel" id="interiorPlanner" aria-labelledby="plannerTitle" style="margin-top:28px"><div class="eyebrow">04 / INTERIOR DESIGN</div><h2 id="plannerTitle">Design within your space and budget.</h2><p>Build a room specification, add real furniture you find, and check dimensions and costs before purchasing. All prices and measurements are user-entered and unverified.</p><div class="layout"><div><label for="designStyle">Design style</label><select id="designStyle"><option>Modern organic</option><option>Contemporary</option><option>Minimalist</option><option>Scandinavian</option><option>Japandi</option><option>Mid-century modern</option><option>Traditional</option><option>Transitional</option><option>Industrial</option><option>Farmhouse</option><option>Coastal</option><option>Bohemian</option><option>Art Deco</option><option>Maximalist</option><option>Eclectic</option><option>French country</option><option>Mediterranean</option><option>Rustic</option><option>Luxury modern</option><option>Southwestern</option></select><label for="designMaterial">Material direction</label><select id="designMaterial"><option>White oak and linen</option><option>Walnut and leather</option><option>Travertine and boucle</option><option>Marble and brass</option><option>Concrete and black steel</option><option>Rattan and natural cotton</option><option>Terrazzo and lacquer</option><option>Painted cabinetry and quartz</option><option>Slate and dark wood</option><option>Terracotta and plaster</option></select><div class="layout"><div><label for="roomWidth">Room width (inches)</label><input id="roomWidth" type="number" min="1" step="0.1" placeholder="e.g. 144"></div><div><label for="roomDepth">Room depth (inches)</label><input id="roomDepth" type="number" min="1" step="0.1" placeholder="e.g. 180"></div></div><label for="clearance">Desired circulation clearance (inches)</label><input id="clearance" type="number" min="0" value="30" step="1"><label for="designBudget">Total furniture budget ($)</label><input id="designBudget" type="number" min="0" step="0.01" placeholder="e.g. 5000"></div><div><h3>Furniture shortlist</h3><p>Add product details and retailer links yourself. Catalog pricing and inventory are not live-connected.</p><label for="furnitureName">Product name</label><input id="furnitureName" placeholder="e.g. 84-inch sofa"><label for="furnitureRetailer">Retailer</label><input id="furnitureRetailer" placeholder="Store name"><label for="furnitureUrl">Product URL (https)</label><input id="furnitureUrl" type="url" placeholder="https://..."><div class="layout"><div><label for="furnitureWidth">Width (in)</label><input id="furnitureWidth" type="number" min="0.1" step="0.1"></div><div><label for="furnitureDepth">Depth (in)</label><input id="furnitureDepth" type="number" min="0.1" step="0.1"></div></div><label for="furniturePrice">Price ($)</label><input id="furniturePrice" type="number" min="0" step="0.01"><button id="addFurniture" type="button" style="margin-top:14px">Add furniture</button><div class="status" id="furnitureMessage" role="status"></div></div></div><div class="panel" style="margin-top:20px"><h3>2D space plan</h3><p>Drag furniture blocks to reposition them. Each item is shown at scale using its entered dimensions. Add doors, windows, walkways and fixed obstacles with the planning controls below; swing, clearance and circulation checks are advisory and cannot certify a layout.</p><div class="actions"><label for="obstacleType">Opening / obstacle</label><select id="obstacleType" style="max-width:180px"><option value="door">Door swing (approximate)</option><option value="window">Window zone</option><option value="fixed">Fixed obstacle</option></select><label for="obstacleX">X (in)</label><input id="obstacleX" type="number" min="0" value="0" style="max-width:95px"><label for="obstacleY">Y (in)</label><input id="obstacleY" type="number" min="0" value="0" style="max-width:95px"><label for="obstacleWidth">Width (in)</label><input id="obstacleWidth" type="number" min="1" value="36" style="max-width:95px"><label for="obstacleDepth">Depth (in)</label><input id="obstacleDepth" type="number" min="1" value="36" style="max-width:95px"><button id="addObstacle" type="button" class="secondary">Add zone</button><button id="clearObstacles" type="button" class="secondary">Clear zones</button></div><p id="obstacleMessage" class="status" role="status"></p><div class="actions"><button id="rotateFurniture" type="button" class="secondary">Rotate selected furniture 90°</button><span id="selectedFurnitureStatus" class="status">Select a furniture block to rotate it.</span></div><div id="floorPlan" style="position:relative;max-width:100%;width:100%;height:360px;background:repeating-linear-gradient(0deg,#eeeae3 0px,#eeeae3 1px,transparent 1px,transparent 24px),repeating-linear-gradient(90deg,#eeeae3 0px,#eeeae3 1px,transparent 1px,transparent 24px),#fbfaf7;border:2px solid #7c7368;border-radius:5px;overflow:hidden;touch-action:none" role="group" aria-label="Scaled room plan with draggable furniture"></div><p id="floorPlanStatus" class="status" role="status">Enter room dimensions to display a scaled plan.</p></div><div id="furnitureSummary" class="status" aria-live="polite"></div><div id="furnitureItems"></div><div class="actions"><button id="exportFurniturePlan" type="button" class="secondary">Download design and shopping plan</button><button id="clearFurniturePlan" type="button" class="secondary">Clear shortlist</button><a class="secondary" href="/3d-viewer" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;padding:10px 14px;text-decoration:none">Open 3D Asset Studio</a></div><p class="notice">Preliminary envelope check only. A product fitting the room rectangle does not prove a safe layout. Door swings, windows, paths, built-ins, delivery access, taxes and shipping are not included. Verify measurements, pricing and availability before purchase.</p></section>
 <script>
@@ -707,6 +890,44 @@ function rvJourneyUpdate(){
 }
 document.addEventListener('click',()=>setTimeout(rvJourneyUpdate,350));
 document.addEventListener('change',()=>setTimeout(rvJourneyUpdate,350));
+
+/* ---- Presentation: staged workspace organization (UX replacement 2026-11-19; presentation only, no functional change) ---- */
+(function rvStageOrganize(){
+  try{
+    var main=document.querySelector('main'); if(!main) return;
+    var panels=[].slice.call(main.querySelectorAll(':scope > section.panel'));
+    function byTitle(t){return panels.find(function(s){var h=s.querySelector('h3');return h&&h.textContent.trim().indexOf(t)===0;});}
+    function stageBlock(id,num,title,sub){
+      var sec=document.createElement('section'); sec.className='stage-block'; sec.id=id;
+      var head=document.createElement('div'); head.className='stage-head';
+      var numEl=document.createElement('span'); numEl.className='stage-num'; numEl.textContent=num;
+      var h=document.createElement('h2'); h.textContent=title;
+      var p=document.createElement('p'); p.textContent=sub;
+      head.appendChild(numEl); head.appendChild(h); head.appendChild(p);
+      sec.appendChild(head); document.body.appendChild(sec); return sec;
+    }
+    var plan=stageBlock('stagePlan','04','Plan your space','Lay out the room, place furniture and openings, and review clearances before you commit.');
+    var zones=byTitle('Doors, windows'); if(zones){zones.id='zonePanel'; plan.appendChild(zones);}
+    var tools=byTitle('Plan tools'); if(tools){tools.id='toolsPanel'; plan.appendChild(tools);}
+    var planner=document.getElementById('interiorPlanner'); if(planner) plan.appendChild(planner);
+    var finish=stageBlock('stageFinish','05','Finish & export','Alternative layouts, the design library, your product catalog and the project budget — saved with your project.');
+    [['Layouts & project workspace','layoutPanel'],['Design library','libraryPanel'],['Furniture & product catalog','catalogPanel'],['Project budget','budgetPanel']].forEach(function(pair){var p=byTitle(pair[0]); if(p){p.id=pair[1]; finish.appendChild(p);}});
+    var order=['stageProject','stageVision','stageConcept','stagePlan','stageFinish'];
+    var strip=document.getElementById('journeyStrip');
+    function wireStrip(){
+      if(!strip) return;
+      [].forEach.call(strip.children,function(li,i){
+        if(li.dataset.rvNav) return; li.dataset.rvNav='1';
+        li.setAttribute('tabindex','0'); li.title='Go to this step';
+        function go(){var el=document.getElementById(order[i]); if(el) el.scrollIntoView({behavior:'smooth',block:'start'});}
+        li.addEventListener('click',go);
+        li.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+      });
+    }
+    wireStrip();
+    if(strip&&window.MutationObserver){ new MutationObserver(wireStrip).observe(strip,{childList:true}); }
+  }catch(e){}
+})();
 
 rvJourneyUpdate();
 </script></body></html>`;

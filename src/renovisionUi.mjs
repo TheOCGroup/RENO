@@ -5,23 +5,25 @@ export const RENOVISION_APP_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RENOVISION AI — Renovation &amp; Furniture Visualization</title><link rel="icon" type="image/png" sizes="32x32" href="/brand/icon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/brand/icon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="/brand/icon-180.png"><link rel="manifest" href="/brand/manifest.webmanifest">
 <style>
-body{font-family:system-ui,sans-serif;margin:0;background:#F5F9FC;color:#17375B}
-header{background:#17375B;color:#fff;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-header h1{font-size:18px;margin:0}.badge{background:#0B7A63;color:#fff;border-radius:10px;padding:2px 9px;font-size:12px}
-.banner{background:#fff3cd;border-bottom:2px solid #e6a800;padding:9px 20px;font-size:13px}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:0;background:#faf8f3;color:#211d18}
+header{background:#fffdf9;color:#211d18;border-bottom:1px solid #e4ddcf;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;letter-spacing:.04em}.badge{background:#243c30;color:#fff;border-radius:999px;padding:3px 10px;font-size:12px}
+.banner{background:#f7ecd2;border-bottom:1px solid #e0cf9f;color:#8a5a16;padding:9px 20px;font-size:13px}
 main{max-width:1180px;margin:0 auto;padding:16px;display:grid;gap:16px}
-section{background:#fff;border:1px solid #d7e3ee;border-radius:10px;padding:14px 16px}
-h2{font-size:15px;margin:0 0 10px}label{font-size:12px;display:block;margin:6px 0 2px}
-input,select,textarea{width:100%;padding:6px;border:1px solid #b9c9d8;border-radius:6px;font-size:13px;box-sizing:border-box}
-button{background:#1769E0;color:#fff;border:0;border-radius:6px;padding:7px 13px;font-size:13px;cursor:pointer;margin:4px 4px 4px 0}
-button.alt{background:#0B7A63}button.warn{background:#b3261e}button:disabled{opacity:.5}
+section{background:#fffdf9;border:1px solid #e4ddcf;border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(33,29,24,.04)}
+h2{font-size:15px;margin:0 0 10px}label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6e6656;font-weight:600;display:block;margin:8px 0 3px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid #e4ddcf;border-radius:8px;font-size:13px;box-sizing:border-box;background:#fff;color:#211d18}
+input:focus,select:focus,textarea:focus{border-color:#31536b;box-shadow:0 0 0 3px #e9eff3;outline:none}
+button{background:#211d18;color:#fdfcf9;border:1px solid #211d18;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:600;cursor:pointer;margin:4px 4px 4px 0}
+button.alt{background:#31536b;border-color:#31536b}button.warn{background:#8c3a30;border-color:#8c3a30}button:disabled{opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
-table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid #d7e3ee;padding:5px 7px;text-align:left}
-pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:auto;font-size:11.5px;max-height:230px}
-.svgs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.svgs img{width:100%;border:1px solid #d7e3ee;border-radius:8px;background:#fff}
-.small{font-size:12px;color:#486581}.bad{color:#b3261e;font-weight:600}.ok{color:#0b5c48;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid #ede7da;padding:5px 7px;text-align:left}
+pre{background:#211d18;color:#e9e2d2;padding:10px;border-radius:8px;overflow:auto;font-size:11.5px;max-height:230px}
+.svgs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.svgs img{width:100%;border:1px solid #e4ddcf;border-radius:8px;background:#fff}
+.small{font-size:12px;color:#575046}.bad{color:#8c3a30;font-weight:600}.ok{color:#33624a;font-weight:600}
+:focus-visible{outline:2px solid #31536b;outline-offset:2px}
 :focus-visible{outline:3px solid #0b7a63!important;outline-offset:2px}@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}</style></head><body>
-<header><h1><img src="/brand/icon-192.png" alt="" width="30" height="30" style="border-radius:7px;vertical-align:-6px;margin-right:9px">RENOVISION AI</h1><span class="badge" id="stageBadge">no project</span><span class="small" style="color:#cfe8ff">Renovation &amp; furniture visualization</span></header>
+<header><h1><img src="/brand/icon-192.png" alt="" width="30" height="30" style="border-radius:7px;vertical-align:-6px;margin-right:9px">RENOVISION AI</h1><span class="badge" id="stageBadge">no project</span><span class="small" style="color:#575046">Renovation &amp; furniture visualization</span></header>
 <div class="banner"><strong>Concept visualization only</strong> — not a construction drawing, measured survey, or code-compliance determination. Dimensions are estimates requiring field verification unless explicitly marked field-verified. No survey-grade accuracy is claimed.</div>
 <main>
 <section><h2>1 · Project &amp; session</h2>
