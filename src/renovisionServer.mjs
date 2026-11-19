@@ -6,6 +6,7 @@
  * supplied tenant/operator headers are never trusted by this service: identity
  * comes only from the injected authenticator. All routes fail closed. */
 import {createServer} from "node:http";
+import {readFileSync} from "node:fs";
 import {webcrypto} from "node:crypto";
 import {RenovisionProject} from "../lib/renovision/project-workflow.mjs";
 import {persistFrameEvidence, readFrameEvidence} from "../lib/renovision/evidence-repository.mjs";
@@ -21,6 +22,29 @@ import {createAsset3dRouter} from "./asset3dServer.mjs";
 import {renderAsset3dViewerHtml} from "../lib/renovision/asset3d-viewer.mjs";
 import {evaluateAsset3dFurnishingFit} from "../lib/renovision/asset3d-furnishing-bridge.mjs";
 const MAX_BODY_BYTES = 32_000_000;
+/** Founder-approved RENOVISION AI brand assets (src/brand/, packaged with
+ * the service). Served publicly — a favicon/app icon must load before
+ * sign-in — with long-lived caching. If the files are absent the map is
+ * empty and the routes fall through to 404; pages still work. */
+const BRAND_ASSET_FILES = {
+ "/brand/icon-16.png": ["icon-16.png", "image/png"],
+ "/brand/icon-32.png": ["icon-32.png", "image/png"],
+ "/brand/icon-48.png": ["icon-48.png", "image/png"],
+ "/brand/icon-180.png": ["icon-180.png", "image/png"],
+ "/brand/icon-192.png": ["icon-192.png", "image/png"],
+ "/brand/icon-512.png": ["icon-512.png", "image/png"],
+ "/brand/renovision-icon-source.png": ["renovision-icon-source.png", "image/png"],
+ "/brand/favicon.ico": ["favicon.ico", "image/x-icon"],
+ "/favicon.ico": ["favicon.ico", "image/x-icon"],
+ "/brand/manifest.webmanifest": ["manifest.webmanifest", "application/manifest+json"],
+};
+const BRAND_ASSETS = (() => {
+ const map = new Map();
+ for (const [route, [file, type]] of Object.entries(BRAND_ASSET_FILES)) {
+   try { map.set(route, {bytes: readFileSync(new URL(`./brand/${file}`, import.meta.url)), type}); } catch { /* asset absent: route stays unregistered */ }
+ }
+ return map;
+})();
 const text = (x) => typeof x === "string" && x.trim().length > 0;
 export function createMemoryApprovalRegistry() {
  const approvals = new Map();
@@ -149,6 +173,7 @@ export function createRenovisionServer({authenticate, resolveApproval, evidenceS
  const route = async (req, res) => {
    const url = new URL(req.url, "http://localhost");
    const path = url.pathname;
+   if (req.method === "GET" && BRAND_ASSETS.has(path)) { const asset = BRAND_ASSETS.get(path); res.writeHead(200, {"content-type": asset.type, "content-length": asset.bytes.length, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff"}); return res.end(asset.bytes); }
    if (req.method === "GET" && path === "/") return send(res, 200, RENOVISION_STUDIO_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/operator") return send(res, 200, RENOVISION_APP_HTML, "text/html; charset=utf-8");
    if (req.method === "GET" && path === "/health") return send(res, 200, {ok: true, service: "renovision", identityMode, evidenceStorageClass: evidenceStorage.storageClass ?? "unknown", eventStorageClass: eventStore?.storageClass ?? "in-memory", projectStorageClass: projectStore?.storageClass ?? "in-memory", approvalStorageClass: resolveApproval?.storageClass ?? "not-configured", renderProvider: renderProvider?.status?.() ?? {enabled: false, provider: null}, accuracyClaimsAuthorized: false});

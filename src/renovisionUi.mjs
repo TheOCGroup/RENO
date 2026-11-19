@@ -3,7 +3,7 @@
  * The accuracy disclosure banner is permanent UI, not an optional label. */
 export const RENOVISION_APP_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RENOVISION AI — Renovation &amp; Furniture Visualization</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23243c30'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' fill='%23e8e2d5' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<title>RENOVISION AI — Renovation &amp; Furniture Visualization</title><link rel="icon" type="image/png" sizes="32x32" href="/brand/icon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/brand/icon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="/brand/icon-180.png"><link rel="manifest" href="/brand/manifest.webmanifest">
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#F5F9FC;color:#17375B}
 header{background:#17375B;color:#fff;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
@@ -21,7 +21,7 @@ pre{background:#0f2233;color:#cfe8ff;padding:10px;border-radius:8px;overflow:aut
 .svgs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.svgs img{width:100%;border:1px solid #d7e3ee;border-radius:8px;background:#fff}
 .small{font-size:12px;color:#486581}.bad{color:#b3261e;font-weight:600}.ok{color:#0b5c48;font-weight:600}
 :focus-visible{outline:3px solid #0b7a63!important;outline-offset:2px}@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}</style></head><body>
-<header><h1>RENOVISION AI</h1><span class="badge" id="stageBadge">no project</span><span class="small" style="color:#cfe8ff">Renovation &amp; furniture visualization</span></header>
+<header><h1><img src="/brand/icon-192.png" alt="" width="30" height="30" style="border-radius:7px;vertical-align:-6px;margin-right:9px">RENOVISION AI</h1><span class="badge" id="stageBadge">no project</span><span class="small" style="color:#cfe8ff">Renovation &amp; furniture visualization</span></header>
 <div class="banner"><strong>Concept visualization only</strong> — not a construction drawing, measured survey, or code-compliance determination. Dimensions are estimates requiring field verification unless explicitly marked field-verified. No survey-grade accuracy is claimed.</div>
 <main>
 <section><h2>1 · Project &amp; session</h2>
