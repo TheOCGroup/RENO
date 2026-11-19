@@ -50,7 +50,7 @@ const BRAND_ASSETS = (() => {
  * profile). Served from a fixed allowlist — the browser imports the exact
  * same modules the server and tests use, so there is one implementation.
  * Relative imports between them resolve under /lib/renovision/. */
-const LIB_MODULE_FILES = ["concierge.mjs", "property-profile.mjs", "plan-ingestion.mjs", "conversions.mjs", "conversion-costs.mjs", "furnish.mjs", "design-library.mjs", "product-catalog.mjs", "project-budget.mjs", "uncertain-furniture-fit.mjs"];
+const LIB_MODULE_FILES = ["concierge.mjs", "property-profile.mjs", "plan-ingestion.mjs", "conversions.mjs", "conversion-costs.mjs", "furnish.mjs", "design-harmony.mjs", "fit-tiers.mjs", "deal-scout-contract.mjs", "design-library.mjs", "product-catalog.mjs", "project-budget.mjs", "uncertain-furniture-fit.mjs"];
 const LIB_MODULES = (() => {
  const map = new Map();
  for (const file of LIB_MODULE_FILES) {

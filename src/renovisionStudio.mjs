@@ -888,11 +888,12 @@ function rvJourneyUpdate(){
   let planDone=false;
   try{planDone=document.querySelectorAll('#floorPlan button').length>0||document.querySelectorAll('#budgetLines tr,#budgetLines .row,#budgetLines li').length>0;}catch(e){}
   const state=[
-    {label:'1 · Project',done:!!activeProjectId},
-    {label:'2 · Photo & brief',done:!!(sourceFile||refinementSource)},
-    {label:'3 · Concept',done:!!resultUrl||!!document.querySelector('#conceptHistoryList .room-card')},
-    {label:'4 · Plan & budget',done:planDone},
-    {label:'5 · Save & export',done:false},
+    {label:'1 · Start',done:!!activeProjectId},
+    {label:'2 · Design',done:!!(window.__rvDesignDone)},
+    {label:'3 · Transform',done:!!resultUrl||!!document.querySelector('#conceptHistoryList .room-card')||!!document.querySelector('#gxLayoutCards .gx-layout-card')},
+    {label:'4 · Furnish',done:!!document.querySelector('#gxFuResult .tag')||(typeof wsShopping!=='undefined'&&wsShopping.size>0)},
+    {label:'5 · Review',done:planDone},
+    {label:'6 · Export',done:false},
   ];
   const current=state.findIndex(s=>!s.done);
   strip.innerHTML='';
@@ -1150,7 +1151,7 @@ function gxBuildPanels() {
     if (!g) { planStatus.textContent = "Confirm the plan dimensions first."; return; }
     $("roomWidth").value = g.widthIn; $("roomDepth").value = g.depthIn;
     $("roomWidth").dispatchEvent(new Event("change")); $("roomDepth").dispatchEvent(new Event("change"));
-    drawFloorPlan(); planStatus.textContent = "Room geometry set from the confirmed plan dimensions.";
+    drawFloorPlan(); window.__rvRoomConfirmed = true; planStatus.textContent = "Room geometry set from the confirmed plan dimensions.";
   };
   function gxRenderScreening() {
     const t = conversions.getConversionTemplate(tplSel.value); if (!t) return;
@@ -1279,7 +1280,13 @@ function gxBuildPanels() {
     for (const s of p.selections) {
       const line = gxEl("p", "status", "");
       const fitTxt = s.fit && s.fit.status ? s.fit.status : "unknown";
-      line.append(gxEl("span", "tag", "fit: " + fitTxt), document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
+      let tierTxt = "";
+      try {
+        const prod = (p._selectedProducts || []).find((x) => x.id === s.productId) || s;
+        const tier = window.RV && window.RV.fitTiers ? window.RV.fitTiers.assessFit({ product: prod, room: { widthIn: Number($("roomWidth").value) || 0, depthIn: Number($("roomDepth").value) || 0, clearanceIn: Number($("clearance").value) || 0, confirmed: !!window.__rvRoomConfirmed } }) : null;
+        if (tier) tierTxt = " · tier: " + tier.tier.replaceAll("_", " ");
+      } catch (e) { /* tier is additive detail; the base fit status already renders */ }
+      line.append(gxEl("span", "tag", "fit: " + fitTxt + tierTxt), document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
       fuResult.append(line);
     }
     fuResult.append(gxEl("p", "status", "Total: " + gxMoney(p.totalCents) + (p.remainingCents !== null && p.remainingCents !== undefined ? " · Remaining: " + gxMoney(p.remainingCents) : "")));
@@ -1298,6 +1305,300 @@ function gxBuildPanels() {
 }
 if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuildPanels, { once: true });
 
+
+/* ==== Visual-first studio (founder directive 2026-11-19): START/DESIGN/TRANSFORM/FURNISH/REVIEW/EXPORT,
+   Design Harmony Engine UI, optional assistant, Deal Scout scope import. Additive: reuses the certified
+   panels and engines; the manual journey never depends on this block. ==== */
+(function rvVisualStudio() {
+  var css = ".vx-stage{margin:0 0 8px}.vx-stage-head{display:flex;align-items:baseline;gap:12px;margin:26px 0 4px}.vx-stage-head .n{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.14em;color:var(--accent)}"
+  + ".vx-stage-head h2{font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:600;margin:0;color:var(--ink)}"
+  + ".vx-start-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}"
+  + ".vx-start-card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;font:inherit;color:var(--ink)}"
+  + ".vx-start-card:hover{border-color:var(--accent)} .vx-start-card strong{display:block;font-family:Fraunces,Georgia,serif;font-size:20px;margin-bottom:6px}"
+  + ".vx-start-card span{color:var(--ink-2);font-size:13px;line-height:1.5;display:block}"
+  + ".vx-alt{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px}"
+  + ".vx-family-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-family-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%}"
+  + ".vx-family-card[aria-pressed='true']{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}"
+  + ".vx-swatches{display:flex;height:44px;border-radius:8px;overflow:hidden;margin-bottom:8px}.vx-swatches i{flex:1}"
+  + ".vx-family-card strong{display:block;font-size:13px}.vx-family-card small{color:var(--ink-2);font-size:11px;line-height:1.4;display:block}"
+  + ".vx-chiprow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}"
+  + ".vx-swatch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;margin:10px 0}"
+  + ".vx-swatch{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);cursor:pointer;padding:0;font:inherit;text-align:left;color:var(--ink);width:100%}"
+  + ".vx-swatch i{display:block;height:44px}.vx-swatch span{display:block;font-size:11px;padding:6px 8px}.vx-swatch small{display:block;font-size:10px;color:var(--ink-2);padding:0 8px 6px}"
+  + ".vx-combo{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.vx-combo div{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;overflow:hidden}"
+  + ".vx-combo i{display:block;height:52px}.vx-combo span{display:block;font-size:11px;padding:6px 8px;background:var(--card)}"
+  + ".vx-findings{margin:8px 0}.vx-findings li{margin:3px 0}"
+  + "@media (max-width:760px){.vx-start-grid{grid-template-columns:1fr}}";
+  var styleEl = document.createElement("style"); styleEl.textContent = css; document.head.appendChild(styleEl);
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+  function stageWrap(id, num, title) {
+    var w = document.createElement("section"); w.className = "vx-stage"; w.id = id;
+    var head = el("div", "vx-stage-head"); head.append(el("span", "n", num), el("h2", "", title)); w.append(head); return w;
+  }
+  function scrollTo(node) { if (node) node.scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+  /* --- Reorganization + panel construction run on rv-ready, AFTER the guided block has built its
+     panels (its insertions assume the certified stage blocks are still children of <main>). --- */
+  var harmonyPanel, dsPanel, dsStatus, dsText, dsBtn, dsResult, famGrid, comboBox, atmoSel, paintChips, swatchGrid, selLine, lockBtn, harmonyStatus, proposalBox, verLabel, verBtn, verList;
+  var conciergePanel = null, reopenBtn = null;
+  function field2(label, input) { var w = el("div", "field"); var l = el("label", "", label); l.htmlFor = input.id || ""; w.append(l, input); return w; }
+  function vxBuild() {
+  /* --- Reorganize the certified blocks into the six-stage journey (moves only; nothing removed) --- */
+  var main = document.querySelector("main");
+  var stageProject = $("stageProject"), stageVision = $("stageVision"), stagePlan = $("stagePlan"), stageFinish = $("stageFinish");
+  var propPanel = $("gxPropertyPanel"), transformPanel = $("gxTransformPanel"), furnishPanel = $("gxFurnishPanel"), estimatePanel = $("gxEstimatePanel");
+  var startWrap = stageWrap("stageStart", "01", "Start");
+  var designWrap = stageWrap("stageDesign", "02", "Design");
+  var transformWrap = stageWrap("stageTransform", "03", "Transform");
+  var furnishWrap = stageWrap("stageFurnish", "04", "Furnish");
+  var reviewWrap = stageWrap("stageReview", "05", "Review");
+  var exportWrap = stageWrap("stageExport", "06", "Export");
+  if (main && stageProject) {
+    main.insertBefore(startWrap, stageProject);
+    main.insertBefore(designWrap, stageProject);
+    main.insertBefore(transformWrap, stageProject);
+    main.insertBefore(furnishWrap, stageProject);
+    main.insertBefore(reviewWrap, stageProject);
+    main.insertBefore(exportWrap, stageProject);
+    var startGrid = el("div", "vx-start-grid");
+    var cardPlan = el("button", "vx-start-card"); cardPlan.type = "button"; cardPlan.id = "vxStartPlan";
+    cardPlan.append(el("strong", "", "Upload floor plan"), el("span", "", "PDF or image. Your original is preserved, and you confirm the measurements yourself — nothing is guessed from a drawing."));
+    var cardAddr = el("button", "vx-start-card"); cardAddr.type = "button"; cardAddr.id = "vxStartAddress";
+    cardAddr.append(el("strong", "", "Enter property address"), el("span", "", "Start from the property itself. Only information you provide or verify is recorded — an address alone never invents room sizes."));
+    startGrid.append(cardPlan, cardAddr); startWrap.append(startGrid);
+    var altRow = el("div", "vx-alt");
+    var altPhoto = el("button", "secondary", "Start with a room photo"); altPhoto.type = "button"; altPhoto.id = "vxStartPhoto";
+    var altRoom = el("button", "secondary", "Create a room manually"); altRoom.type = "button"; altRoom.id = "vxStartRoom";
+    altRow.append(altPhoto, altRoom); startWrap.append(altRow);
+    if (propPanel) startWrap.append(propPanel);
+    startWrap.append(stageProject);
+    cardPlan.onclick = function () { var f = $("gxPlanFile"); if (f) f.click(); else scrollTo(propPanel); };
+    cardAddr.onclick = function () { var a = $("gxPropAddress"); if (a) { scrollTo(propPanel); a.focus(); } };
+    altPhoto.onclick = function () { scrollTo(stageVision); };
+    altRoom.onclick = function () { scrollTo(stageProject); };
+    var matSection = null;
+    main.querySelectorAll(":scope > section.panel").forEach(function (s) { var h = s.querySelector("h3"); if (h && h.textContent.indexOf("Material library") === 0) matSection = s; });
+    if (matSection) designWrap.append(matSection);
+    if (stageVision) transformWrap.append(stageVision);
+    if (transformPanel) transformWrap.append(transformPanel);
+    var catalogPanel = null;
+    main.querySelectorAll(":scope > section.panel").forEach(function (s) { if (s.id === "catalogPanel") catalogPanel = s; });
+    if (furnishPanel) furnishWrap.append(furnishPanel);
+    if (catalogPanel) furnishWrap.append(catalogPanel);
+    if (stagePlan) reviewWrap.append(stagePlan);
+    if (estimatePanel && estimatePanel.parentElement !== reviewWrap) { /* estimate already lives inside stagePlan */ }
+    var budgetPanel = document.getElementById("budgetPanel"); if (budgetPanel) reviewWrap.append(budgetPanel);
+    if (stageFinish) exportWrap.append(stageFinish);
+    [stageVision, stagePlan, stageFinish].forEach(function (b) { if (!b) return; var h = b.querySelector(".stage-head"); if (h) h.style.display = "none"; });
+    var spHead = stageProject.querySelector(".chapter"); if (spHead) spHead.textContent = "Or begin with a room";
+    var view3d = el("a", "secondary", "Open the 3D Asset Studio"); view3d.href = "/3d-viewer"; view3d.target = "_blank"; view3d.rel = "noopener"; view3d.id = "vxView3d"; view3d.style.display = "inline-block"; view3d.style.margin = "10px 0";
+    var view3dNote = el("p", "note", "Real interactive 3D for room shells and design assets. It is not a photorealistic render of your room, and RENOVISION does not present it as one.");
+    furnishWrap.append(view3d, view3dNote);
+  }
+
+  /* --- Rail anchors for the six stages --- */
+  var vxTargets = ["stageStart", "stageDesign", "stageTransform", "stageFurnish", "stageReview", "stageExport"];
+  function vxWireRail() {
+    var strip = $("journeyStrip"); if (!strip) return;
+    strip.querySelectorAll("li").forEach(function (li, i) {
+      li.style.cursor = "pointer";
+      li.addEventListener("click", function () { var t = document.getElementById(vxTargets[i]); if (t) scrollTo(t); });
+    });
+  }
+  var vxObs = new MutationObserver(function () { vxWireRail(); });
+  var stripNode = $("journeyStrip"); if (stripNode) { vxObs.observe(stripNode, { childList: true }); vxWireRail(); }
+
+  /* --- Optional assistant: open/close control (the manual journey never depends on it) --- */
+  conciergePanel = document.getElementById("gxConciergePanel");
+  reopenBtn = el("button", "secondary", "Show design assistant"); reopenBtn.type = "button"; reopenBtn.id = "vxAssistantOpen"; reopenBtn.style.display = "none";
+  function vxSetAssistant(open) {
+    assistantOpen = !!open;
+    if (conciergePanel) conciergePanel.style.display = assistantOpen ? "" : "none";
+    reopenBtn.style.display = assistantOpen ? "none" : "";
+    try { guidedState.assistantOpen = assistantOpen; } catch (e) {}
+  }
+  if (conciergePanel) {
+    var hideBtn = el("button", "secondary", "Hide assistant"); hideBtn.type = "button"; hideBtn.id = "vxAssistantHide";
+    hideBtn.onclick = function () { vxSetAssistant(false); };
+    conciergePanel.append(hideBtn);
+    conciergePanel.parentElement.insertBefore(reopenBtn, conciergePanel);
+    reopenBtn.onclick = function () { vxSetAssistant(true); scrollTo(conciergePanel); };
+  }
+
+  /* --- Design Harmony panel --- */
+  harmonyPanel = makePanel("Design harmony", "Choose a style family and every suggestion — paint, flooring, cabinetry, lighting, furniture — is coordinated around it. Suggestions, never restrictions: you can override anything, and approved selections are locked against silent changes.");
+  harmonyPanel.id = "vxHarmonyPanel";
+  if (designWrap) designWrap.append(harmonyPanel);
+  famGrid = el("div", "vx-family-grid"); famGrid.id = "vxFamilyGrid"; harmonyPanel.append(famGrid);
+  comboBox = el("div"); comboBox.id = "vxComboBox"; harmonyPanel.append(comboBox);
+  atmoSel = selInput("vxAtmosphere", ["", "warm", "elegant", "airy", "cozy", "dramatic", "sophisticated", "natural", "contemporary", "calm"]);
+  harmonyPanel.append(field2("Browse paint by atmosphere", atmoSel));
+  paintChips = el("div", "vx-chiprow"); paintChips.id = "vxPaintChips"; harmonyPanel.append(paintChips);
+  swatchGrid = el("div", "vx-swatch-grid"); swatchGrid.id = "vxSwatchGrid"; harmonyPanel.append(swatchGrid);
+  selLine = el("p", "status", ""); selLine.id = "vxSelectionLine"; harmonyPanel.append(selLine);
+  lockBtn = el("button", "secondary", "Lock wall color"); lockBtn.type = "button"; lockBtn.id = "vxLockPaint"; harmonyPanel.append(lockBtn);
+  harmonyStatus = el("div"); harmonyStatus.id = "vxHarmonyStatus"; harmonyPanel.append(harmonyStatus);
+  proposalBox = el("div"); proposalBox.id = "vxProposalBox"; harmonyPanel.append(proposalBox);
+  verLabel = textInput("vxVersionLabel", "Version label (e.g. Warm modern v1)");
+  verBtn = el("button", "secondary", "Save design version"); verBtn.type = "button"; verBtn.id = "vxSaveVersion";
+  harmonyPanel.append(field2("Design versions", verLabel), verBtn);
+  verList = el("div"); verList.id = "vxVersionList"; harmonyPanel.append(verList);
+  harmonyPanel.append(el("p", "note", "Paint colors are digital references and read approximately on screen; they are not manufacturer products. Verify against a physical sample before purchasing paint."));
+  /* --- Deal Scout scope panel (Review) --- */
+  dsPanel = makePanel("Deal Scout renovation scope", "Deal Scout owns general renovation scope. RENOVISION imports an approved scope document with its provenance and never regenerates or edits it.");
+  dsPanel.id = "vxDealScoutPanel";
+  if (reviewWrap) reviewWrap.append(dsPanel);
+  dsStatus = el("p", "status", ""); dsStatus.id = "vxDsStatus"; dsPanel.append(dsStatus);
+  dsText = document.createElement("textarea"); dsText.id = "vxDsJson"; dsText.rows = 5; dsText.placeholder = "Paste an approved Deal Scout scope document (renovision-deal-scout-scope/v1)"; dsText.setAttribute("aria-label", "Deal Scout scope document");
+  dsPanel.append(dsText);
+  dsBtn = el("button", "", "Import scope"); dsBtn.type = "button"; dsBtn.id = "vxDsImport"; dsPanel.append(dsBtn);
+  dsResult = el("div"); dsResult.id = "vxDsResult"; dsPanel.append(dsResult);
+
+  lockBtn.onclick = function () { if (!H || !designState) return; designState = designState.locked && designState.locked.paintHex ? H.unlockSelection(designState, "paintHex") : H.lockSelection(designState, "paintHex"); renderHarmonyStatus(); };
+  verBtn.onclick = function () { if (!H || !designState) return; var label = verLabel.value.trim() || "Design version"; designState = H.saveVersion(designState, label); verLabel.value = ""; renderVersions(); renderHarmonyStatus(); };
+  atmoSel.onchange = function () { renderSwatches(); };
+  dsBtn.onclick = function () {
+    if (!window.RV || !window.RV.dealScout) { dsStatus.textContent = "Scope tools are still loading."; return; }
+    try { var doc = JSON.parse(dsText.value); dsScope = window.RV.dealScout.importDealScoutScope(doc); renderDealScout(); }
+    catch (e) { dsResult.innerHTML = ""; dsResult.append(el("p", "status", "Import rejected: " + e.message + (e.errors ? " — " + e.errors.join("; ") : ""))); }
+  };
+  }
+  var assistantOpen = true;
+
+  /* --- State + rendering (engines arrive via rv-ready) --- */
+  var H = null, designState = null, designFamilyId = "warm-modern", designChosen = false, dsScope = null, paintFamilyId = "warm-whites", pendingProposal = null, pendingRestore = null;
+  var STYLE_MAP = { "warm-modern": "modern-organic", "organic-contemporary": "modern-organic", "modern-sophistication": "contemporary", "contemporary-luxury": "contemporary", "timeless-elegance": "traditional", "transitional": "transitional", "scandinavian": "scandinavian", "mid-century-modern": "mid-century-modern", "traditional": "traditional", "coastal": "coastal", "industrial": "industrial", "minimalist": "minimalist" };
+  function harmonyInput() { return { familyId: designFamilyId }; }
+  function refreshDesignDone() { window.__rvDesignDone = !!(designChosen || (designState && Object.keys(designState.selections || {}).length)); }
+  function renderHarmonyStatus() {
+    if (!H || !designState) { harmonyStatus.innerHTML = ""; return; }
+    var ev;
+    try { ev = H.evaluateHarmony({ familyId: designFamilyId, selections: designState.selections || {} }); } catch (e) { harmonyStatus.textContent = "Harmony check unavailable: " + e.message; return; }
+    harmonyStatus.innerHTML = "";
+    harmonyStatus.append(el("p", "status", "Harmony: " + ev.status + " for " + designFamilyId.replaceAll("-", " ") + "."));
+    var ul = el("ul", "vx-findings");
+    for (const f of ev.findings) { if (f.level === "attention" || f.level === "conflict") { var li = el("li", "", f.rule + " — " + f.message + (f.suggestion ? " Suggestion: " + f.suggestion : "")); ul.append(li); } }
+    if (ul.children.length) harmonyStatus.append(ul);
+    var sel = designState.selections || {};
+    selLine.textContent = "Selections: " + (sel.paintHex ? "wall " + sel.paintHex : "no wall color yet") + (designState.locked && designState.locked.paintHex ? " (locked)" : "") + (sel.flooringKeyword ? " · flooring: " + sel.flooringKeyword : "") + (sel.lighting ? " · lighting: " + sel.lighting : "") + ".";
+    lockBtn.textContent = designState.locked && designState.locked.paintHex ? "Unlock wall color" : "Lock wall color";
+  }
+  function renderFamilies() {
+    if (!H) return; famGrid.innerHTML = "";
+    for (const fam of H.HARMONY_STYLE_FAMILIES) {
+      var card = el("button", "vx-family-card"); card.type = "button"; card.id = "vxFam_" + fam.id;
+      card.setAttribute("aria-pressed", fam.id === designFamilyId ? "true" : "false");
+      var sw = el("div", "vx-swatches");
+      if (fam.palette) { for (const k of ["wall", "trim", "ceiling", "accent"]) { var i = document.createElement("i"); i.style.background = fam.palette[k]; sw.append(i); } }
+      else { var i2 = document.createElement("i"); i2.style.background = "repeating-linear-gradient(45deg,#e9eff3,#e9eff3 8px,#f3eee5 8px,#f3eee5 16px)"; sw.append(i2); }
+      card.append(sw, el("strong", "", fam.name), el("small", "", fam.description || ""));
+      card.onclick = function () {
+        designFamilyId = fam.id; designChosen = true;
+        var mapped = STYLE_MAP[fam.id]; var sel = $("designStyle");
+        if (mapped && sel) { for (const o of sel.options) { if (o.value === mapped || o.textContent.toLowerCase().indexOf(mapped.replaceAll("-", " ")) === 0) { sel.value = o.value; sel.dispatchEvent(new Event("change")); break; } } }
+        renderFamilies(); renderCombo(); renderPaintChips(); renderHarmonyStatus(); refreshDesignDone(); rvJourneyUpdate();
+      };
+      famGrid.append(card);
+    }
+  }
+  function renderCombo() {
+    if (!H) return; comboBox.innerHTML = "";
+    var fam = H.getHarmonyFamily(designFamilyId); if (!fam || !fam.palette) { comboBox.append(el("p", "note", "Custom / mixed style: build your own combination from the paint browser below.")); return; }
+    comboBox.append(el("p", "status", "Coordinated palette for " + fam.name + ":"));
+    var row = el("div", "vx-combo");
+    for (const k of ["wall", "trim", "ceiling", "accent"]) { var d = el("div"); var i = document.createElement("i"); i.style.background = fam.palette[k]; d.append(i, el("span", "", k + " · " + fam.palette[k])); row.append(d); }
+    comboBox.append(row);
+    var apply = el("button", "secondary", "Use this wall color"); apply.type = "button"; apply.id = "vxApplyPalette";
+    apply.onclick = function () { proposeOrSet("paintHex", fam.palette.wall, fam.name + " wall color"); };
+    comboBox.append(apply);
+    if (fam.flooringKeywords && fam.flooringKeywords.length) {
+      var chips = el("div", "vx-chiprow");
+      for (const kw of fam.flooringKeywords) { var c = el("button", "secondary", "Flooring: " + kw); c.type = "button"; c.onclick = (function (k2) { return function () { proposeOrSet("flooringKeyword", k2, "flooring " + k2); }; })(kw); chips.append(c); }
+      comboBox.append(chips);
+    }
+  }
+  function renderPaintChips() {
+    if (!H) return; paintChips.innerHTML = "";
+    for (const pf of H.PAINT_FAMILIES) { var c = el("button", "secondary", pf.name); c.type = "button"; if (pf.id === paintFamilyId) c.setAttribute("aria-pressed", "true"); c.onclick = (function (id) { return function () { paintFamilyId = id; atmoSel.value = ""; renderPaintChips(); renderSwatches(); }; })(pf.id); paintChips.append(c); }
+  }
+  function renderSwatches() {
+    if (!H) return; swatchGrid.innerHTML = "";
+    var colors = [];
+    if (atmoSel.value) colors = H.colorsForAtmosphere(atmoSel.value);
+    else { var pf = H.PAINT_FAMILIES.find(function (x) { return x.id === paintFamilyId; }); colors = pf ? pf.colors : []; }
+    for (const col of colors) {
+      var b = el("button", "vx-swatch"); b.type = "button"; b.id = "vxSw_" + col.id;
+      var i = document.createElement("i"); i.style.background = col.hex;
+      b.append(i, el("span", "", col.name), el("small", "", col.hex + " · " + col.undertone));
+      b.onclick = (function (c2) { return function () { proposeOrSet("paintHex", c2.hex, c2.name); }; })(col);
+      swatchGrid.append(b);
+    }
+  }
+  function proposeOrSet(key, value, label) {
+    if (!H || !designState) return;
+    designChosen = true;
+    var locked = designState.locked && designState.locked[key];
+    if (!locked && !(designState.selections && designState.selections[key] && designState.locked && designState.locked[key])) {
+      try { designState = H.setSelection(designState, key, value); afterDesignChange(label + " applied."); return; } catch (e) { /* locked: fall through to proposal */ }
+    }
+    var prop = H.proposeChange(designState, key, value, harmonyInput());
+    pendingProposal = { key: key, value: value, label: label };
+    proposalBox.innerHTML = "";
+    proposalBox.append(el("p", "status", "Proposed change: " + label + ". Your approved selections stay untouched until you confirm."));
+    var ul = el("ul", "vx-findings");
+    for (const f of prop.evaluation.findings) { if (f.level === "attention" || f.level === "conflict") ul.append(el("li", "", f.rule + " — " + f.message + (f.suggestion ? " Suggestion: " + f.suggestion : ""))); }
+    if (prop.conflicts && prop.conflicts.length) ul.append(el("li", "", "Affects locked selections: " + prop.conflicts.join(", ") + "."));
+    if (ul.children.length) proposalBox.append(ul);
+    var ok = el("button", "", "Confirm change"); ok.type = "button"; ok.id = "vxConfirmChange";
+    ok.onclick = function () { if (!pendingProposal) return; designState = H.confirmChange(designState, pendingProposal.key, pendingProposal.value); pendingProposal = null; proposalBox.innerHTML = ""; afterDesignChange("Change confirmed and recorded in design history."); };
+    var no = el("button", "secondary", "Keep current design"); no.type = "button"; no.id = "vxCancelChange";
+    no.onclick = function () { pendingProposal = null; proposalBox.innerHTML = ""; };
+    proposalBox.append(ok, document.createTextNode(" "), no);
+  }
+  function afterDesignChange(msg) { renderHarmonyStatus(); renderVersions(); refreshDesignDone(); rvJourneyUpdate(); if (msg) selLine.textContent = msg + " " + selLine.textContent; }
+  function renderVersions() {
+    if (!H || !designState) return; verList.innerHTML = "";
+    for (const v of designState.versions || []) {
+      var row = el("p", "status", "");
+      row.append(document.createTextNode(v.label + " — " + Object.keys(v.selections || {}).length + " selections "));
+      var r = el("button", "secondary", "Restore"); r.type = "button";
+      r.onclick = (function (id) { return function () { designState = H.restoreVersion(designState, id); afterDesignChange("Version restored."); renderFamilies(); renderCombo(); }; })(v.id);
+      row.append(r); verList.append(row);
+    }
+  }
+  function renderDealScout() {
+    if (!window.RV || !window.RV.dealScout) return;
+    var info = window.RV.dealScout.DEAL_SCOUT_INTEGRATION;
+    dsStatus.textContent = "Connection: " + info.status + " (manual import). " + info.note;
+    dsResult.innerHTML = "";
+    if (!dsScope) { dsResult.append(el("p", "note", "No scope imported. Design, conversion, and furnishing work continues without one.")); return; }
+    var sum = window.RV.dealScout.summarizeScope(dsScope);
+    dsResult.append(el("p", "status", "Imported scope — source: Deal Scout · version " + dsScope.version + " · exported " + dsScope.exportedAt + " · " + sum.itemCount + " items · priced total: " + gxMoney(sum.knownTotalCents) + (sum.totalIsComplete ? " (complete)" : " (partial — " + sum.unpricedCount + " unpriced)")));
+    for (const it of dsScope.items) dsResult.append(el("p", "status", "• " + it.label + " (" + it.category + ")" + (it.estimatedCents === null ? " — unpriced" : " — " + gxMoney(it.estimatedCents))));
+  }
+  function vxInit() {
+    if (!window.RV || !window.RV.harmony) return;
+    H = window.RV.harmony;
+    vxBuild();
+    if (!designState) designState = H.createDesignState();
+    if (pendingRestore) { var pr = pendingRestore; pendingRestore = null; vxApplyRestore(pr); }
+    renderFamilies(); renderCombo(); renderPaintChips(); renderSwatches(); renderHarmonyStatus(); renderVersions(); renderDealScout(); refreshDesignDone();
+  }
+  function vxApplyRestore(g) {
+    if (g.design && g.design.state) { designState = g.design.state; designFamilyId = g.design.familyId || designFamilyId; designChosen = true; }
+    if (g.dealScoutScope) dsScope = g.dealScoutScope;
+    if (g.assistantOpen === false) vxSetAssistant(false);
+    renderFamilies(); renderCombo(); renderPaintChips(); renderSwatches(); renderHarmonyStatus(); renderVersions(); renderDealScout(); refreshDesignDone();
+  }
+  if (window.RV) vxInit(); else window.addEventListener("rv-ready", vxInit);
+
+  /* --- Persistence: ride the existing design-workspace document --- */
+  var origCollect = guidedCollect, origRestore = guidedRestore;
+  guidedCollect = function () { var g = origCollect(); g.design = { state: designState, familyId: designFamilyId }; g.dealScoutScope = dsScope; g.assistantOpen = assistantOpen; return g; };
+  guidedRestore = function (g) { origRestore(g || {}); if (!g) return; if (H) vxApplyRestore(g); else pendingRestore = g; };
+})();
 rvJourneyUpdate();
 </script>
 <script type="module">
@@ -1307,8 +1608,11 @@ import * as planIngestion from "/lib/renovision/plan-ingestion.mjs";
 import * as conversions from "/lib/renovision/conversions.mjs";
 import * as conversionCosts from "/lib/renovision/conversion-costs.mjs";
 import * as furnish from "/lib/renovision/furnish.mjs";
+import * as harmony from "/lib/renovision/design-harmony.mjs";
+import * as fitTiers from "/lib/renovision/fit-tiers.mjs";
+import * as dealScout from "/lib/renovision/deal-scout-contract.mjs";
 import * as designLibrary from "/lib/renovision/design-library.mjs";
-window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, designLibrary };
+window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, harmony, fitTiers, dealScout, designLibrary };
 window.dispatchEvent(new Event("rv-ready"));
 </script>
 </body></html>`;
