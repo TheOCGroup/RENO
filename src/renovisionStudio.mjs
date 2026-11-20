@@ -1,28 +1,233 @@
 /** Customer-facing visual studio. Local photo/brief editing is explicitly not AI rendering. */
 export const RENOVISION_STUDIO_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RENOVISION AI | Design Studio</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23243c30'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' fill='%23e8e2d5' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<title>RENOVISION AI | Design Studio</title><link rel="icon" type="image/png" sizes="32x32" href="/brand/icon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/brand/icon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="/brand/icon-180.png"><link rel="manifest" href="/brand/manifest.webmanifest">
 <style>
-:root{font-family:Inter,system-ui,Arial,sans-serif;color:#1b2931;background:#f5f6f4}*{box-sizing:border-box}body{margin:0}header{display:flex;align-items:center;justify-content:space-between;padding:22px clamp(20px,5vw,80px);background:white;border-bottom:1px solid #e5e8e5}h1{font-size:19px;letter-spacing:.12em;margin:0}header a{color:#425e56;font-size:13px}main{max-width:1440px;margin:auto;padding:36px clamp(20px,5vw,70px)}.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#52796d;font-weight:700}h2{font-size:clamp(32px,4vw,56px);line-height:1.1;letter-spacing:-.05em;margin:12px 0}p{color:#607078;line-height:1.6}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.85fr);gap:24px;margin-top:32px}.surface,.panel{background:white;border:1px solid #e2e7e3;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px #22372c09}.stage{min-height:410px;background:linear-gradient(140deg,#e8eee9,#cddbd5);display:grid;place-items:center;position:relative;overflow:hidden}.stage img{width:100%;height:100%;position:absolute;inset:0;object-fit:contain}.empty{text-align:center;max-width:360px;padding:32px}.empty svg{width:56px;height:56px;color:#52796d}.empty strong{display:block;font-size:20px;margin-top:10px}.toolbar{padding:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.pill{background:#eff4ef;border-radius:99px;padding:7px 11px;font-size:12px;color:#486a57}.panel{padding:26px}h3{margin:0 0 8px;font-size:19px}label{font-size:12px;font-weight:700;display:block;margin:20px 0 8px;color:#45534c}input,select,textarea{width:100%;border:1px solid #d5ded7;background:#fafbf9;border-radius:10px;padding:13px;font:inherit;color:#273c33}textarea{min-height:110px;resize:vertical}button,.button{background:#254b3d;border:0;color:white;border-radius:10px;padding:13px 20px;font:inherit;font-weight:650;cursor:pointer}button.secondary{background:#edf3ef;color:#254b3d}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{font-size:12px;color:#6a746f;padding:16px 20px;border-top:1px solid #e4e9e4;background:#f8faf8}.status{font-size:13px;margin-top:14px;color:#365d4b}.hidden{display:none!important}.swatches{display:flex;gap:8px}.swatch{width:38px;height:38px;border-radius:50%;border:2px solid #fff;outline:1px solid #ccd5ce;cursor:pointer}.swatch[aria-pressed=true]{outline:3px solid #254b3d}.preview{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#f6f8f5;font-size:13px}.file{display:none}@media(max-width:850px){.layout{grid-template-columns:1fr}.stage{min-height:330px}}
+/* ============ RENOVISION AI — Design System (UX replacement 2026-11-19) ============ */
+:root{
+  --paper:#faf8f3; --ivory:#f3eee5; --card:#fffdf9; --line:#e4ddcf; --line-soft:#ede7da;
+  --ink:#211d18; --ink-2:#575046; --ink-3:#6e6656;
+  --accent:#31536b; --accent-deep:#264256; --accent-tint:#e9eff3;
+  --brand:#243c30;
+  --warn:#8a5a16; --warn-bg:#f7ecd2; --danger:#8c3a30; --danger-bg:#f6e3de; --ok:#33624a; --ok-bg:#e6efe8;
+  --shadow:0 1px 2px rgba(33,29,24,.04),0 14px 34px -18px rgba(33,29,24,.14);
+  --r-card:16px; --r-ctl:10px;
+  font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink); background:var(--paper);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+::placeholder{color:#71685a;opacity:1}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.hidden{display:none!important}
+img{max-width:100%}
 
-/* RENOVISION architectural studio — restrained editorial design */
-:root{font-family:Arial,Helvetica,sans-serif;color:#252620;background:#f8f6f2}body{background:#f8f6f2;color:#252620}header{background:#f8f6f2;border-bottom:1px solid #dedbd4;padding:25px clamp(22px,5vw,90px)}header h1{font-size:17px;letter-spacing:.2em;font-weight:750}header h1 span{color:#7c6447!important}header a{color:#59594f;text-decoration:none;letter-spacing:.04em}main{max-width:1560px;padding:42px clamp(22px,5vw,90px) 100px}.eyebrow{color:#79644c;letter-spacing:.24em;font-size:11px}.intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.55fr);gap:36px;align-items:end;padding:25px 0 43px;border-bottom:1px solid #dedbd4}.intro h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(49px,6.3vw,104px);font-weight:400;letter-spacing:-.065em;line-height:.98;margin:21px 0 0;max-width:900px}.intro h2 em{font-weight:400;color:#77644f}.intro p{max-width:440px;font-size:16px;line-height:1.85;color:#6a6962;margin:0 0 7px}.intro-meta{font-size:10px;color:#6c675e;letter-spacing:.2em;text-transform:uppercase;margin-top:20px}.layout{grid-template-columns:minmax(0,1.55fr) minmax(325px,.73fr);gap:27px;margin-top:34px;align-items:start}.surface,.panel{border:1px solid #e0ddd5;background:#fffdfa;border-radius:3px;box-shadow:0 16px 45px #3e34240b}.stage{min-height:550px;background:radial-gradient(ellipse at 80% 15%,#e9e0d1,transparent 60%),linear-gradient(145deg,#e7e1d7,#c9c0b3);border-bottom:1px solid #e5dfd5}.stage img{object-fit:contain}.empty{max-width:430px;padding:38px}.empty svg{color:#967e60;width:48px;height:48px}.empty strong{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;letter-spacing:-.025em;margin-top:20px}.empty p{color:#69675f;font-size:14px;line-height:1.75}.toolbar{padding:17px 24px}.pill{background:#f2eee7;color:#786a58;letter-spacing:.04em}.panel{padding:34px}.panel h3{font-family:Georgia,'Times New Roman',serif;font-size:35px;font-weight:400;letter-spacing:-.045em;margin:10px 0}.panel>p{font-size:14px;color:#6a665e}.panel label{margin:23px 0 9px;color:#5b594f;font-size:11px;letter-spacing:.1em;text-transform:uppercase}input,select,textarea{background:#faf8f4;border:1px solid #dedbd3;border-radius:3px;color:#302f2b;padding:14px}input:focus,select:focus,textarea:focus{outline:2px solid #ae997d;outline-offset:1px}button,.button{border-radius:3px;background:#343b32;color:#fff;padding:14px 19px;font-size:13px;letter-spacing:.02em}button:hover:not(:disabled){background:#586251}button.secondary{background:#f0ede7;color:#514b42}button.secondary:hover:not(:disabled){background:#e6e0d6}.swatch[aria-pressed=true]{outline-color:#78634c}.notice{background:#f8f6f2;color:#6a6660;border-top:1px solid #e4e0d9;line-height:1.7}.preview{background:#faf8f4;color:#736e64}.status{color:#6a645a}.studio-kicker{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid #e8e4dc;background:#fffdfa}.studio-kicker strong{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#4e5146}.studio-kicker span{font-size:11px;color:#776653;letter-spacing:.08em}.chapter{margin:0 0 14px;color:#79644b;font-size:11px;letter-spacing:.18em;text-transform:uppercase}.studio-footer{margin-top:36px;display:flex;justify-content:space-between;gap:20px;border-top:1px solid #dedbd4;padding-top:22px;font-size:12px;color:#6c6860}.studio-footer strong{color:#545148;letter-spacing:.12em}@media(max-width:920px){.intro{grid-template-columns:1fr;gap:18px}.layout{grid-template-columns:1fr}.stage{min-height:390px}.intro h2{font-size:clamp(48px,9vw,78px)}.panel{padding:25px}}@media(max-width:520px){main{padding-top:22px}.intro{padding-bottom:30px}.stage{min-height:340px}.intro h2{font-size:49px}.toolbar{padding:14px}.studio-kicker{padding:14px}}
+/* ---- Shell ---- */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px clamp(20px,4vw,44px);background:rgba(250,248,243,.92);border-bottom:1px solid var(--line-soft);position:relative;z-index:40}
+header h1{font-size:15px;letter-spacing:.22em;font-weight:700;margin:0}
+header h1 img{border-radius:8px;margin-right:11px;vertical-align:middle}
+header h1 span{color:var(--accent)!important}
+header a{color:var(--ink-2);text-decoration:none;font-size:13px}
+header a:hover{color:var(--accent)}
+main{max-width:1240px;margin:0 auto;padding:0 clamp(18px,4vw,44px) 8px}
 
-/* Material library and comparison — no remote images or fabricated concepts */
-.material-library{margin-top:42px;padding:28px 0 4px;border-top:1px solid #dedbd4}.material-head{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}.material-head h3{font-family:Georgia,'Times New Roman',serif;font-size:clamp(29px,3vw,43px);font-weight:400;letter-spacing:-.04em;margin:8px 0}.material-head p{font-size:13px;max-width:390px;margin:0}.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:24px}.material-card{border:1px solid #e0ddd5;background:#fffdfa;padding:0;text-align:left;overflow:hidden;color:#333;min-width:0}.material-card .texture{height:125px;display:block;position:relative}.material-card .texture:after{content:'';position:absolute;inset:0;background:linear-gradient(145deg,#ffffff48,transparent 42%,#0000000d)}.material-card strong{display:block;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;padding:15px 15px 4px}.material-card small{display:block;font-size:11px;color:#6e685e;padding:0 15px 16px;line-height:1.5}.material-card[aria-pressed=true]{outline:2px solid #9d8060;outline-offset:2px}.texture-oak{background:repeating-linear-gradient(91deg,#c3a782 0px,#ddc6a1 4px,#c8ae8c 12px,#e2cba8 22px,#bfa07c 28px)}.texture-stone{background:linear-gradient(135deg,transparent 42%,#b5ada259 42.4%,transparent 43%),linear-gradient(24deg,#ddd9d1,#f1eee7 55%,#bcb7ac)}.texture-sage{background:linear-gradient(125deg,#8e9a88,#b7c1ae 50%,#84917f)}.texture-charcoal{background:linear-gradient(140deg,#303532,#555b54 54%,#242a28)}.comparison{margin-top:20px;border:1px solid #e4ded4;background:#f8f6f2;padding:18px}.comparison-stage{position:relative;width:100%;height:420px;overflow:hidden;background:#ded8cd}.comparison-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.comparison-stage .comparison-top{clip-path:inset(0 50% 0 0)}.comparison-divider{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;box-shadow:0 0 8px #0005;pointer-events:none}.comparison-stage .comparison-label{position:absolute;top:12px;background:#fffdf0e8;color:#292923;padding:7px 10px;font-size:11px;letter-spacing:.07em}.comparison-stage .comparison-label.before{left:12px}.comparison-stage .comparison-label.after{right:12px}.comparison input[type=range]{width:100%;margin:17px 0 5px;accent-color:#75674f}.comparison .comparison-hint{font-size:12px;color:#6c675e;margin:0}@media(max-width:760px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.comparison-stage{height:300px}}@media(max-width:420px){.material-card .texture{height:95px}.comparison-stage{height:240px}}
-.room-journeys{margin-top:34px;border-top:1px solid #dedbd4;padding-top:29px}.journey-heading{font-family:Georgia,'Times New Roman',serif;font-size:clamp(27px,3vw,38px);font-weight:400;letter-spacing:-.04em;margin:10px 0 7px}.journey-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:19px}.journey-card{border:1px solid #dedbd4;background:#fffdfa;color:#393a33;padding:20px 16px;text-align:left;min-height:136px;display:flex;flex-direction:column;justify-content:space-between}.journey-card strong{font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400}.journey-card small{color:#6d665d;line-height:1.5;font-size:11px}.journey-card[aria-pressed=true]{border-color:#8d775e;box-shadow:inset 0 0 0 1px #8d775e;background:#f3eee5}.journey-card:hover{border-color:#8d775e;background:#f6f2ec}@media(max-width:760px){.journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.journey-card{min-height:115px;padding:14px}.journey-card strong{font-size:19px}}
-.scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}.scope-option{display:flex;align-items:center;gap:10px;background:#faf8f4;border:1px solid #e2ddd5;padding:12px;font-size:12px;color:#555249;cursor:pointer}.scope-option:has(input:checked){border-color:#947b60;background:#f2ebe1}.scope-option input{width:16px;height:16px;accent-color:#7d6b52;flex:none;margin:0}.scope-description{font-size:12px;color:#8c8274;margin:8px 0 0}@media(max-width:440px){.scope-grid{grid-template-columns:1fr}}
-:focus-visible{outline:3px solid #7c6447!important;outline-offset:2px}@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}::placeholder{color:#6a6962;opacity:1}.journey{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;margin:18px 0 0;padding:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6c675e}.journey li.done{color:#3f7d4e}.journey li.current{color:#252620;font-weight:700;text-decoration:underline;text-underline-offset:4px}</style></head><body>
-<header><h1>RENOVISION <span style="color:#729b86">AI</span></h1><a href="/operator">Operator workspace</a></header>
+/* ---- Intro ---- */
+.intro{display:grid;grid-template-columns:1.25fr .75fr;gap:26px;align-items:end;padding:38px 0 6px}
+.eyebrow,.chapter{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.intro h2,.journey-heading{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.02em}
+.intro h2{font-size:clamp(38px,4.6vw,58px);line-height:1.04;margin:10px 0 0}
+.intro h2 em{font-style:italic;color:var(--ink-2)}
+.intro p{color:var(--ink-2);font-size:15px;margin:0}
+.intro-meta{margin-top:14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- Journey rail (real navigation) ---- */
+nav[aria-label="Design journey progress"]{position:sticky;top:0;z-index:35;background:rgba(250,248,243,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line-soft);margin:14px calc(-1*clamp(18px,4vw,44px)) 0;padding:0 clamp(18px,4vw,44px)}
+.journey{display:flex;flex-wrap:nowrap;gap:4px 26px;list-style:none;margin:0 auto;padding:11px 0;max-width:1240px;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);overflow-x:auto;scrollbar-width:none}
+.journey::-webkit-scrollbar{display:none}
+.journey li{white-space:nowrap;cursor:pointer;padding:2px 0;border-bottom:2px solid transparent;transition:color .16s ease,border-color .16s ease}
+.journey li:hover{color:var(--accent)}
+.journey li.done{color:var(--ok)}
+.journey li.current{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+
+/* ---- Stage scaffolding ---- */
+.stage-block{max-width:1240px;margin:36px auto 0;padding:0 clamp(18px,4vw,44px)}
+.stage-block,#stageProject,#stageVision,#stageConcept,#interiorPlanner{scroll-margin-top:58px}
+.stage-head{display:flex;align-items:baseline;gap:14px;margin:0 0 6px}
+.stage-head .stage-num{font-family:"Fraunces",Georgia,serif;font-style:italic;font-size:20px;color:var(--accent)}
+.stage-head h2{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(24px,2.6vw,31px);letter-spacing:-.015em;margin:0}
+.stage-head p{color:var(--ink-2);margin:0;font-size:13.5px}
+
+/* ---- Cards & panels ---- */
+.panel,.surface{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:26px}
+.panel h3{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:400;font-size:23px;letter-spacing:-.01em;margin:0 0 8px}
+.panel p{color:var(--ink-2)}
+section.panel{margin-top:22px}
+aside.panel{background:transparent;border:none;box-shadow:none;padding:0}
+aside .panel,aside section{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:22px;margin-top:18px}
+aside>.chapter{margin-top:4px}
+.rail-title{font-family:"Fraunces",Georgia,serif;font-weight:400;font-size:20px;margin:0 0 6px}
+
+/* ---- Room journey cards ---- */
+.room-journeys{margin-top:30px;border-top:1px solid var(--line-soft);padding-top:26px}
+.journey-heading{font-size:clamp(26px,3vw,36px);margin:8px 0 6px}
+.journey-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.journey-card{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:18px 16px;text-align:left;min-height:124px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.journey-card strong{font-family:"Fraunces",Georgia,serif;font-size:21px;font-weight:400}
+.journey-card small{color:var(--ink-3);font-size:11.5px;line-height:1.5}
+.journey-card:hover{border-color:var(--accent);background:#fff}
+.journey-card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-tint)}
+
+/* ---- Workspace (photo + rail) ---- */
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.workspace{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(300px,.88fr);gap:22px;align-items:start;margin-top:26px}
+.workspace .surface{padding:0;overflow:hidden}
+.studio-kicker{display:flex;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line-soft);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.studio-kicker strong{color:var(--ink);font-weight:700}
+.stage{background:var(--ivory);min-height:430px;display:flex;align-items:center;justify-content:center;position:relative}
+.stage img#photo{width:100%;height:100%;max-height:560px;object-fit:contain;display:block}
+.empty{text-align:center;color:var(--ink-2);padding:38px 26px;max-width:420px}
+.empty svg{width:44px;height:44px;color:var(--ink-3);margin-bottom:10px}
+.empty strong{display:block;font-family:"Fraunces",Georgia,serif;font-size:22px;font-weight:400;color:var(--ink);margin-bottom:6px}
+.empty p{margin:0 0 16px;font-size:13.5px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.preview{display:flex;justify-content:space-between;gap:12px;padding:11px 20px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--ink-3)}
+.preview strong{color:var(--ink-2);font-weight:600}
+#resultPanel{padding:22px 20px!important;border-top:1px solid var(--line-soft)}
+#resultPanel>strong{font-family:"Fraunces",Georgia,serif;font-size:21px;font-weight:400}
+#resultPhoto{border-radius:12px!important}
+.comparison{margin-top:14px}
+.comparison-stage{position:relative;border-radius:12px;overflow:hidden;background:var(--ivory)}
+.comparison-stage img{width:100%;display:block}
+.comparison-top{position:absolute;inset:0;height:100%;object-fit:cover}
+.comparison-divider{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(33,29,24,.25)}
+.comparison-label{position:absolute;top:12px;font-size:10.5px;letter-spacing:.14em;font-weight:700;padding:5px 9px;border-radius:999px;background:rgba(250,248,243,.92);color:var(--ink)}
+.comparison-label.before{left:12px}.comparison-label.after{right:12px;color:var(--accent-deep)}
+.comparison-hint{font-size:12.5px;color:var(--ink-3)}
+input[type="range"]{width:100%;accent-color:var(--accent)}
+
+/* ---- Controls ---- */
+label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:15px 0 6px}
+label>input,label>select,label>textarea{margin-top:0}
+input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);padding:11px 12px;font:inherit;font-size:14px;color:var(--ink);transition:border-color .16s ease,box-shadow .16s ease}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint);outline:none}
+textarea{min-height:84px;resize:vertical}
+input[type="checkbox"],input[type="radio"]{width:auto;accent-color:var(--accent)}
+button{font:inherit;font-size:13.5px;font-weight:600;background:var(--ink);color:#fdfcf9;border:1px solid var(--ink);border-radius:999px;padding:11px 20px;cursor:pointer;transition:background .16s ease,border-color .16s ease,color .16s ease}
+button:hover{background:#000;border-color:#000}
+button:disabled{opacity:.42;cursor:not-allowed}
+button.secondary,.secondary button,a.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.secondary:hover,a.secondary:hover{background:#fff;border-color:var(--accent);color:var(--accent-deep)}
+.actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
+.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--ivory);border:1px solid var(--line-soft);border-radius:999px;padding:5px 11px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:3px 8px;vertical-align:2px}
+.status{font-size:13px;color:var(--ink-2)}
+.note{font-size:12.5px;color:var(--ink-3)}
+.notice{font-size:13px;color:var(--ink-2);background:#f6f1e7;border:1px solid var(--line-soft);border-radius:10px;padding:11px 14px;margin:8px 0}
+.file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+
+/* ---- Swatches & materials ---- */
+.swatches{display:flex;gap:9px;margin-top:4px}
+.swatch{width:38px;height:38px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);padding:0;cursor:pointer}
+.swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.scope-option{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);padding:10px 12px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:500;margin:0}
+.scope-description{font-size:12.5px;color:var(--ink-3)}
+.material-library{margin-top:40px;padding:28px 0 4px;border-top:1px solid var(--line-soft)}
+.material-head{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.material-head h3{font-family:"Fraunces",Georgia,serif;font-size:clamp(24px,2.6vw,32px);font-weight:400;margin:6px 0 0}
+.material-head p{color:var(--ink-2);max-width:520px;margin:0;font-size:13.5px}
+.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.material-card{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:7px;cursor:pointer;color:var(--ink);font-weight:500}
+.material-card strong{font-family:"Fraunces",Georgia,serif;font-size:18px;font-weight:400}
+.material-card small{color:var(--ink-3);font-size:11.5px}
+.material-card .texture{height:64px;border-radius:9px;display:block}
+.material-card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.texture-oak{background:linear-gradient(135deg,#c8a878,#a9854f)}
+.texture-stone{background:linear-gradient(135deg,#ddd6c8,#c2b8a4)}
+.texture-sage{background:linear-gradient(135deg,#a8b39a,#8a987c)}
+.texture-charcoal{background:linear-gradient(135deg,#4a4a48,#2c2c2a)}
+
+/* ---- Planner ---- */
+#interiorPlanner{margin-top:0}
+#floorPlan{border:1.5px solid var(--ink-3)!important;border-radius:12px!important;background-color:#fffdf9!important;box-shadow:inset 0 1px 6px rgba(33,29,24,.05)}
+#floorPlan button{border-radius:8px;border:1px solid var(--line);background:var(--ivory);color:var(--ink);font-size:12px;font-weight:600;padding:4px 6px;box-shadow:0 1px 3px rgba(33,29,24,.12)}
+#floorPlan button:hover{border-color:var(--accent)}
+#furnitureItems .row,#furnitureItems>div{border-top:1px solid var(--line-soft);padding:10px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);text-align:left;font-weight:600}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line-soft)}
+
+/* ---- Budget summary band ---- */
+#budgetPanel .status:first-of-type,#budgetPanel p.status{background:var(--ivory);border:1px solid var(--line-soft);border-radius:12px;padding:13px 16px;font-size:14px;color:var(--ink)}
+
+/* ---- Concept history filmstrip ---- */
+#conceptHistoryList{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:12px}
+#conceptHistoryList .room-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+#conceptHistoryList img{border-radius:8px;width:100%}
+
+/* ---- Quiet disclosures (progressive disclosure, open by default) ---- */
+details.quiet{border-top:1px solid var(--line-soft);margin-top:16px;padding-top:4px}
+details.quiet>summary{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:700;cursor:pointer;padding:9px 0;list-style:none}
+details.quiet>summary::-webkit-details-marker{display:none}
+details.quiet>summary::after{content:" –";color:var(--ink-3)}
+details.quiet:not([open])>summary::after{content:" +"}
+
+.studio-footer{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:38px 0 6px;padding-top:18px;border-top:1px solid var(--line-soft);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- Responsive ---- */
+@media(max-width:1020px){
+  .workspace{grid-template-columns:1fr}
+  .intro{grid-template-columns:1fr;align-items:start}
+  .material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .layout{grid-template-columns:1fr}
+  .panel,.surface{padding:20px}
+  .stage{min-height:300px}
+  header{padding:12px 18px}
+}
+@media(max-width:420px){
+  .journey-card{min-height:108px;padding:14px}
+  .journey-card strong{font-size:18px}
+  .material-grid{grid-template-columns:1fr}
+}
+/* UF-PV-7: at narrow widths the six journey stages overflowed one line and
+   stages 4-6 were clipped inside a hidden-scrollbar scroll area. Wrap the
+   strip so every stage stays visible, and give stages extra scroll margin
+   for the taller sticky strip. */
+@media(max-width:740px){
+  .journey{flex-wrap:wrap;gap:4px 18px;overflow-x:visible}
+  section.vx-stage{scroll-margin-top:100px}
+  .stage-block,#stageProject,#stageVision,#stageConcept,#interiorPlanner{scroll-margin-top:100px}
+}
+
+/* ---- Guided platform components (2026-11-19) ---- */
+.gx-rate-row{display:grid;grid-template-columns:auto 130px 90px 84px 1fr 110px;gap:8px;align-items:center;margin:6px 0}
+.gx-rate-row label.gx-rate-use{margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:600}
+.gx-rate-row input[type="checkbox"]{width:16px;height:16px}
+.gx-layout-card{border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;background:#fff}
+.gx-layout-stage{position:relative;width:100%;background:var(--ivory);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.gx-zone{position:absolute;border:1.5px dashed var(--accent);background:rgba(49,83,107,.08);color:var(--accent-deep);font-size:10.5px;font-weight:700;padding:3px 5px;overflow:hidden}
+.gx-furn-block{position:absolute;background:#d5e2d8;border:1px solid #6c645b;border-radius:4px;color:#243c30;font-size:10px;font-weight:600;padding:2px 4px;overflow:hidden}
+#gxConciergePanel textarea{width:100%}
+#gxConciergeSummary{margin:10px 0 4px}
+#gxNextActions>div{margin:6px 0}
+@media(max-width:760px){.gx-rate-row{grid-template-columns:auto 1fr 84px;grid-auto-rows:auto}}
+</style></head><body>
+<header><h1><img src="/brand/icon-192.png" alt="" width="34" height="34" style="border-radius:8px;vertical-align:-7px;margin-right:10px">RENOVISION <span style="color:#729b86">AI</span></h1><a href="/operator">Operator workspace</a></header>
 <main><section class="intro"><div><div class="eyebrow">The renovation design atelier · RENOVISION AI</div><h2>Spaces, <em>reimagined.</em></h2></div><div><p>Thoughtful transformations begin with a vision. Explore materials, finishes and architectural character—starting with a photograph of your own space.</p><div class="intro-meta">01 / Your space &nbsp; · &nbsp; 02 / Your vision &nbsp; · &nbsp; 03 / Your concept</div></div></section>
 <nav aria-label="Design journey progress"><ol id="journeyStrip" class="journey"></ol></nav>
-<section class="room-journeys" aria-labelledby="journeyTitle"><div class="chapter">Choose a room to transform</div><h3 id="journeyTitle" class="journey-heading">Where shall we begin?</h3><p style="margin:0;font-size:13px">Select a room to tailor the renovation brief. Your photograph remains yours.</p><div class="journey-grid"><button type="button" class="journey-card" data-room="Kitchen" aria-pressed="false"><strong>Kitchen</strong><small>Cabinetry · surfaces · light</small></button><button type="button" class="journey-card" data-room="Bathroom" aria-pressed="false"><strong>Bathroom</strong><small>Tile · fixtures · sanctuary</small></button><button type="button" class="journey-card" data-room="Living room" aria-pressed="true"><strong>Living room</strong><small>Flow · furnishings · comfort</small></button><button type="button" class="journey-card" data-room="Bedroom" aria-pressed="false"><strong>Bedroom</strong><small>Texture · tranquility · layers</small></button></div></section><div class="layout"><div class="surface"><div class="studio-kicker"><strong>01 — Your existing space</strong><span>THE STARTING POINT</span></div><div class="stage" id="stage"><div class="empty" id="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><strong>Every space has potential.</strong><p>Choose a clear, well-lit room photograph to begin your renovation brief.</p><button id="choose">Upload room photo</button></div><img id="photo" class="hidden" alt="Original room photograph"></div><div class="toolbar"><span class="pill" id="photoStatus">No photo selected</span><div class="actions" style="margin:0"><button class="secondary" id="replace">Change photo</button><button class="secondary" id="clear">Clear</button></div></div><div class="preview"><span>Original photograph</span><strong id="renderState">AI redesign not generated</strong></div><div id="resultPanel" class="hidden" style="padding:20px;border-top:1px solid #e4e9e4"><strong>AI renovation concept</strong><p>Compare this concept with the original photo. Architectural details and dimensions require verification.</p><img id="resultPhoto" alt="AI-generated renovation concept" style="width:100%;max-height:470px;object-fit:contain;border-radius:10px"><div id="comparison" class="comparison hidden"><div class="comparison-stage"><img id="comparisonOriginal" alt="Original renovation source photo"><img id="comparisonConcept" class="comparison-top" alt="Generated design concept"><div class="comparison-divider" id="comparisonDivider"></div><span class="comparison-label before">BEFORE</span><span class="comparison-label after">CONCEPT</span></div><label for="comparisonRange">Compare original and concept</label><input id="comparisonRange" type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after"><p class="comparison-hint">Move the slider to compare your original photo with the generated concept. Geometry is not verified.</p></div><div class="actions"><button class="secondary" id="downloadResult">Download concept</button><button class="secondary" id="showOriginal">View original</button><button class="secondary" id="showResult">View concept</button><button class="secondary" id="refineResult">Refine this concept</button></div></div><div class="notice">Your source photo stays on this device until you choose Generate. Generating sends the photo to the configured AI provider and may incur charges. Results are concepts, not construction drawings.</div></div>
+<section class="room-journeys" id="stageProject" aria-labelledby="journeyTitle"><div class="chapter">Choose a room to transform</div><h3 id="journeyTitle" class="journey-heading">Where shall we begin?</h3><p style="margin:0;font-size:13px">Select a room to tailor the renovation brief. Your photograph remains yours.</p><div class="journey-grid"><button type="button" class="journey-card" data-room="Kitchen" aria-pressed="false"><strong>Kitchen</strong><small>Cabinetry · surfaces · light</small></button><button type="button" class="journey-card" data-room="Bathroom" aria-pressed="false"><strong>Bathroom</strong><small>Tile · fixtures · sanctuary</small></button><button type="button" class="journey-card" data-room="Living room" aria-pressed="true"><strong>Living room</strong><small>Flow · furnishings · comfort</small></button><button type="button" class="journey-card" data-room="Bedroom" aria-pressed="false"><strong>Bedroom</strong><small>Texture · tranquility · layers</small></button></div></section><div class="layout workspace" id="stageVision"><div class="surface" id="stageConcept"><div class="studio-kicker"><strong>01 — Your existing space</strong><span>THE STARTING POINT</span></div><div class="stage" id="stage"><div class="empty" id="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><strong>Every space has potential.</strong><p>Choose a clear, well-lit room photograph to begin your renovation brief.</p><button id="choose">Upload room photo</button></div><img id="photo" class="hidden" alt="Original room photograph"></div><div class="toolbar"><span class="pill" id="photoStatus">No photo selected</span><div class="actions" style="margin:0"><button class="secondary" id="replace">Change photo</button><button class="secondary" id="clear">Clear</button></div></div><div class="preview"><span>Original photograph</span><strong id="renderState">AI redesign not generated</strong></div><div id="resultPanel" class="hidden" style="padding:20px;border-top:1px solid #e4e9e4"><strong>AI renovation concept</strong><p>Compare this concept with the original photo. Architectural details and dimensions require verification.</p><img id="resultPhoto" alt="AI-generated renovation concept" style="width:100%;max-height:470px;object-fit:contain;border-radius:10px"><div id="comparison" class="comparison hidden"><div class="comparison-stage"><img id="comparisonOriginal" alt="Original renovation source photo"><img id="comparisonConcept" class="comparison-top" alt="Generated design concept"><div class="comparison-divider" id="comparisonDivider"></div><span class="comparison-label before">BEFORE</span><span class="comparison-label after">CONCEPT</span></div><label for="comparisonRange">Compare original and concept</label><input id="comparisonRange" type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after"><p class="comparison-hint">Move the slider to compare your original photo with the generated concept. Geometry is not verified.</p></div><div class="actions"><button class="secondary" id="downloadResult">Download concept</button><button class="secondary" id="showOriginal">View original</button><button class="secondary" id="showResult">View concept</button><button class="secondary" id="refineResult">Refine this concept</button></div></div><div class="notice">Your source photo stays on this device until you choose Generate. Generating sends the photo to the configured AI provider and may incur charges. Results are concepts, not construction drawings.</div></div>
 <aside class="panel"><div class="chapter">02 — Curate your vision</div><h3>Your design story.</h3><p>Shape the atmosphere with thoughtful materials, color and the details that make a space feel like yours.</p>
 <label for="room">Room type</label><select id="room"><option>Living room</option><option>Kitchen</option><option>Bathroom</option><option>Bedroom</option><option>Basement</option><option>Other</option></select>
 <label for="style">Design style</label><select id="style"><option>Warm modern</option><option>Contemporary</option><option>Transitional</option><option>Modern farmhouse</option><option>Minimalist</option><option>Traditional</option></select>
 <label>Palette</label><div class="swatches" id="swatches"><button class="swatch" style="background:#e9dfce" data-color="Warm neutral" aria-label="Warm neutral" aria-pressed="true"></button><button class="swatch" style="background:#d9ded7" data-color="Soft sage" aria-label="Soft sage" aria-pressed="false"></button><button class="swatch" style="background:#8d9ca6" data-color="Coastal blue" aria-label="Coastal blue" aria-pressed="false"></button><button class="swatch" style="background:#b6a58f" data-color="Natural oak" aria-label="Natural oak" aria-pressed="false"></button></div>
 <label>Renovation priorities</label><p class="scope-description">Select the work you are considering. These are planning ideas, not a contractor estimate.</p><div class="scope-grid" id="scopeGrid" role="group" aria-label="Renovation scope selections"></div><label for="changes">What would you change?</label><textarea id="changes" placeholder="For example: replace flooring with light oak, brighten the walls, update cabinets and add contemporary furniture."></textarea>
-<div class="actions"><button id="save">Download design brief</button><button class="secondary" id="downloadScope">Download contractor scope</button><button class="secondary" id="reviewScope">Enter contractor estimates</button></div><section id="renderPanel"><p id="renderAvailability" class="status">Checking image-generation availability...</p><label for="projectId">Project ID</label><input id="projectId" autocomplete="off" placeholder="e.g. kitchen-refresh-01"><label for="propertyId">Property ID</label><input id="propertyId" autocomplete="off" placeholder="Your property record ID"><label for="roomId">Room ID</label><input id="roomId" autocomplete="off" placeholder="e.g. kitchen"><div class="actions"><button class="secondary" id="createProject">Create / open project</button><span id="projectState" class="status">No project selected</span></div><label for="renderEmail">Account email</label><input id="renderEmail" type="email" autocomplete="username" placeholder="Your RENOVISION account email"><label for="renderPassword">Password</label><input id="renderPassword" type="password" autocomplete="current-password" placeholder="Your account password"><div class="actions"><button class="secondary" id="signIn">Sign in securely</button><button class="secondary" id="requestPasswordReset" type="button">Reset password</button><button class="secondary" id="signOut" disabled>Sign out</button><span id="authState" class="status">Not signed in</span></div><div class="actions"><button id="generate" disabled>Generate renovation concept</button></div><p>AI concepts are visual ideas, not verified geometry or construction drawings. Generation may incur Google Cloud charges.</p></section><section aria-labelledby="conceptHistoryHeading"><h2 id="conceptHistoryHeading">Concept history</h2><p class="note">Generated concepts saved to this project, with the photo and brief that produced them. Concepts are design visualizations only — never verified measurements or construction documents. Simulated concepts (from test renderers) are labeled.</p><div class="row"><button id="loadConceptHistory" type="button">Load concept history</button></div><p id="conceptHistoryStatus" class="note" role="status"></p><div id="conceptHistoryList"></div></section><div class="status" id="status" role="status"></div></aside></div>
+<div class="actions"><button id="save">Download design brief</button><button class="secondary" id="downloadScope">Download contractor scope</button><button class="secondary" id="reviewScope">Enter contractor estimates</button></div><section id="renderPanel"><h3 class="rail-title">Project &amp; concept</h3><p id="renderAvailability" class="status">Checking image-generation availability...</p><details class="quiet"><summary>Project details</summary><label for="projectId">Project ID</label><input id="projectId" autocomplete="off" placeholder="e.g. kitchen-refresh-01"><label for="propertyId">Property ID</label><input id="propertyId" autocomplete="off" placeholder="Your property record ID"><label for="roomId">Room ID</label><input id="roomId" autocomplete="off" placeholder="e.g. kitchen"><div class="actions"><button class="secondary" id="createProject">Create / open project</button><span id="projectState" class="status">No project selected</span></div></details><details class="quiet"><summary>Account</summary><label for="renderEmail">Account email</label><input id="renderEmail" type="email" autocomplete="username" placeholder="Your RENOVISION account email"><label for="renderPassword">Password</label><input id="renderPassword" type="password" autocomplete="current-password" placeholder="Your account password"><div class="actions"><button class="secondary" id="signIn">Sign in securely</button><button class="secondary" id="requestPasswordReset" type="button">Reset password</button><button class="secondary" id="signOut" disabled>Sign out</button><span id="authState" class="status">Not signed in</span></div></details><div class="actions"><button id="generate" disabled>Generate renovation concept</button></div><p>AI concepts are visual ideas, not verified geometry or construction drawings. Generation may incur Google Cloud charges.</p></section><section aria-labelledby="conceptHistoryHeading"><h2 id="conceptHistoryHeading">Concept history</h2><p class="note">Generated concepts saved to this project, with the photo and brief that produced them. Concepts are design visualizations only — never verified measurements or construction documents. Simulated concepts (from test renderers) are labeled.</p><div class="row"><button id="loadConceptHistory" type="button">Load concept history</button></div><p id="conceptHistoryStatus" class="note" role="status"></p><div id="conceptHistoryList"></div></section><div class="status" id="status" role="status"></div></aside></div>
 <section class="material-library" aria-labelledby="materialTitle"><div class="material-head"><div><div class="chapter">03 — Material inspiration</div><h3 id="materialTitle">A palette of possibilities.</h3></div><p>Explore a few timeless material directions. Select a finish to inform your renovation brief; these are illustrative swatches, not product samples.</p></div><div class="material-grid"><button type="button" class="material-card" data-material="Natural oak flooring and warm wood finishes" aria-pressed="false"><span class="texture texture-oak" aria-hidden="true"></span><strong>Natural oak</strong><small>Warmth · organic texture</small></button><button type="button" class="material-card" data-material="Light limestone and soft natural stone surfaces" aria-pressed="false"><span class="texture texture-stone" aria-hidden="true"></span><strong>Soft stone</strong><small>Quiet luxury · tactile surfaces</small></button><button type="button" class="material-card" data-material="Muted sage cabinetry and earthy accents" aria-pressed="false"><span class="texture texture-sage" aria-hidden="true"></span><strong>Muted sage</strong><small>Grounded · calming color</small></button><button type="button" class="material-card" data-material="Charcoal accents and refined dark metal finishes" aria-pressed="false"><span class="texture texture-charcoal" aria-hidden="true"></span><strong>Charcoal</strong><small>Contrast · architectural depth</small></button></div></section><div class="studio-footer"><strong>RENOVISION AI / DESIGN STUDIO</strong><span>Imagined with intention. Built with care.</span></div><input class="file" type="file" id="file" aria-label="Upload a room photo" accept="image/png,image/jpeg,image/webp"></main>
 <section class="panel" id="interiorPlanner" aria-labelledby="plannerTitle" style="margin-top:28px"><div class="eyebrow">04 / INTERIOR DESIGN</div><h2 id="plannerTitle">Design within your space and budget.</h2><p>Build a room specification, add real furniture you find, and check dimensions and costs before purchasing. All prices and measurements are user-entered and unverified.</p><div class="layout"><div><label for="designStyle">Design style</label><select id="designStyle"><option>Modern organic</option><option>Contemporary</option><option>Minimalist</option><option>Scandinavian</option><option>Japandi</option><option>Mid-century modern</option><option>Traditional</option><option>Transitional</option><option>Industrial</option><option>Farmhouse</option><option>Coastal</option><option>Bohemian</option><option>Art Deco</option><option>Maximalist</option><option>Eclectic</option><option>French country</option><option>Mediterranean</option><option>Rustic</option><option>Luxury modern</option><option>Southwestern</option></select><label for="designMaterial">Material direction</label><select id="designMaterial"><option>White oak and linen</option><option>Walnut and leather</option><option>Travertine and boucle</option><option>Marble and brass</option><option>Concrete and black steel</option><option>Rattan and natural cotton</option><option>Terrazzo and lacquer</option><option>Painted cabinetry and quartz</option><option>Slate and dark wood</option><option>Terracotta and plaster</option></select><div class="layout"><div><label for="roomWidth">Room width (inches)</label><input id="roomWidth" type="number" min="1" step="0.1" placeholder="e.g. 144"></div><div><label for="roomDepth">Room depth (inches)</label><input id="roomDepth" type="number" min="1" step="0.1" placeholder="e.g. 180"></div></div><label for="clearance">Desired circulation clearance (inches)</label><input id="clearance" type="number" min="0" value="30" step="1"><label for="designBudget">Total furniture budget ($)</label><input id="designBudget" type="number" min="0" step="0.01" placeholder="e.g. 5000"></div><div><h3>Furniture shortlist</h3><p>Add product details and retailer links yourself. Catalog pricing and inventory are not live-connected.</p><label for="furnitureName">Product name</label><input id="furnitureName" placeholder="e.g. 84-inch sofa"><label for="furnitureRetailer">Retailer</label><input id="furnitureRetailer" placeholder="Store name"><label for="furnitureUrl">Product URL (https)</label><input id="furnitureUrl" type="url" placeholder="https://..."><div class="layout"><div><label for="furnitureWidth">Width (in)</label><input id="furnitureWidth" type="number" min="0.1" step="0.1"></div><div><label for="furnitureDepth">Depth (in)</label><input id="furnitureDepth" type="number" min="0.1" step="0.1"></div></div><label for="furniturePrice">Price ($)</label><input id="furniturePrice" type="number" min="0" step="0.01"><button id="addFurniture" type="button" style="margin-top:14px">Add furniture</button><div class="status" id="furnitureMessage" role="status"></div></div></div><div class="panel" style="margin-top:20px"><h3>2D space plan</h3><p>Drag furniture blocks to reposition them. Each item is shown at scale using its entered dimensions. Add doors, windows, walkways and fixed obstacles with the planning controls below; swing, clearance and circulation checks are advisory and cannot certify a layout.</p><div class="actions"><label for="obstacleType">Opening / obstacle</label><select id="obstacleType" style="max-width:180px"><option value="door">Door swing (approximate)</option><option value="window">Window zone</option><option value="fixed">Fixed obstacle</option></select><label for="obstacleX">X (in)</label><input id="obstacleX" type="number" min="0" value="0" style="max-width:95px"><label for="obstacleY">Y (in)</label><input id="obstacleY" type="number" min="0" value="0" style="max-width:95px"><label for="obstacleWidth">Width (in)</label><input id="obstacleWidth" type="number" min="1" value="36" style="max-width:95px"><label for="obstacleDepth">Depth (in)</label><input id="obstacleDepth" type="number" min="1" value="36" style="max-width:95px"><button id="addObstacle" type="button" class="secondary">Add zone</button><button id="clearObstacles" type="button" class="secondary">Clear zones</button></div><p id="obstacleMessage" class="status" role="status"></p><div class="actions"><button id="rotateFurniture" type="button" class="secondary">Rotate selected furniture 90°</button><span id="selectedFurnitureStatus" class="status">Select a furniture block to rotate it.</span></div><div id="floorPlan" style="position:relative;max-width:100%;width:100%;height:360px;background:repeating-linear-gradient(0deg,#eeeae3 0px,#eeeae3 1px,transparent 1px,transparent 24px),repeating-linear-gradient(90deg,#eeeae3 0px,#eeeae3 1px,transparent 1px,transparent 24px),#fbfaf7;border:2px solid #7c7368;border-radius:5px;overflow:hidden;touch-action:none" role="group" aria-label="Scaled room plan with draggable furniture"></div><p id="floorPlanStatus" class="status" role="status">Enter room dimensions to display a scaled plan.</p></div><div id="furnitureSummary" class="status" aria-live="polite"></div><div id="furnitureItems"></div><div class="actions"><button id="exportFurniturePlan" type="button" class="secondary">Download design and shopping plan</button><button id="clearFurniturePlan" type="button" class="secondary">Clear shortlist</button><a class="secondary" href="/3d-viewer" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;padding:10px 14px;text-decoration:none">Open 3D Asset Studio</a></div><p class="notice">Preliminary envelope check only. A product fitting the room rectangle does not prove a safe layout. Door swings, windows, paths, built-ins, delivery access, taxes and shipping are not included. Verify measurements, pricing and availability before purchase.</p></section>
 <script>
@@ -370,9 +575,11 @@ function collectWorkspace() {
     layouts, activeLayoutId: slugify(activeLayoutName) || "layout",
     products: wsProducts, shoppingListIds: [...wsShopping], budget,
     notes: wsNotesInput.value || "",
+    guided: typeof guidedCollect === "function" ? guidedCollect() : null,
   };
 }
 function hydrateWorkspace(ws) {
+  if (ws.guided && typeof guidedRestore === "function") guidedRestore(ws.guided);
   wsProducts = ws.products || [];
   wsShopping = new Set(ws.shoppingListIds || []);
   wsBudget = ws.budget || null;
@@ -690,11 +897,12 @@ function rvJourneyUpdate(){
   let planDone=false;
   try{planDone=document.querySelectorAll('#floorPlan button').length>0||document.querySelectorAll('#budgetLines tr,#budgetLines .row,#budgetLines li').length>0;}catch(e){}
   const state=[
-    {label:'1 · Project',done:!!activeProjectId},
-    {label:'2 · Photo & brief',done:!!(sourceFile||refinementSource)},
-    {label:'3 · Concept',done:!!resultUrl||!!document.querySelector('#conceptHistoryList .room-card')},
-    {label:'4 · Plan & budget',done:planDone},
-    {label:'5 · Save & export',done:false},
+    {label:'1 · Start',done:!!activeProjectId},
+    {label:'2 · Design',done:!!(window.__rvDesignDone)},
+    {label:'3 · Transform',done:!!resultUrl||!!document.querySelector('#conceptHistoryList .room-card')||!!document.querySelector('#gxLayoutCards .gx-layout-card')},
+    {label:'4 · Furnish',done:!!document.querySelector('#gxFuResult .tag')||(typeof wsShopping!=='undefined'&&wsShopping.size>0)},
+    {label:'5 · Review',done:planDone},
+    {label:'6 · Export',done:false},
   ];
   const current=state.findIndex(s=>!s.done);
   strip.innerHTML='';
@@ -708,5 +916,882 @@ function rvJourneyUpdate(){
 document.addEventListener('click',()=>setTimeout(rvJourneyUpdate,350));
 document.addEventListener('change',()=>setTimeout(rvJourneyUpdate,350));
 
+/* ---- Presentation: staged workspace organization (UX replacement 2026-11-19; presentation only, no functional change) ---- */
+(function rvStageOrganize(){
+  try{
+    var main=document.querySelector('main'); if(!main) return;
+    var panels=[].slice.call(main.querySelectorAll(':scope > section.panel'));
+    function byTitle(t){return panels.find(function(s){var h=s.querySelector('h3');return h&&h.textContent.trim().indexOf(t)===0;});}
+    function stageBlock(id,num,title,sub){
+      var sec=document.createElement('section'); sec.className='stage-block'; sec.id=id;
+      var head=document.createElement('div'); head.className='stage-head';
+      var numEl=document.createElement('span'); numEl.className='stage-num'; numEl.textContent=num;
+      var h=document.createElement('h2'); h.textContent=title;
+      var p=document.createElement('p'); p.textContent=sub;
+      head.appendChild(numEl); head.appendChild(h); head.appendChild(p);
+      sec.appendChild(head); var foot=main.querySelector('.studio-footer'); if(foot) main.insertBefore(sec,foot); else main.appendChild(sec); return sec;
+    }
+    var plan=stageBlock('stagePlan','04','Plan your space','Lay out the room, place furniture and openings, and review clearances before you commit.');
+    var zones=byTitle('Doors, windows'); if(zones){zones.id='zonePanel'; plan.appendChild(zones);}
+    var tools=byTitle('Plan tools'); if(tools){tools.id='toolsPanel'; plan.appendChild(tools);}
+    var planner=document.getElementById('interiorPlanner'); if(planner) plan.appendChild(planner);
+    var finish=stageBlock('stageFinish','05','Finish & export','Alternative layouts, the design library, your product catalog and the project budget — saved with your project.');
+    [['Layouts & project workspace','layoutPanel'],['Design library','libraryPanel'],['Furniture & product catalog','catalogPanel'],['Project budget','budgetPanel']].forEach(function(pair){var p=byTitle(pair[0]); if(p){p.id=pair[1]; finish.appendChild(p);}});
+    var order=['stageProject','stageVision','stageConcept','stagePlan','stageFinish'];
+    var strip=document.getElementById('journeyStrip');
+    function wireStrip(){
+      if(!strip) return;
+      [].forEach.call(strip.children,function(li,i){
+        if(li.dataset.rvNav) return; li.dataset.rvNav='1';
+        li.setAttribute('tabindex','0'); li.title='Go to this step';
+        function go(){var el=document.getElementById(order[i]); if(el) el.scrollIntoView({behavior:'smooth',block:'start'});}
+        li.addEventListener('click',go);
+        li.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+      });
+    }
+    wireStrip();
+    if(strip&&window.MutationObserver){ new MutationObserver(wireStrip).observe(strip,{childList:true}); }
+  }catch(e){}
+})();
+
+/* ---- Guided platform: concierge, property, plan ingestion, conversions, cost engine, furnish (master directive 2026-11-19) ---- */
+const guidedState = { context: null, property: null, planUploads: [], screening: null, layouts: null, rateBook: null, estimate: null, furnishRequest: null, furnishProposal: null, templateId: null };
+function guidedCollect() {
+  try { return JSON.parse(JSON.stringify({ context: guidedState.context, property: guidedState.property, planUploads: guidedState.planUploads, screening: guidedState.screening, layouts: guidedState.layouts, rateBook: guidedState.rateBook, estimate: guidedState.estimate, furnishRequest: guidedState.furnishRequest, furnishProposal: guidedState.furnishProposal, templateId: guidedState.templateId })); } catch (e) { return null; }
+}
+function guidedRestore(g) {
+  if (!g) return;
+  guidedState.context = g.context || null; guidedState.property = g.property || null; guidedState.planUploads = g.planUploads || [];
+  guidedState.screening = g.screening || null; guidedState.layouts = g.layouts || null; guidedState.rateBook = g.rateBook || null;
+  guidedState.estimate = g.estimate || null; guidedState.furnishRequest = g.furnishRequest || null; guidedState.furnishProposal = g.furnishProposal || null;
+  guidedState.templateId = g.templateId || null;
+  if (typeof gxRenderAll === "function") gxRenderAll();
+}
+const gxMoney = (c) => c === null || c === undefined ? "—" : "USD " + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const gxEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+function gxBuildPanels() {
+  const RV = window.RV;
+  /* ---------- Concierge (right rail, below concept history) ---------- */
+  const conciergePanel = document.createElement("section");
+  conciergePanel.id = "gxConciergePanel";
+  conciergePanel.innerHTML = '<h3 class="rail-title">Design concierge</h3>';
+  const cNote = gxEl("p", "note", "A guided assistant that works with your project’s real planner, budget and catalog. It is a rule-based guide, not a generative AI, and it never invents prices, dimensions or records.");
+  cNote.id = "gxConciergeNote";
+  const cInput = document.createElement("textarea"); cInput.id = "gxConciergeInput"; cInput.rows = 3; cInput.setAttribute("aria-label", "Describe your project for the design concierge");
+  cInput.placeholder = "Describe what you want — e.g. “I have a two-car garage and want to convert it into a one-bedroom guest suite with a bathroom. My renovation budget is $35,000. I want a warm modern design.”";
+  const cBtn = gxEl("button", "", "Guide my project"); cBtn.id = "gxGuideBtn"; cBtn.type = "button";
+  const cSummary = gxEl("div", ""); cSummary.id = "gxConciergeSummary";
+  const cActions = gxEl("div", ""); cActions.id = "gxNextActions";
+  const cJourney = gxEl("p", "note", ""); cJourney.id = "gxJourneyLine";
+  conciergePanel.append(cNote, cInput, cBtn, cSummary, cActions, cJourney);
+  const historySection = $("conceptHistoryHeading") ? $("conceptHistoryHeading").closest("section") : null;
+  const rail = $("renderPanel").parentElement;
+  if (historySection && historySection.parentElement === rail) rail.insertBefore(conciergePanel, historySection.nextSibling); else rail.append(conciergePanel);
+
+  /* ---------- Property & floor plans ---------- */
+  const propPanel = makePanel("Your property & floor plans", "Address and property facts are stored with their source. Address lookup and property-record services are not connected, so nothing is inferred from an address — every fact below is exactly what you enter, labeled by provenance.");
+  propPanel.id = "gxPropertyPanel";
+  const propAddr = field(propPanel, "Property address", textInput("gxPropAddress", "Street, city, state"));
+  const propFacts = gxEl("div", "layout"); propPanel.append(propFacts);
+  const factDefs = [["areaSqFt", "Building area (sq ft)"], ["bedrooms", "Bedrooms"], ["bathrooms", "Bathrooms"], ["yearBuilt", "Year built"]];
+  const factInputs = {};
+  for (const [key, label] of factDefs) {
+    const wrap = gxEl("div");
+    const inp = numInput("gxProp_" + key, ""); inp.min = "0"; inp.step = key === "areaSqFt" || key === "yearBuilt" ? "1" : "0.5";
+    field(wrap, label, inp);
+    const prov = selInput("gxProv_" + key, ["user_supplied", "estimate"]); prov.value = "user_supplied";
+    field(wrap, "Source", prov);
+    const hint = gxEl("p", "note", "“Verified record” is unavailable until a records service is connected.");
+    wrap.append(hint); propFacts.append(wrap); factInputs[key] = { inp, prov };
+  }
+  const propBtn = actionButton(propPanel, "Save property facts"); propBtn.id = "gxPropSave";
+  const propStatus = statusLine(propPanel); propStatus.id = "gxPropStatus";
+  const propSummary = gxEl("div", ""); propSummary.id = "gxPropSummary"; propPanel.append(propSummary);
+  const planBox = gxEl("div", ""); planBox.style.marginTop = "18px"; propPanel.append(planBox);
+  planBox.append(gxEl("h4", "", "Floor plan upload"));
+  planBox.append(gxEl("p", "note", "Upload a PDF or image floor plan. The original is preserved with a revision history. Automated plan detection is NOT AVAILABLE — dimensions are confirmed by you below and only then used as room geometry."));
+  const planFile = document.createElement("input"); planFile.type = "file"; planFile.id = "gxPlanFile"; planFile.accept = ".pdf,.png,.jpg,.jpeg,.webp"; planFile.setAttribute("aria-label", "Floor plan file (PDF or image)");
+  const planReg = gxEl("button", "secondary", "Register plan upload"); planReg.id = "gxPlanRegister"; planReg.type = "button";
+  const planStatus = gxEl("p", "status", ""); planStatus.id = "gxPlanStatus";
+  const planDims = gxEl("div", "layout");
+  const pw = numInput("gxPlanWidth", "e.g. 240"); const pd = numInput("gxPlanDepth", "e.g. 240");
+  const pwrap1 = gxEl("div"); field(pwrap1, "Plan width (inches)", pw); planDims.append(pwrap1);
+  const pwrap2 = gxEl("div"); field(pwrap2, "Plan depth (inches)", pd); planDims.append(pwrap2);
+  const psrc = selInput("gxPlanSource", ["user_measured", "plan_stated"]);
+  const pwrap3 = gxEl("div"); field(pwrap3, "Dimension source", psrc); planDims.append(pwrap3);
+  const planConfirm = gxEl("button", "secondary", "Confirm dimensions"); planConfirm.id = "gxPlanConfirm"; planConfirm.type = "button";
+  const planApply = gxEl("button", "secondary", "Use as room geometry"); planApply.id = "gxPlanApply"; planApply.type = "button";
+  planBox.append(planFile, planReg, planStatus, planDims, planConfirm, planApply);
+  const main = document.querySelector("main");
+  const stagePlanEl = document.getElementById("stagePlan");
+  if (stagePlanEl) main.insertBefore(propPanel, stagePlanEl); else main.append(propPanel);
+
+  /* ---------- Transform ---------- */
+  const trPanel = makePanel("Transform your space", "Choose a conversion to generate conceptual layouts and a feasibility screening. Screening flags what needs professional review — it never approves a design for construction or permits.");
+  trPanel.id = "gxTransformPanel";
+  const tplSel = selInput("gxTplSelect", []); field(trPanel, "Conversion", tplSel);
+  const screenBox = gxEl("div", ""); screenBox.id = "gxScreenBox"; trPanel.append(screenBox);
+  const screenBtn = actionButton(trPanel, "Run feasibility screening"); screenBtn.id = "gxScreenBtn";
+  const screenResult = gxEl("div", ""); screenResult.id = "gxScreenResult"; trPanel.append(screenResult);
+  const layoutBtn = actionButton(trPanel, "Generate concept layouts", "secondary"); layoutBtn.id = "gxLayoutBtn";
+  const layoutBox = gxEl("div", ""); layoutBox.id = "gxLayoutBox"; trPanel.append(layoutBox);
+  const trStatus = statusLine(trPanel); trStatus.id = "gxTransformStatus";
+
+  /* ---------- Estimate ---------- */
+  const estPanel = makePanel("Conversion estimate", "Preliminary, fail-closed estimating. A total is produced only when every in-scope category has a rate with a named source — rates are planning assumptions until verified, and the estimate says so.");
+  estPanel.id = "gxEstimatePanel";
+  const demoBtn = actionButton(estPanel, "Load demonstration assumptions", "secondary"); demoBtn.id = "gxDemoRates";
+  estPanel.append(gxEl("p", "note", "Demonstration assumptions are editable planning figures labeled ASSUMPTION — not market data and not a quote."));
+  const rateBox = gxEl("div", ""); rateBox.id = "gxRateBox"; estPanel.append(rateBox);
+  const estBtn = actionButton(estPanel, "Build estimate"); estBtn.id = "gxEstBtn";
+  const estResult = gxEl("div", ""); estResult.id = "gxEstResult"; estPanel.append(estResult);
+  const estImport = actionButton(estPanel, "Add estimate lines to project budget", "secondary"); estImport.id = "gxEstImport";
+  const estStatus = statusLine(estPanel); estStatus.id = "gxEstStatus";
+
+  /* ---------- Furnish ---------- */
+  const fuPanel = makePanel("Furnish my space", "Coordinated furnishings proposed from your project catalog, checked against the room geometry. Retailer connections (Wayfair, Walmart, IKEA, Target, Home Depot) are NOT CONNECTED — no live prices, stock or purchase links are shown or invented.");
+  fuPanel.id = "gxFurnishPanel";
+  const fuBudget = field(fuPanel, "Furnishing budget ($, blank = no budget set)", numInput("gxFuBudget", "e.g. 6000"));
+  const fuQuality = field(fuPanel, "Quality level", selInput("gxFuQuality", ["value", "mid", "premium"]));
+  const fuBtn = actionButton(fuPanel, "Propose furnishings"); fuBtn.id = "gxFuBtn";
+  const fuResult = gxEl("div", ""); fuResult.id = "gxFuResult"; fuPanel.append(fuResult);
+  const fuStatus = statusLine(fuPanel); fuStatus.id = "gxFuStatus";
+
+  if (stagePlanEl) { stagePlanEl.append(trPanel, estPanel); }
+  const stageFinishEl = document.getElementById("stageFinish");
+  if (stageFinishEl) stageFinishEl.append(fuPanel);
+
+  /* ---------- Wiring ---------- */
+  if (!RV) { cNote.textContent += " (Guided engine failed to load — the rest of the studio is unaffected.)"; return; }
+  const { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish } = RV;
+
+  for (const t of conversions.CONVERSION_TEMPLATES) { const o = document.createElement("option"); o.value = t.id; o.textContent = t.label; tplSel.append(o); }
+  tplSel.value = guidedState.templateId || "garage-guest-suite";
+  const GX_DEMO_RATES = { demolition: [3, "sqft"], framing: [10, "sqft"], insulation: [3, "sqft"], drywall: [5, "sqft"], flooring: [8, "sqft"], electrical: [9, "sqft"], plumbing: [12, "sqft"], hvac: [7, "sqft"], "windows-doors": [1600, "lump"], fixtures: [2400, "lump"], finishes: [6, "sqft"], labor: [15, "sqft"], permits: [800, "lump"], contingency: [null, "lump"] };
+  function gxRenderRates() {
+    rateBox.innerHTML = "";
+    for (const cat of conversionCosts.CONVERSION_COST_CATEGORIES) {
+      const row = gxEl("div", "gx-rate-row");
+      const use = document.createElement("input"); use.type = "checkbox"; use.id = "gxUse_" + cat.id; use.checked = cat.id !== "contingency";
+      const useL = gxEl("label", "", cat.label); useL.htmlFor = use.id; useL.className = "gx-rate-use";
+      const amt = numInput("gxRate_" + cat.id, "$"); amt.step = "0.01"; amt.min = "0"; amt.setAttribute("aria-label", cat.label + " rate in dollars");
+      const unit = selInput("gxUnit_" + cat.id, ["sqft", "lump", "each"]); unit.setAttribute("aria-label", cat.label + " rate unit");
+      const src = textInput("gxSrc_" + cat.id, "Rate source (required)"); src.setAttribute("aria-label", cat.label + " rate source");
+      const conf = selInput("gxConf_" + cat.id, ["assumption", "sourced", "verified"]); conf.setAttribute("aria-label", cat.label + " rate confidence");
+      row.append(use, useL, amt, unit, src, conf); rateBox.append(row);
+      const saved = guidedState.rateBook && guidedState.rateBook.rates[cat.id];
+      if (saved) { amt.value = saved.amountCents / 100; unit.value = saved.unit; src.value = saved.source; conf.value = saved.confidence; }
+    }
+  }
+  function gxRoomDims() {
+    const w = dimension($("roomWidth").value), d = dimension($("roomDepth").value);
+    return w !== null && d !== null ? { widthIn: w, depthIn: d } : null;
+  }
+  function gxRenderConcierge() {
+    const ctx = guidedState.context;
+    cSummary.innerHTML = ""; cActions.innerHTML = "";
+    if (!ctx) { cJourney.textContent = "Journey: Describe → Discover → Capture → Design → Transform → Estimate → Furnish → Review → Export. Tell the concierge what you want to begin."; return; }
+    const chips = [];
+    if (ctx.objective) chips.push("Objective: " + ctx.objective);
+    if (ctx.conversionType) { const t = conversions.getConversionTemplate(ctx.conversionType); if (t) chips.push(t.label); }
+    if (ctx.style) { const st = RV.designLibrary.getDesignStyle(ctx.style); chips.push("Style: " + (st ? st.name : ctx.style)); }
+    if (ctx.budgetCents) chips.push("Budget: " + gxMoney(ctx.budgetCents));
+    for (const c of chips) { const s = gxEl("span", "pill", c); cSummary.append(s, document.createTextNode(" ")); }
+    const acts = concierge.nextActions(ctx);
+    if (acts.length) cActions.append(gxEl("p", "note", "Recommended next steps:"));
+    const targets = { describe: "gxConciergePanel", discover: "stageProject", capture: "stageVision", design: "stageConcept", transform: "gxTransformPanel", estimate: "gxEstimatePanel", furnish: "gxFurnishPanel", review: "stageFinish", export: "stageFinish" };
+    for (const a of acts) {
+      const b = gxEl("button", "secondary", a.label); b.type = "button";
+      b.onclick = () => { const el = document.getElementById(targets[a.stage] || "stagePlan"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      const line = gxEl("div", ""); line.append(b, gxEl("span", "note", " " + (a.reason || ""))); cActions.append(line);
+    }
+    cJourney.textContent = "Journey stage: " + ctx.stage + " · Decisions remembered: " + ctx.decisions.length + " · Still needed: " + (ctx.missing && ctx.missing.length ? ctx.missing.join(", ") : "nothing outstanding") + ".";
+  }
+  cBtn.onclick = () => {
+    const text = cInput.value.trim(); if (!text) { cSummary.textContent = "Describe your project first."; return; }
+    try {
+      const intent = concierge.parseIntent(text);
+      guidedState.context = concierge.applyIntent(guidedState.context || concierge.createConciergeContext(activeProjectId || "draft"), intent);
+      if (intent.conversionType) { guidedState.templateId = intent.conversionType; tplSel.value = intent.conversionType; gxRenderScreening(); }
+      if (intent.style) { const st = RV.designLibrary.getDesignStyle(intent.style); const styleName = st ? st.name : intent.style; const match = [...$("designStyle").options].find((o) => o.text.toLowerCase() === styleName.toLowerCase()); if (match) { $("designStyle").value = match.value; $("designStyle").dispatchEvent(new Event("change")); } }
+      gxRenderConcierge();
+    } catch (e) { cSummary.textContent = "The concierge could not use that: " + e.message; }
+  };
+  propBtn.onclick = () => {
+    try {
+      let profile = guidedState.property || propertyProfile.createPropertyProfile(propAddr.value.trim());
+      profile.address = propAddr.value.trim();
+      for (const [key] of factDefs) {
+        const { inp, prov } = factInputs[key];
+        const v = inp.value === "" ? null : Number(inp.value);
+        profile = propertyProfile.setPropertyFact(profile, key, v, v === null ? "unknown" : prov.value);
+      }
+      guidedState.property = profile;
+      const s = propertyProfile.summarizePropertyProfile(profile);
+      propSummary.innerHTML = "";
+      for (const f of s.facts) { const line = gxEl("p", "status", f.key + ": " + (f.value === null ? "unknown" : f.value) + " · source: " + f.provenance); propSummary.append(line); }
+      propSummary.append(gxEl("p", "note", "Geocoding: UNAVAILABLE · Property records: UNAVAILABLE — no data was fetched or inferred."));
+      propStatus.textContent = "Property facts saved with this project (use Save workspace).";
+    } catch (e) { propStatus.textContent = "Not saved: " + e.message; }
+  };
+  let gxPlanFileObj = null;
+  planReg.onclick = async () => {
+    const f = planFile.files && planFile.files[0]; if (!f) { planStatus.textContent = "Choose a plan file first."; return; }
+    try {
+      const buf = await f.arrayBuffer();
+      const hash = await crypto.subtle.digest("SHA-256", buf);
+      const digest = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      gxPlanFileObj = planIngestion.createPlanUpload({ fileName: f.name, mediaType: f.type || "application/pdf", sizeBytes: f.size, digest });
+      guidedState.planUploads = [gxPlanFileObj, ...guidedState.planUploads.filter((u) => u.id !== gxPlanFileObj.id)];
+      planStatus.textContent = "Registered " + gxPlanFileObj.fileName + " · revision 1 (original preserved) · digest " + digest.slice(0, 12) + "… · automated detection NOT AVAILABLE — confirm dimensions below.";
+    } catch (e) { planStatus.textContent = "Registration failed: " + e.message; }
+  };
+  planConfirm.onclick = () => {
+    if (!gxPlanFileObj) { planStatus.textContent = "Register a plan first."; return; }
+    try {
+      gxPlanFileObj = planIngestion.confirmPlanDimensions(gxPlanFileObj, { widthIn: Number(pw.value), depthIn: Number(pd.value), source: psrc.value });
+      guidedState.planUploads = guidedState.planUploads.map((u) => u.id === gxPlanFileObj.id ? gxPlanFileObj : u);
+      planStatus.textContent = "Dimensions confirmed (" + pw.value + " × " + pd.value + " in, source: " + psrc.value + ").";
+    } catch (e) { planStatus.textContent = "Not confirmed: " + e.message; }
+  };
+  planApply.onclick = () => {
+    const g = gxPlanFileObj && planIngestion.planToRoomGeometry(gxPlanFileObj);
+    if (!g) { planStatus.textContent = "Confirm the plan dimensions first."; return; }
+    $("roomWidth").value = g.widthIn; $("roomDepth").value = g.depthIn;
+    $("roomWidth").dispatchEvent(new Event("change")); $("roomDepth").dispatchEvent(new Event("change"));
+    drawFloorPlan(); window.__rvRoomConfirmed = true; planStatus.textContent = "Room geometry set from the confirmed plan dimensions.";
+  };
+  function gxRenderScreening() {
+    const t = conversions.getConversionTemplate(tplSel.value); if (!t) return;
+    guidedState.templateId = t.id;
+    screenBox.innerHTML = "";
+    for (const q of t.screening) {
+      const wrap = gxEl("div");
+      const sel = selInput("gxQ_" + q.id, ["", "yes", "no", "unknown"]); sel.dataset.qid = q.id;
+      field(wrap, q.topic + " — " + q.question, sel); screenBox.append(wrap);
+      if (guidedState.screening && guidedState.screening.answers && guidedState.screening.answers[q.id]) sel.value = guidedState.screening.answers[q.id];
+    }
+  }
+  tplSel.onchange = () => { gxRenderScreening(); screenResult.innerHTML = ""; layoutBox.innerHTML = ""; };
+  screenBtn.onclick = () => {
+    const t = conversions.getConversionTemplate(tplSel.value); if (!t) return;
+    const answers = {};
+    screenBox.querySelectorAll("select").forEach((s) => { if (s.value) answers[s.dataset.qid] = s.value; });
+    const res = conversions.screenFeasibility(t, answers);
+    guidedState.screening = { templateId: t.id, answers, result: res };
+    if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "feasibility", true, "customer"); } catch (e) {} }
+    screenResult.innerHTML = "";
+    for (const f of res.flags) { const line = gxEl("p", "status", ""); const tag = gxEl("span", "tag", f.level.replace("_", " ")); line.append(tag, document.createTextNode(" " + f.topic + " — " + f.note)); screenResult.append(line); }
+    screenResult.append(gxEl("p", "note", res.disclaimer));
+    gxRenderConcierge();
+  };
+  layoutBtn.onclick = () => {
+    const t = conversions.getConversionTemplate(tplSel.value); const dims = gxRoomDims();
+    if (!t) return;
+    if (!dims) { trStatus.textContent = "Enter the room width and depth in the planner (or confirm plan dimensions) first — layouts are generated only from confirmed dimensions."; return; }
+    const layouts = conversions.generateConceptLayouts(t, dims);
+    if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "measurements", true, "customer"); } catch (e) {} }
+    guidedState.layouts = layouts;
+    layoutBox.innerHTML = "";
+    for (const layout of layouts) {
+      const card = gxEl("div", "gx-layout-card");
+      card.append(gxEl("h4", "", layout.name));
+      const stage = gxEl("div", "gx-layout-stage"); stage.style.aspectRatio = (dims.widthIn / dims.depthIn).toFixed(3);
+      for (const item of layout.items) {
+        const b = gxEl("div", item.kind === "zone" ? "gx-zone" : "gx-furn-block", item.label);
+        b.style.left = (item.x / dims.widthIn * 100) + "%"; b.style.top = (item.y / dims.depthIn * 100) + "%";
+        b.style.width = (item.width / dims.widthIn * 100) + "%"; b.style.height = (item.depth / dims.depthIn * 100) + "%";
+        stage.append(b);
+      }
+      card.append(stage, gxEl("p", "note", layout.disclosure));
+      const use = gxEl("button", "secondary", "Use this layout in the planner"); use.type = "button";
+      use.onclick = () => {
+        for (const item of layout.items) {
+          if (item.kind === "furniture") furnitureItems.push({ name: item.label, retailer: "", url: "", width: item.width, depth: item.depth, priceCents: 0, x: item.x, y: item.y, rotated: false });
+          else obstacles.push({ type: "fixed", x: item.x, y: item.y, width: item.width, depth: item.depth });
+        }
+        drawFloorPlan(); updateFurniturePlan();
+        trStatus.textContent = "Layout applied to the planner as editable blocks and zones. Verify every dimension before relying on it.";
+      };
+      card.append(use); layoutBox.append(card);
+    }
+    trStatus.textContent = "Two conceptual alternatives generated from the confirmed room dimensions.";
+  };
+  demoBtn.onclick = () => {
+    gxRenderRates();
+    for (const [id, [amt, unit]] of Object.entries(GX_DEMO_RATES)) {
+      if (amt === null) continue;
+      $("gxRate_" + id).value = amt; $("gxUnit_" + id).value = unit;
+      $("gxSrc_" + id).value = "Demonstration planning assumptions — not market data"; $("gxConf_" + id).value = "assumption";
+    }
+    estStatus.textContent = "Demonstration assumptions loaded (editable). They are labeled ASSUMPTION and are not a quote.";
+  };
+  estBtn.onclick = () => {
+    const dims = gxRoomDims();
+    if (!dims) { estStatus.textContent = "Enter confirmed room dimensions in the planner first — the estimate needs an area."; return; }
+    try {
+      let book = conversionCosts.createRateBook();
+      const required = [];
+      for (const cat of conversionCosts.CONVERSION_COST_CATEGORIES) {
+        if (!$("gxUse_" + cat.id).checked) continue;
+        required.push(cat.id);
+        const amt = $("gxRate_" + cat.id).value;
+        if (amt === "") continue;
+        book = conversionCosts.setRate(book, cat.id, { amountCents: Math.round(Number(amt) * 100), unit: $("gxUnit_" + cat.id).value, source: $("gxSrc_" + cat.id).value, sourceDate: new Date().toISOString().slice(0, 10), confidence: $("gxConf_" + cat.id).value });
+      }
+      guidedState.rateBook = book;
+      const areaSqFt = dims.widthIn * dims.depthIn / 144;
+      const est = conversionCosts.buildConversionEstimate({ areaSqFt, rateBook: book, requiredCategories: required, quantities: {} });
+      guidedState.estimate = est;
+      if (guidedState.context) { try { guidedState.context = concierge.recordDecision(guidedState.context, "measurements", true, "customer"); guidedState.context = concierge.recordDecision(guidedState.context, "estimateRates", true, "customer"); gxRenderConcierge(); } catch (e) {} }
+      estResult.innerHTML = "";
+      if (est.status !== "estimated") {
+        estResult.append(gxEl("p", "status", "No total yet — the estimate is incomplete (fail-closed). Missing rates for: " + (est.missing || []).join(", ") + "."));
+      } else {
+        const tbl = gxEl("table", "");
+        tbl.innerHTML = "<tr><th>Category</th><th>Basis</th><th>Amount</th></tr>";
+        for (const line of est.lines) { const tr = document.createElement("tr"); tr.innerHTML = "<td></td><td></td><td></td>"; tr.children[0].textContent = line.categoryId; tr.children[1].textContent = line.basis; tr.children[2].textContent = gxMoney(line.amountCents); tbl.append(tr); }
+        estResult.append(tbl);
+        estResult.append(gxEl("p", "status", "Subtotal " + gxMoney(est.subtotalCents) + " · Total " + gxMoney(est.totalCents) + " · Confidence: " + est.confidence + " · Estimated " + String(est.estimatedAt).slice(0, 10)));
+        for (const a of est.assumptions || []) estResult.append(gxEl("p", "note", a));
+        estResult.append(gxEl("p", "note", est.disclaimer));
+        if (guidedState.context) for (const line of concierge.explainTradeoffs(guidedState.context, est)) estResult.append(gxEl("p", "status", line));
+      }
+      estStatus.textContent = "Estimate built from the rates above. Use Save workspace to keep it with the project.";
+    } catch (e) { estStatus.textContent = "Estimate not built: " + e.message; }
+  };
+  estImport.onclick = () => {
+    const est = guidedState.estimate;
+    if (!est || est.status !== "estimated") { estStatus.textContent = "Build a complete estimate first."; return; }
+    const lines = conversionCosts.estimateToBudgetLines(est);
+    const base = wsBudget || { currency: "USD", totalBudgetCents: guidedState.context && guidedState.context.budgetCents ? guidedState.context.budgetCents : null, allocations: {}, lines: [] };
+    wsBudget = { ...base, lines: [...(base.lines || []), ...lines] };
+    renderBudget();
+    estStatus.textContent = lines.length + " estimate lines added to the project budget below.";
+  };
+  fuBtn.onclick = () => {
+    const dims = gxRoomDims();
+    if (!dims) { fuStatus.textContent = "Enter confirmed room dimensions in the planner first — fit checks need the real geometry."; return; }
+    try {
+      const budgetRaw = fuBudget.value;
+      const request = furnish.createFurnishRequest({ roomId: $("roomId").value.trim() || "room", style: $("designStyle").value || null, budgetCents: budgetRaw === "" ? null : Math.round(Number(budgetRaw) * 100), quality: fuQuality.value });
+      const proposal = furnish.proposeFurnishing({ request, products: wsProducts, room: { widthIn: dims.widthIn, depthIn: dims.depthIn, clearanceIn: Number($("clearance").value) || 0 } });
+      guidedState.furnishRequest = request; guidedState.furnishProposal = proposal;
+      gxRenderFurnish();
+      fuStatus.textContent = wsProducts.length ? "Proposal built from your project catalog." : "Your project catalog is empty — add products in the catalog panel and they will be proposed here with fit checks.";
+    } catch (e) { fuStatus.textContent = "Proposal failed: " + e.message; }
+  };
+  function gxRenderFurnish() {
+    const p = guidedState.furnishProposal; if (!p) return;
+    fuResult.innerHTML = "";
+    if (!p.selections.length) fuResult.append(gxEl("p", "status", "No products selected yet."));
+    for (const s of p.selections) {
+      const line = gxEl("p", "status", "");
+      const fitTxt = s.fit && s.fit.status ? s.fit.status : "unknown";
+      let tierTxt = "";
+      try {
+        const prod = (p._selectedProducts || []).find((x) => x.productId === s.productId) || s;
+        const tier = window.RV && window.RV.fitTiers ? window.RV.fitTiers.assessFit({ product: prod, room: { widthIn: Number($("roomWidth").value) || 0, depthIn: Number($("roomDepth").value) || 0, clearanceIn: Number($("clearance").value) || 0, confirmed: !!window.__rvRoomConfirmed } }) : null;
+        if (tier) tierTxt = " · tier: " + tier.tier.replaceAll("_", " ");
+      } catch (e) { /* tier is additive detail; the base fit status already renders */ }
+      const tagSpan = gxEl("span", "tag", "fit: " + fitTxt + tierTxt);
+      if (tierTxt) { const tl = tierTxt.toUpperCase(); tagSpan.className = "tag vx-tier " + (tl.includes("VERIFIED FIT") ? "vx-tier-verified" : tl.includes("POTENTIAL") ? "vx-tier-potential" : tl.includes("DOES NOT FIT") ? "vx-tier-no" : "vx-tier-unknown"); }
+      line.append(tagSpan, document.createTextNode(" " + s.name + " (" + s.category + ") — " + gxMoney(s.priceCents)));
+      const swapAlts = (typeof wsProducts !== "undefined" ? wsProducts : []).filter((x) => x.productId !== s.productId && x.priceCents !== null && x.priceCents !== undefined);
+      if (swapAlts.length) {
+        const swapSel = document.createElement("select"); swapSel.setAttribute("aria-label", "Replace " + s.name + " with another catalog product"); swapSel.style.marginLeft = "8px";
+        const keep = document.createElement("option"); keep.value = ""; keep.textContent = "Replace with…"; swapSel.append(keep);
+        for (const alt of swapAlts) { const o = document.createElement("option"); o.value = alt.productId; o.textContent = alt.name + " — " + gxMoney(alt.priceCents); swapSel.append(o); }
+        swapSel.onchange = () => {
+          const alt = swapAlts.find((x) => x.productId === swapSel.value); if (!alt) return;
+          const budgetBefore = (p.totalCents || 0) + (p.remainingCents || 0);
+          s.productId = alt.productId; s.name = alt.name; s.priceCents = alt.priceCents; s.category = alt.type || alt.category || s.category; s.fit = null;
+          if (Array.isArray(p._selectedProducts)) { const ix = p._selectedProducts.findIndex((x) => x.productId === alt.productId); if (ix < 0) p._selectedProducts.push(alt); }
+          p.totalCents = p.selections.reduce((a, x) => a + (x.priceCents || 0), 0);
+          p.remainingCents = budgetBefore - p.totalCents;
+          gxRenderFurnish();
+        };
+        line.append(swapSel);
+      }
+      fuResult.append(line);
+    }
+    fuResult.append(gxEl("p", "status", "Total: " + gxMoney(p.totalCents) + (p.remainingCents !== null && p.remainingCents !== undefined ? " · Remaining: " + gxMoney(p.remainingCents) : "")));
+    for (const n of p.notes || []) fuResult.append(gxEl("p", "note", n));
+    if (p.unfilledCategories && p.unfilledCategories.length) fuResult.append(gxEl("p", "note", "No catalog product yet for: " + p.unfilledCategories.join(", ") + "."));
+    fuResult.append(gxEl("p", "note", "Retailer connections are UNAVAILABLE — these are your catalog products with their recorded sources; verify price and availability with the retailer before purchase."));
+  }
+  window.gxRenderAll = function () {
+    gxRenderConcierge(); gxRenderRates(); gxRenderScreening();
+    if (guidedState.property) { propAddr.value = guidedState.property.address || ""; for (const [key] of factDefs) { const f = guidedState.property.facts[key]; if (f !== null && f !== undefined) factInputs[key].inp.value = f; const pv = guidedState.property.provenance[key]; if (pv && pv !== "unknown") factInputs[key].prov.value = pv; } }
+    if (guidedState.estimate) estStatus.textContent = "Estimate restored from the saved workspace.";
+    if (guidedState.furnishProposal) gxRenderFurnish();
+    if (guidedState.screening) screenBtn.click();
+  };
+  gxRenderRates(); gxRenderScreening(); gxRenderConcierge();
+}
+if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuildPanels, { once: true });
+
+
+/* ==== Visual-first studio (founder directive 2026-11-19): START/DESIGN/TRANSFORM/FURNISH/REVIEW/EXPORT,
+   Design Harmony Engine UI, optional assistant, Deal Scout scope import. Additive: reuses the certified
+   panels and engines; the manual journey never depends on this block. ==== */
+(function rvVisualStudio() {
+  var css = ".vx-stage{margin:0 0 8px;scroll-margin-top:64px}.vx-stage-head{display:flex;align-items:baseline;gap:12px;margin:26px 0 4px}.vx-stage-head .n{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.14em;color:var(--accent)}"
+  + ".vx-stage-head h2{font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:600;margin:0;color:var(--ink)}"
+  + ".vx-start-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}"
+  + ".vx-start-card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;font:inherit;color:var(--ink)}"
+  + ".vx-start-card:hover{border-color:var(--accent)} .vx-start-card strong{display:block;font-family:Fraunces,Georgia,serif;font-size:20px;margin-bottom:6px}"
+  + ".vx-start-card span{color:var(--ink-2);font-size:13px;line-height:1.5;display:block}"
+  + ".vx-alt{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px}"
+  + ".vx-family-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-family-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%}"
+  + ".vx-family-card[aria-pressed='true']{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}"
+  + ".vx-swatches{display:flex;height:44px;border-radius:8px;overflow:hidden;margin-bottom:8px}.vx-swatches i{flex:1}"
+  + ".vx-family-card strong{display:block;font-size:13px}.vx-family-card small{color:var(--ink-2);font-size:11px;line-height:1.4;display:block}"
+  + ".vx-chiprow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}"
+  + ".vx-swatch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;margin:10px 0}"
+  + ".vx-swatch{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);cursor:pointer;padding:0;font:inherit;text-align:left;color:var(--ink);width:100%}"
+  + ".vx-swatch i{display:block;height:44px}.vx-swatch span{display:block;font-size:11px;padding:6px 8px}.vx-swatch small{display:block;font-size:10px;color:var(--ink-2);padding:0 8px 6px}"
+  + ".vx-combo{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.vx-combo div{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;overflow:hidden}"
+  + ".vx-combo i{display:block;height:52px}.vx-combo span{display:block;font-size:11px;padding:6px 8px;background:var(--card)}"
+  + ".vx-findings{margin:8px 0}.vx-findings li{margin:3px 0}"
+  + ".vx-hero{position:relative;border-radius:16px;overflow:hidden;margin:14px 0 4px;min-height:180px;background:#2c2620 center/cover no-repeat;display:flex;align-items:flex-end}"
+  + ".vx-hero-in{padding:22px 24px;color:#fdfbf7;background:linear-gradient(0deg,rgba(24,20,16,.72),rgba(24,20,16,0) 70%);width:100%}"
+  + ".vx-hero-in strong{display:block;font-family:Fraunces,Georgia,serif;font-size:30px;font-weight:600;line-height:1.15}"
+  + ".vx-hero-in span{display:block;margin-top:6px;font-size:14px;opacity:.92;max-width:560px;line-height:1.5}"
+  + ".vx-ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:16px;margin:12px 0}"
+  + ".vx-gcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0;overflow:hidden;cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%}"
+  + ".vx-gcard:hover{border-color:var(--accent)} .vx-gcard[aria-pressed='true']{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}"
+  + ".vx-gcard img{display:block;width:100%;height:168px;object-fit:cover}"
+  + ".vx-gph{height:168px;background:repeating-linear-gradient(45deg,#e9eff3,#e9eff3 10px,#f3eee5 10px,#f3eee5 20px);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px;letter-spacing:.08em}"
+  + ".vx-gbody{padding:12px 14px 14px}.vx-gbody strong{display:block;font-size:15px;margin-bottom:4px}.vx-gbody small{color:var(--ink-2);font-size:12px;line-height:1.45;display:block}"
+  + ".vx-gbody .vx-swatches{height:10px;margin:10px 0 8px}.vx-gdir{font-size:11px;color:var(--ink-2);line-height:1.5}"
+  + ".vx-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}"
+  + ".vx-tile h4{margin:0;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}"
+  + ".vx-tvis{height:58px;border-radius:10px;margin:10px 0 8px;border:1px solid var(--line)}"
+  + ".vx-tval{font-size:12px;color:var(--ink-2);line-height:1.45;min-height:34px}"
+  + ".vx-talts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.vx-talts button{font-size:11px;padding:5px 8px}"
+  + ".vx-talts i{display:inline-block;width:18px;height:18px;border-radius:5px;border:1px solid var(--line);vertical-align:middle}"
+  + ".vx-lockbtn{font-size:11px;padding:4px 8px}.vx-lockbtn[aria-pressed='true']{background:var(--accent);color:#fff;border-color:var(--accent)}"
+  + ".vx-tier{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em}"
+  + ".vx-tier-verified{background:#1e5c3a;color:#fff}.vx-tier-potential{background:#b97f16;color:#fff}.vx-tier-unknown{background:#6b7280;color:#fff}.vx-tier-no{background:#fff;color:#b3261e;border:1px solid #b3261e}"
+  + ".vx-review-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0}"
+  + ".vx-review-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.vx-review-card h4{margin:0 0 6px;font-size:13px}.vx-review-card p{margin:3px 0;font-size:12px;color:var(--ink-2);line-height:1.5}"
+  + ".vx-export-list{margin:8px 0;padding-left:18px}.vx-export-list li{margin:4px 0;font-size:13px}"
+  + ".vx-gcard:focus-visible,.vx-start-card:focus-visible,.vx-swatch:focus-visible,.vx-tile button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"
+  + "#floorPlan{height:min(460px,62vh)!important}"
+  + "@media (max-width:760px){.vx-start-grid{grid-template-columns:1fr}.vx-hero-in strong{font-size:24px}.vx-board{grid-template-columns:1fr 1fr}#floorPlan{height:300px!important}}"
+  + "@media (max-width:520px){.vx-board{grid-template-columns:1fr}.vx-ggrid{grid-template-columns:1fr}}"
+  + "@media (prefers-reduced-motion:reduce){.vx-stage *,#journeyStrip *{transition:none!important}html{scroll-behavior:auto!important}}";
+  var styleEl = document.createElement("style"); styleEl.textContent = css; document.head.appendChild(styleEl);
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+  function stageWrap(id, num, title) {
+    var w = document.createElement("section"); w.className = "vx-stage"; w.id = id;
+    var head = el("div", "vx-stage-head"); head.append(el("span", "n", num), el("h2", "", title)); w.append(head); return w;
+  }
+  function scrollTo(node) { if (node) node.scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+  /* --- Reorganization + panel construction run on rv-ready, AFTER the guided block has built its
+     panels (its insertions assume the certified stage blocks are still children of <main>). --- */
+  var harmonyPanel, dsPanel, dsStatus, dsText, dsBtn, dsResult, famGrid, comboBox, atmoSel, paintChips, swatchGrid, selLine, lockBtn, harmonyStatus, proposalBox, verLabel, verBtn, verList, boardGrid, reviewGrid, exportList;
+  var conciergePanel = null, reopenBtn = null;
+  function field2(label, input) { var w = el("div", "field"); var l = el("label", "", label); l.htmlFor = input.id || ""; w.append(l, input); return w; }
+  function vxBuild() {
+  /* --- Reorganize the certified blocks into the six-stage journey (moves only; nothing removed) --- */
+  var main = document.querySelector("main");
+  var stageProject = $("stageProject"), stageVision = $("stageVision"), stagePlan = $("stagePlan"), stageFinish = $("stageFinish");
+  var propPanel = $("gxPropertyPanel"), transformPanel = $("gxTransformPanel"), furnishPanel = $("gxFurnishPanel"), estimatePanel = $("gxEstimatePanel");
+  var startWrap = stageWrap("stageStart", "01", "Start");
+  var designWrap = stageWrap("stageDesign", "02", "Design");
+  var transformWrap = stageWrap("stageTransform", "03", "Transform");
+  var furnishWrap = stageWrap("stageFurnish", "04", "Furnish");
+  var reviewWrap = stageWrap("stageReview", "05", "Review");
+  var exportWrap = stageWrap("stageExport", "06", "Export");
+  if (main && stageProject) {
+    main.insertBefore(startWrap, stageProject);
+    main.insertBefore(designWrap, stageProject);
+    main.insertBefore(transformWrap, stageProject);
+    main.insertBefore(furnishWrap, stageProject);
+    main.insertBefore(reviewWrap, stageProject);
+    main.insertBefore(exportWrap, stageProject);
+    var startGrid = el("div", "vx-start-grid");
+    var cardPlan = el("button", "vx-start-card"); cardPlan.type = "button"; cardPlan.id = "vxStartPlan";
+    cardPlan.append(el("strong", "", "Upload floor plan"), el("span", "", "PDF or image. Your original is preserved, and you confirm the measurements yourself — nothing is guessed from a drawing."));
+    var cardAddr = el("button", "vx-start-card"); cardAddr.type = "button"; cardAddr.id = "vxStartAddress";
+    cardAddr.append(el("strong", "", "Enter property address"), el("span", "", "Start from the property itself. Only information you provide or verify is recorded — an address alone never invents room sizes."));
+    startGrid.append(cardPlan, cardAddr);
+    var hero = el("div", "vx-hero"); hero.setAttribute("role", "img"); hero.setAttribute("aria-label", "Warm modern living room in warm ivory and natural oak — RENOVISION style inspiration");
+    hero.style.backgroundImage = "url(/assets/styles/warm-modern.jpg)";
+    var heroIn = el("div", "vx-hero-in");
+    heroIn.append(el("strong", "", "Design a home you love."), el("span", "", "Begin with a floor plan or your address. Choose an atmosphere, coordinate paint and materials, furnish with confidence — and watch one cohesive design take shape."));
+    hero.append(heroIn); startWrap.append(hero); startWrap.append(startGrid);
+    var altRow = el("div", "vx-alt");
+    var altPhoto = el("button", "secondary", "Start with a room photo"); altPhoto.type = "button"; altPhoto.id = "vxStartPhoto";
+    var altRoom = el("button", "secondary", "Create a room manually"); altRoom.type = "button"; altRoom.id = "vxStartRoom";
+    altRow.append(altPhoto, altRoom); startWrap.append(altRow);
+    if (propPanel) startWrap.append(propPanel);
+    startWrap.append(stageProject);
+    cardPlan.onclick = function () { var f = $("gxPlanFile"); if (f) f.click(); else scrollTo(propPanel); };
+    cardAddr.onclick = function () { var a = $("gxPropAddress"); if (a) { scrollTo(propPanel); a.focus(); } };
+    altPhoto.onclick = function () { scrollTo(stageVision); };
+    altRoom.onclick = function () { scrollTo(stageProject); };
+    var matSection = null;
+    main.querySelectorAll(":scope > section.panel").forEach(function (s) { var h = s.querySelector("h3"); if (h && h.textContent.indexOf("Material library") === 0) matSection = s; });
+    if (matSection) designWrap.append(matSection);
+    var plannerSection = document.getElementById("interiorPlanner");
+    if (plannerSection) transformWrap.append(plannerSection);
+    if (stageVision) transformWrap.append(stageVision);
+    if (transformPanel) transformWrap.append(transformPanel);
+    var catalogPanel = null;
+    main.querySelectorAll(":scope > section.panel").forEach(function (s) { if (s.id === "catalogPanel") catalogPanel = s; });
+    if (furnishPanel) furnishWrap.append(furnishPanel);
+    if (catalogPanel) furnishWrap.append(catalogPanel);
+    var reviewBoard = makePanel("Your design at a glance", "The selected design, coordinated materials, furnishing plan and budget — one coherent picture. Open the panels below only when you want the underlying detail.");
+    reviewGrid = el("div", "vx-review-grid"); reviewGrid.id = "vxReviewGrid"; reviewBoard.append(reviewGrid);
+    reviewWrap.append(reviewBoard);
+    if (stagePlan) reviewWrap.append(stagePlan);
+    if (estimatePanel && estimatePanel.parentElement !== reviewWrap) { /* estimate already lives inside stagePlan */ }
+    var budgetPanel = document.getElementById("budgetPanel"); if (budgetPanel) reviewWrap.append(budgetPanel);
+    if (stageFinish) exportWrap.append(stageFinish);
+    var exportPanel = makePanel("Your project package", "Everything RENOVISION can actually deliver today, assembled from your project. The downloads above are the supported exports — no other formats are claimed.");
+    exportList = el("ul", "vx-export-list"); exportList.id = "vxExportList"; exportPanel.append(exportList);
+    exportWrap.append(exportPanel);
+    [stageVision, stagePlan, stageFinish].forEach(function (b) { if (!b) return; var h = b.querySelector(".stage-head"); if (h) h.style.display = "none"; });
+    var spHead = stageProject.querySelector(".chapter"); if (spHead) spHead.textContent = "Or begin with a room";
+    var view3d = el("a", "secondary", "Open the 3D Asset Studio"); view3d.href = "/3d-viewer"; view3d.target = "_blank"; view3d.rel = "noopener"; view3d.id = "vxView3d"; view3d.style.display = "inline-block"; view3d.style.margin = "10px 0";
+    var view3dNote = el("p", "note", "Real interactive 3D for room shells and design assets. It is not a photorealistic render of your room, and RENOVISION does not present it as one.");
+    furnishWrap.append(view3d, view3dNote);
+  }
+
+  /* --- Rail anchors for the six stages --- */
+  var vxTargets = ["stageStart", "stageDesign", "stageTransform", "stageFurnish", "stageReview", "stageExport"];
+  function vxWireRail() {
+    var strip = $("journeyStrip"); if (!strip) return;
+    strip.querySelectorAll("li").forEach(function (li, i) {
+      li.style.cursor = "pointer";
+      li.addEventListener("click", function () { var t = document.getElementById(vxTargets[i]); if (t) scrollTo(t); });
+    });
+  }
+  var vxObs = new MutationObserver(function () { vxWireRail(); });
+  var stripNode = $("journeyStrip"); if (stripNode) { vxObs.observe(stripNode, { childList: true }); vxWireRail(); }
+
+  /* --- Optional assistant: open/close control (the manual journey never depends on it) --- */
+  conciergePanel = document.getElementById("gxConciergePanel");
+  reopenBtn = el("button", "secondary", "Show design assistant"); reopenBtn.type = "button"; reopenBtn.id = "vxAssistantOpen"; reopenBtn.style.display = "none";
+  vxSetAssistantImpl = function (open) {
+    assistantOpen = !!open;
+    if (conciergePanel) conciergePanel.style.display = assistantOpen ? "" : "none";
+    reopenBtn.style.display = assistantOpen ? "none" : "";
+    try { guidedState.assistantOpen = assistantOpen; } catch (e) {}
+  };
+  if (conciergePanel) {
+    var hideBtn = el("button", "secondary", "Hide assistant"); hideBtn.type = "button"; hideBtn.id = "vxAssistantHide";
+    hideBtn.onclick = function () { vxSetAssistant(false); };
+    conciergePanel.append(hideBtn);
+    conciergePanel.parentElement.insertBefore(reopenBtn, conciergePanel);
+    reopenBtn.onclick = function () { vxSetAssistant(true); scrollTo(conciergePanel); };
+  }
+
+  /* --- Design Harmony panel --- */
+  harmonyPanel = makePanel("Design harmony", "Choose a style family and every suggestion — paint, flooring, cabinetry, lighting, furniture — is coordinated around it. Suggestions, never restrictions: you can override anything, and approved selections are locked against silent changes.");
+  harmonyPanel.id = "vxHarmonyPanel";
+  if (designWrap) designWrap.append(harmonyPanel);
+  famGrid = el("div", "vx-family-grid"); famGrid.id = "vxFamilyGrid"; harmonyPanel.append(famGrid);
+  comboBox = el("div"); comboBox.id = "vxComboBox"; harmonyPanel.append(comboBox);
+  atmoSel = selInput("vxAtmosphere", ["", "warm", "elegant", "airy", "cozy", "dramatic", "sophisticated", "natural", "contemporary", "calm"]);
+  harmonyPanel.append(field2("Browse paint by atmosphere", atmoSel));
+  paintChips = el("div", "vx-chiprow"); paintChips.id = "vxPaintChips"; harmonyPanel.append(paintChips);
+  swatchGrid = el("div", "vx-swatch-grid"); swatchGrid.id = "vxSwatchGrid"; harmonyPanel.append(swatchGrid);
+  selLine = el("p", "status", ""); selLine.id = "vxSelectionLine"; harmonyPanel.append(selLine);
+  lockBtn = el("button", "secondary", "Lock wall color"); lockBtn.type = "button"; lockBtn.id = "vxLockPaint"; harmonyPanel.append(lockBtn);
+  harmonyStatus = el("div"); harmonyStatus.id = "vxHarmonyStatus"; harmonyPanel.append(harmonyStatus);
+  proposalBox = el("div"); proposalBox.id = "vxProposalBox"; harmonyPanel.append(proposalBox);
+  verLabel = textInput("vxVersionLabel", "Version label (e.g. Warm modern v1)");
+  verBtn = el("button", "secondary", "Save design version"); verBtn.type = "button"; verBtn.id = "vxSaveVersion";
+  harmonyPanel.append(field2("Design versions", verLabel), verBtn);
+  verList = el("div"); verList.id = "vxVersionList"; harmonyPanel.append(verList);
+  harmonyPanel.append(el("h3", "", "Design harmony board"));
+  harmonyPanel.append(el("p", "note", "Every coordinated element of your design, together. Alternatives come from the style families — blend freely; locked elements are never overwritten silently, and screen colors and finishes are approximate."));
+  boardGrid = el("div", "vx-board"); boardGrid.id = "vxBoard"; harmonyPanel.append(boardGrid);
+  harmonyPanel.append(el("p", "note", "Paint colors are digital references and read approximately on screen; they are not manufacturer products. Verify against a physical sample before purchasing paint."));
+  /* --- Deal Scout scope panel (Review) --- */
+  dsPanel = makePanel("Deal Scout renovation scope", "Deal Scout owns general renovation scope. RENOVISION imports an approved scope document with its provenance and never regenerates or edits it.");
+  dsPanel.id = "vxDealScoutPanel";
+  if (reviewWrap) reviewWrap.append(dsPanel);
+  dsStatus = el("p", "status", ""); dsStatus.id = "vxDsStatus"; dsPanel.append(dsStatus);
+  dsText = document.createElement("textarea"); dsText.id = "vxDsJson"; dsText.rows = 5; dsText.placeholder = "Paste an approved Deal Scout scope document (renovision-deal-scout-scope/v1)"; dsText.setAttribute("aria-label", "Deal Scout scope document");
+  dsPanel.append(dsText);
+  dsBtn = el("button", "", "Import scope"); dsBtn.type = "button"; dsBtn.id = "vxDsImport"; dsPanel.append(dsBtn);
+  dsResult = el("div"); dsResult.id = "vxDsResult"; dsPanel.append(dsResult);
+
+  lockBtn.onclick = function () { if (!H || !designState) return; designState = designState.locked && designState.locked.paintHex ? H.unlockSelection(designState, "paintHex") : H.lockSelection(designState, "paintHex"); renderHarmonyStatus(); };
+  verBtn.onclick = function () { if (!H || !designState) return; var label = verLabel.value.trim() || "Design version"; designState = H.saveVersion(designState, label); verLabel.value = ""; renderVersions(); renderHarmonyStatus(); };
+  atmoSel.onchange = function () { renderSwatches(); };
+  dsBtn.onclick = function () {
+    if (!window.RV || !window.RV.dealScout) { dsStatus.textContent = "Scope tools are still loading."; return; }
+    try { var doc = JSON.parse(dsText.value); dsScope = window.RV.dealScout.importDealScoutScope(doc); renderDealScout(); }
+    catch (e) { dsResult.innerHTML = ""; dsResult.append(el("p", "status", "Import rejected: " + e.message + (e.errors ? " — " + e.errors.join("; ") : ""))); }
+  };
+  }
+  var assistantOpen = true;
+  var vxSetAssistantImpl = null;
+  function vxSetAssistant(open) { if (vxSetAssistantImpl) vxSetAssistantImpl(open); }
+
+  /* --- State + rendering (engines arrive via rv-ready) --- */
+  var H = null, designState = null, designFamilyId = "warm-modern", designChosen = false, dsScope = null, paintFamilyId = "warm-whites", pendingProposal = null, pendingRestore = null;
+  var STYLE_MAP = { "warm-modern": "modern-organic", "organic-contemporary": "modern-organic", "modern-sophistication": "contemporary", "contemporary-luxury": "contemporary", "timeless-elegance": "traditional", "transitional": "transitional", "scandinavian": "scandinavian", "mid-century-modern": "mid-century-modern", "traditional": "traditional", "coastal": "coastal", "industrial": "industrial", "minimalist": "minimalist" };
+  function harmonyInput() { return { familyId: designFamilyId }; }
+  function refreshDesignDone() { window.__rvDesignDone = !!(designChosen || (designState && Object.keys(designState.selections || {}).length)); }
+  function renderHarmonyStatus() {
+    if (!H || !designState) { harmonyStatus.innerHTML = ""; return; }
+    var ev;
+    try { ev = H.evaluateHarmony({ familyId: designFamilyId, selections: designState.selections || {} }); } catch (e) { harmonyStatus.textContent = "Harmony check unavailable: " + e.message; return; }
+    harmonyStatus.innerHTML = "";
+    harmonyStatus.append(el("p", "status", "Harmony: " + ev.status + " for " + designFamilyId.replaceAll("-", " ") + "."));
+    var ul = el("ul", "vx-findings");
+    for (const f of ev.findings) { if (f.level === "attention" || f.level === "conflict") { var li = el("li", "", f.rule + " — " + f.message + (f.suggestion ? " Suggestion: " + f.suggestion : "")); ul.append(li); } }
+    if (ul.children.length) harmonyStatus.append(ul);
+    var sel = designState.selections || {};
+    selLine.textContent = "Selections: " + (sel.paintHex ? "wall " + sel.paintHex : "no wall color yet") + (designState.locked && designState.locked.paintHex ? " (locked)" : "") + (sel.flooringKeyword ? " · flooring: " + sel.flooringKeyword : "") + (sel.lighting ? " · lighting: " + sel.lighting : "") + ".";
+    lockBtn.textContent = designState.locked && designState.locked.paintHex ? "Unlock wall color" : "Lock wall color";
+    renderBoard(); renderReview(); renderExport();
+  }
+  /* --- Design harmony board: every coordinated element, lockable, blendable --- */
+  function toneDir(fam, warm, neutral, cool) { return fam && fam.undertone === "cool" ? cool : fam && fam.undertone === "neutral" ? neutral : warm; }
+  function unionOf(field, cap) { var out = []; for (const f of H.HARMONY_STYLE_FAMILIES) { for (const v of f[field] || []) { if (!out.includes(v)) out.push(v); } } return out.slice(0, cap || 10); }
+  var BOARD_CATS = [
+    { key: "trimHex", label: "Trim paint", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.trim : "#f5f0e6"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.trim : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette && f.palette.trim; }).map(function (f) { return { label: f.name, value: f.palette.trim, hex: f.palette.trim }; }); } },
+    { key: "ceilingHex", label: "Ceiling paint", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.ceiling : "#ffffff"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.ceiling : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette && f.palette.ceiling; }).map(function (f) { return { label: f.name, value: f.palette.ceiling, hex: f.palette.ceiling }; }); } },
+    { key: "accentHex", label: "Accent color", visual: function (fam, sel) { return sel || (fam && fam.palette ? fam.palette.accent : "#8a6d4f"); }, value: function (fam, sel) { return { text: sel || (fam && fam.palette ? fam.palette.accent : "—"), isDefault: !sel }; }, alternatives: function () { return H.HARMONY_STYLE_FAMILIES.filter(function (f) { return f.palette && f.palette.accent; }).map(function (f) { return { label: f.name, value: f.palette.accent, hex: f.palette.accent }; }); } },
+    { key: "flooringKeyword", label: "Flooring", visual: function () { return "linear-gradient(90deg,#b98d5e,#a1763f 45%,#c49a6c)"; }, value: function (fam, sel) { return { text: sel || (fam && fam.flooringKeywords ? fam.flooringKeywords[0] : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("flooringKeywords").map(function (v) { return { label: v, value: v }; }); } },
+    { key: "cabinetry", label: "Cabinetry", visual: function (fam) { return "linear-gradient(135deg," + (fam && fam.palette ? fam.palette.accent : "#8a6d4f") + "," + (fam && fam.palette ? fam.palette.wall : "#e8dfca") + ")"; }, value: function (fam, sel) { return { text: sel || (fam && fam.cabinetKeywords ? fam.cabinetKeywords[0] : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("cabinetKeywords").map(function (v) { return { label: v, value: v }; }); } },
+    { key: "countertop", label: "Countertops", visual: function () { return "linear-gradient(120deg,#efe9dd,#ddd3bf 55%,#f4efe4)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Light stone with warm veining", "Honed stone with soft grey veining", "Crisp quartz with cool veining"), isDefault: !sel }; }, alternatives: function () { return ["Light stone with warm veining", "Honed stone with soft grey veining", "Crisp quartz with cool veining"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "tile", label: "Tile", visual: function () { return "repeating-linear-gradient(0deg,#e7dfd0 0 10px,#d9cfb8 10px 11px),repeating-linear-gradient(90deg,#e7dfd0 0 10px,#d9cfb8 10px 11px)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Handmade-look ceramic, warm glaze", "Large-format matte porcelain", "Gloss ceramic, cool glaze"), isDefault: !sel }; }, alternatives: function () { return ["Handmade-look ceramic, warm glaze", "Large-format matte porcelain", "Gloss ceramic, cool glaze"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "hardware", label: "Hardware", visual: function () { return "linear-gradient(90deg,#8c6a2f,#c9a227,#8c6a2f)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Brushed brass", "Matte black", "Polished nickel"), isDefault: !sel }; }, alternatives: function () { return ["Brushed brass", "Aged bronze", "Matte black", "Polished nickel"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "fixtures", label: "Fixtures", visual: function () { return "linear-gradient(120deg,#d8d2c4,#b6ad99)"; }, value: function (fam, sel) { return { text: sel || toneDir(fam, "Warm metal with opal glass", "Sculptural matte fixtures", "Chrome with clear glass"), isDefault: !sel }; }, alternatives: function () { return ["Warm metal with opal glass", "Sculptural matte fixtures", "Chrome with clear glass"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "lighting", label: "Lighting", visual: function (fam, sel) { var t = sel || (fam ? fam.lighting : "warm"); return t === "cool" ? "linear-gradient(120deg,#dfe9f2,#b9c9d8)" : t === "neutral" ? "linear-gradient(120deg,#efe9dc,#d9d2c0)" : "linear-gradient(120deg,#f6dfae,#eda93f)"; }, value: function (fam, sel) { return { text: (sel || (fam ? fam.lighting : "warm")) + " light", isDefault: !sel }; }, alternatives: function () { return ["warm", "neutral", "cool"].map(function (v) { return { label: v + " light", value: v }; }); } },
+    { key: "upholstery", label: "Upholstery", visual: function () { return "linear-gradient(120deg,#e5d9c3,#cbb896)"; }, value: function (fam, sel) { var tags = fam && fam.furnitureTags ? fam.furnitureTags : []; var d = tags.includes("velvet") ? "Tailored velvet" : tags.includes("leather") ? "Full-grain leather" : tags.includes("linen") ? "Natural linen" : "Woven cotton"; return { text: sel || d, isDefault: !sel }; }, alternatives: function () { return ["Natural linen", "Tailored velvet", "Textured boucle", "Full-grain leather", "Woven cotton"].map(function (v) { return { label: v, value: v }; }); } },
+    { key: "furnitureTag", label: "Furniture direction", visual: function () { return "linear-gradient(120deg,#a98d68,#7d6242)"; }, value: function (fam, sel) { return { text: sel || (fam && fam.furnitureTags ? fam.furnitureTags.join(", ") : "—"), isDefault: !sel }; }, alternatives: function () { return unionOf("furnitureTags").map(function (v) { return { label: v, value: v }; }); } }
+  ];
+  function renderBoard() {
+    if (!H || !designState || !boardGrid) return;
+    var fam = H.getHarmonyFamily(designFamilyId);
+    boardGrid.innerHTML = "";
+    for (const cat of BOARD_CATS) {
+      var sel = designState.selections ? designState.selections[cat.key] : undefined;
+      var locked = !!(designState.locked && designState.locked[cat.key]);
+      var tile = el("div", "vx-tile");
+      var head = el("h4"); head.append(el("span", "", cat.label));
+      var lb = el("button", "vx-lockbtn", locked ? "Locked" : "Lock"); lb.type = "button"; lb.id = "vxLock_" + cat.key; lb.setAttribute("aria-pressed", locked ? "true" : "false");
+      lb.onclick = (function (c2, was) { return function () { designState = was ? H.unlockSelection(designState, c2.key) : H.lockSelection(designState, c2.key); renderBoard(); renderHarmonyStatus(); }; })(cat, locked);
+      head.append(lb); tile.append(head);
+      var vis = el("div", "vx-tvis"); var bg = cat.visual(fam, sel); if (bg) vis.style.background = bg; tile.append(vis);
+      var val = cat.value(fam, sel);
+      tile.append(el("div", "vx-tval", val.text + (val.isDefault ? " — style direction" : " — your selection")));
+      var alts = el("div", "vx-talts");
+      for (const a of cat.alternatives(fam)) {
+        var b = el("button", "secondary"); b.type = "button"; b.title = a.label;
+        if (a.hex) { var swi = document.createElement("i"); swi.style.background = a.hex; b.append(swi); }
+        else b.textContent = a.label;
+        b.onclick = (function (c2, alt) { return function () { proposeOrSet(c2.key, alt.value, c2.label + ": " + alt.label); }; })(cat, a);
+        alts.append(b);
+      }
+      tile.append(alts);
+      boardGrid.append(tile);
+    }
+  }
+  function renderFamilies() {
+    if (!H) return; famGrid.innerHTML = "";
+    famGrid.className = "vx-ggrid";
+    for (const fam of H.HARMONY_STYLE_FAMILIES) {
+      var card = el("button", "vx-gcard"); card.type = "button"; card.id = "vxFam_" + fam.id;
+      card.setAttribute("aria-pressed", fam.id === designFamilyId ? "true" : "false");
+      if (fam.palette && fam.id !== "custom-mixed") {
+        var img = document.createElement("img"); img.src = "/assets/styles/" + fam.id + ".jpg"; img.alt = fam.name + " interior — illustrative concept imagery"; img.loading = "lazy";
+        img.onerror = function () { var ph = el("div", "vx-gph", "STYLE INSPIRATION"); this.replaceWith(ph); };
+        card.append(img);
+      } else {
+        card.append(el("div", "vx-gph", "BLEND YOUR OWN"));
+      }
+      var body = el("div", "vx-gbody");
+      body.append(el("strong", "", fam.name), el("small", "", fam.description || ""));
+      if (fam.palette) { var sw = el("div", "vx-swatches"); for (const k of ["wall", "trim", "ceiling", "accent"]) { var i = document.createElement("i"); i.style.background = fam.palette[k]; sw.append(i); } body.append(sw); }
+      var dir = [];
+      if (fam.flooringKeywords && fam.flooringKeywords[0]) dir.push("Flooring: " + fam.flooringKeywords[0]);
+      if (fam.lighting) dir.push("Light: " + fam.lighting);
+      if (fam.furnitureTags && fam.furnitureTags.length) dir.push("Furniture: " + fam.furnitureTags.slice(0, 2).join(", "));
+      if (dir.length) body.append(el("div", "vx-gdir", dir.join(" · ")));
+      card.append(body);
+      card.onclick = function () {
+        designFamilyId = fam.id; designChosen = true;
+        var mapped = STYLE_MAP[fam.id]; var sel = $("designStyle");
+        if (mapped && sel) { for (const o of sel.options) { if (o.value === mapped || o.textContent.toLowerCase().indexOf(mapped.replaceAll("-", " ")) === 0) { sel.value = o.value; sel.dispatchEvent(new Event("change")); break; } } }
+        renderFamilies(); renderCombo(); renderPaintChips(); renderHarmonyStatus(); refreshDesignDone(); rvJourneyUpdate();
+      };
+      famGrid.append(card);
+    }
+    var cap = el("p", "note", "Style imagery is illustrative concept imagery created for RENOVISION to convey each atmosphere — it is not a photograph of your space, and screen colors are approximate.");
+    cap.style.gridColumn = "1 / -1";
+    famGrid.append(cap);
+  }
+  function renderCombo() {
+    if (!H) return; comboBox.innerHTML = "";
+    var fam = H.getHarmonyFamily(designFamilyId); if (!fam || !fam.palette) { comboBox.append(el("p", "note", "Custom / mixed style: build your own combination from the paint browser below.")); return; }
+    comboBox.append(el("p", "status", "Coordinated palette for " + fam.name + ":"));
+    var row = el("div", "vx-combo");
+    for (const k of ["wall", "trim", "ceiling", "accent"]) { var d = el("div"); var i = document.createElement("i"); i.style.background = fam.palette[k]; d.append(i, el("span", "", k + " · " + fam.palette[k])); row.append(d); }
+    comboBox.append(row);
+    var apply = el("button", "secondary", "Use this wall color"); apply.type = "button"; apply.id = "vxApplyPalette";
+    apply.onclick = function () { proposeOrSet("paintHex", fam.palette.wall, fam.name + " wall color"); };
+    comboBox.append(apply);
+    if (fam.flooringKeywords && fam.flooringKeywords.length) {
+      var chips = el("div", "vx-chiprow");
+      for (const kw of fam.flooringKeywords) { var c = el("button", "secondary", "Flooring: " + kw); c.type = "button"; c.onclick = (function (k2) { return function () { proposeOrSet("flooringKeyword", k2, "flooring " + k2); }; })(kw); chips.append(c); }
+      comboBox.append(chips);
+    }
+  }
+  function renderPaintChips() {
+    if (!H) return; paintChips.innerHTML = "";
+    for (const pf of H.PAINT_FAMILIES) { var c = el("button", "secondary", pf.name); c.type = "button"; if (pf.id === paintFamilyId) c.setAttribute("aria-pressed", "true"); c.onclick = (function (id) { return function () { paintFamilyId = id; atmoSel.value = ""; renderPaintChips(); renderSwatches(); }; })(pf.id); paintChips.append(c); }
+  }
+  function renderSwatches() {
+    if (!H) return; swatchGrid.innerHTML = "";
+    var colors = [];
+    if (atmoSel.value) colors = H.colorsForAtmosphere(atmoSel.value);
+    else { var pf = H.PAINT_FAMILIES.find(function (x) { return x.id === paintFamilyId; }); colors = pf ? pf.colors : []; }
+    for (const col of colors) {
+      var b = el("button", "vx-swatch"); b.type = "button"; b.id = "vxSw_" + col.id;
+      var i = document.createElement("i"); i.style.background = col.hex;
+      b.append(i, el("span", "", col.name), el("small", "", col.hex + " · " + col.undertone));
+      b.onclick = (function (c2) { return function () { proposeOrSet("paintHex", c2.hex, c2.name); }; })(col);
+      swatchGrid.append(b);
+    }
+  }
+  function proposeOrSet(key, value, label) {
+    if (!H || !designState) return;
+    designChosen = true;
+    var locked = designState.locked && designState.locked[key];
+    if (!locked && !(designState.selections && designState.selections[key] && designState.locked && designState.locked[key])) {
+      try { designState = H.setSelection(designState, key, value); afterDesignChange(label + " applied."); return; } catch (e) { /* locked: fall through to proposal */ }
+    }
+    var prop = H.proposeChange(designState, key, value, harmonyInput());
+    pendingProposal = { key: key, value: value, label: label };
+    proposalBox.innerHTML = "";
+    proposalBox.append(el("p", "status", "Proposed change: " + label + ". Your approved selections stay untouched until you confirm."));
+    var ul = el("ul", "vx-findings");
+    for (const f of prop.evaluation.findings) { if (f.level === "attention" || f.level === "conflict") ul.append(el("li", "", f.rule + " — " + f.message + (f.suggestion ? " Suggestion: " + f.suggestion : ""))); }
+    if (prop.conflicts && prop.conflicts.length) ul.append(el("li", "", "Affects locked selections: " + prop.conflicts.join(", ") + "."));
+    if (ul.children.length) proposalBox.append(ul);
+    var ok = el("button", "", "Confirm change"); ok.type = "button"; ok.id = "vxConfirmChange";
+    ok.onclick = function () { if (!pendingProposal) return; designState = H.confirmChange(designState, pendingProposal.key, pendingProposal.value); pendingProposal = null; proposalBox.innerHTML = ""; afterDesignChange("Change confirmed and recorded in design history."); };
+    var no = el("button", "secondary", "Keep current design"); no.type = "button"; no.id = "vxCancelChange";
+    no.onclick = function () { pendingProposal = null; proposalBox.innerHTML = ""; };
+    proposalBox.append(ok, document.createTextNode(" "), no);
+  }
+  function afterDesignChange(msg) { renderHarmonyStatus(); renderVersions(); refreshDesignDone(); rvJourneyUpdate(); if (msg) selLine.textContent = msg + " " + selLine.textContent; }
+  function renderVersions() {
+    if (!H || !designState) return; verList.innerHTML = "";
+    for (const v of designState.versions || []) {
+      var row = el("p", "status", "");
+      row.append(document.createTextNode(v.label + " — " + Object.keys(v.selections || {}).length + " selections "));
+      var r = el("button", "secondary", "Restore"); r.type = "button";
+      r.onclick = (function (id) { return function () { designState = H.restoreVersion(designState, id); afterDesignChange("Version restored."); renderFamilies(); renderCombo(); }; })(v.id);
+      row.append(r); verList.append(row);
+    }
+  }
+  function renderReview() {
+    if (!reviewGrid) return;
+    reviewGrid.innerHTML = "";
+    var fam = H ? H.getHarmonyFamily(designFamilyId) : null;
+    var sel = designState && designState.selections ? designState.selections : {};
+    var locks = designState && designState.locked ? Object.keys(designState.locked).filter(function (k) { return designState.locked[k]; }).length : 0;
+    var c1 = el("div", "vx-review-card"); c1.append(el("h4", "", "Design"));
+    c1.append(el("p", "", "Style: " + (fam ? fam.name : designFamilyId)));
+    c1.append(el("p", "", "Wall: " + (sel.paintHex || "not chosen yet")));
+    c1.append(el("p", "", locks + " approved selection" + (locks === 1 ? "" : "s") + " locked"));
+    var c2 = el("div", "vx-review-card"); c2.append(el("h4", "", "Materials"));
+    c2.append(el("p", "", "Flooring: " + (sel.flooringKeyword || (fam && fam.flooringKeywords ? fam.flooringKeywords[0] + " (direction)" : "—"))));
+    c2.append(el("p", "", "Cabinetry: " + (sel.cabinetry || (fam && fam.cabinetKeywords ? fam.cabinetKeywords[0] + " (direction)" : "—"))));
+    c2.append(el("p", "", "Countertop: " + (sel.countertop || "style direction")));
+    var c3 = el("div", "vx-review-card"); c3.append(el("h4", "", "Furnishing"));
+    var fp = typeof guidedState !== "undefined" ? guidedState.furnishProposal : null;
+    if (fp && fp.selections) { c3.append(el("p", "", fp.selections.length + " items · total " + gxMoney(fp.totalCents))); if (fp.remainingCents !== null && fp.remainingCents !== undefined) c3.append(el("p", "", "Remaining budget: " + gxMoney(fp.remainingCents))); }
+    else c3.append(el("p", "", "Not proposed yet — open Furnish My Space in the Furnish stage."));
+    var c4 = el("div", "vx-review-card"); c4.append(el("h4", "", "Budget"));
+    var lines = [];
+    var est = typeof guidedState !== "undefined" ? guidedState.estimate : null;
+    if (est) lines.push("Conversion estimate: " + (est.totalCents === null || est.totalCents === undefined ? "incomplete — rates missing (fail-closed)" : gxMoney(est.totalCents)));
+    if (fp) lines.push("Furnishing: " + gxMoney(fp.totalCents));
+    if (dsScope && window.RV && window.RV.dealScout) { var sm = window.RV.dealScout.summarizeScope(dsScope); lines.push("Imported Deal Scout scope: " + gxMoney(sm.knownTotalCents) + (sm.totalIsComplete ? "" : " (partial)")); }
+    if (!lines.length) lines.push("No budget figures yet.");
+    for (const t of lines) c4.append(el("p", "", t));
+    reviewGrid.append(c1, c2, c3, c4);
+  }
+  function renderExport() {
+    if (!exportList) return;
+    exportList.innerHTML = "";
+    var fp = typeof guidedState !== "undefined" ? guidedState.furnishProposal : null;
+    var plans = typeof guidedState !== "undefined" && guidedState.planUploads ? guidedState.planUploads.length : 0;
+    var items = [
+      [plans > 0, "Floor plan — registered original preserved, with your confirmed dimensions"],
+      [designChosen, "Design selections — style, paint and materials with revision history"],
+      [designChosen, "Paint & material schedule — included in the design brief download"],
+      [!!fp, "Furniture schedule — items, fit classifications and prices from your catalog"],
+      [!!(fp || (typeof guidedState !== "undefined" && guidedState.estimate) || dsScope), "Budget summary — estimates and totals with their sources"],
+      [!!dsScope, "Deal Scout scope — imported with provenance intact"],
+      [true, "Verification notes — what is verified, estimated, or still unknown"]
+    ];
+    for (const [ok, label] of items) exportList.append(el("li", "", (ok ? "✓ " : "— ") + label + (ok ? "" : " (not yet)")));
+  }
+  function renderDealScout() {
+    if (!window.RV || !window.RV.dealScout) return;
+    var info = window.RV.dealScout.DEAL_SCOUT_INTEGRATION;
+    dsStatus.textContent = "Connection: " + info.status + " (manual import). " + info.note;
+    dsResult.innerHTML = "";
+    if (!dsScope) { dsResult.append(el("p", "note", "No scope imported. Design, conversion, and furnishing work continues without one.")); renderReview(); renderExport(); return; }
+    var sum = window.RV.dealScout.summarizeScope(dsScope);
+    dsResult.append(el("p", "status", "Imported scope — source: Deal Scout · version " + dsScope.version + " · exported " + dsScope.exportedAt + " · " + sum.itemCount + " items · priced total: " + gxMoney(sum.knownTotalCents) + (sum.totalIsComplete ? " (complete)" : " (partial — " + sum.unpricedCount + " unpriced)")));
+    for (const it of dsScope.items) dsResult.append(el("p", "status", "• " + it.label + " (" + it.category + ")" + (it.estimatedCents === null ? " — unpriced" : " — " + gxMoney(it.estimatedCents))));
+    renderReview(); renderExport();
+  }
+  function vxInit() {
+    if (!window.RV || !window.RV.harmony) return;
+    H = window.RV.harmony;
+    vxBuild();
+    if (!designState) designState = H.createDesignState();
+    if (pendingRestore) { var pr = pendingRestore; pendingRestore = null; vxApplyRestore(pr); }
+    renderFamilies(); renderCombo(); renderPaintChips(); renderSwatches(); renderHarmonyStatus(); renderVersions(); renderDealScout(); refreshDesignDone();
+  }
+  function vxApplyRestore(g) {
+    if (g.design && g.design.state) { designState = g.design.state; designFamilyId = g.design.familyId || designFamilyId; designChosen = true; }
+    if (g.dealScoutScope) dsScope = g.dealScoutScope;
+    if (g.assistantOpen === false) vxSetAssistant(false);
+    renderFamilies(); renderCombo(); renderPaintChips(); renderSwatches(); renderHarmonyStatus(); renderVersions(); renderDealScout(); refreshDesignDone();
+  }
+  if (window.RV) vxInit(); else window.addEventListener("rv-ready", vxInit);
+
+  /* --- Persistence: ride the existing design-workspace document --- */
+  var origCollect = guidedCollect, origRestore = guidedRestore;
+  guidedCollect = function () { var g = origCollect(); g.design = { state: designState, familyId: designFamilyId }; g.dealScoutScope = dsScope; g.assistantOpen = assistantOpen; return g; };
+  guidedRestore = function (g) { origRestore(g || {}); if (!g) return; if (H) vxApplyRestore(g); else pendingRestore = g; };
+})();
 rvJourneyUpdate();
-</script></body></html>`;
+</script>
+<script type="module">
+import * as concierge from "/lib/renovision/concierge.mjs";
+import * as propertyProfile from "/lib/renovision/property-profile.mjs";
+import * as planIngestion from "/lib/renovision/plan-ingestion.mjs";
+import * as conversions from "/lib/renovision/conversions.mjs";
+import * as conversionCosts from "/lib/renovision/conversion-costs.mjs";
+import * as furnish from "/lib/renovision/furnish.mjs";
+import * as harmony from "/lib/renovision/design-harmony.mjs";
+import * as fitTiers from "/lib/renovision/fit-tiers.mjs";
+import * as dealScout from "/lib/renovision/deal-scout-contract.mjs";
+import * as designLibrary from "/lib/renovision/design-library.mjs";
+window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, harmony, fitTiers, dealScout, designLibrary };
+window.dispatchEvent(new Event("rv-ready"));
+</script>
+</body></html>`;
