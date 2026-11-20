@@ -36,8 +36,18 @@ spec:
           env:
             - name: NODE_ENV
               value: production
+            - name: OCG_3D_HOST
+              value: "0.0.0.0"
             - name: OCG_3D_PORT
               value: "8788"
+            - name: OCG_3D_ENABLED
+              value: "false"
+            - name: OCG_3D_FOUNDER_APPROVED
+              value: "false"
+            - name: OCG_TEXTURED_GLB_MODE
+              value: geometry_only
+            - name: OCG_TRELLIS_LOCAL_CACHE_DIR
+              value: /models/trellis2-4b
             - name: OCG_BG_REMOVER
               value: u2net
             - name: OCG_DINOV3_ATTRIBUTION

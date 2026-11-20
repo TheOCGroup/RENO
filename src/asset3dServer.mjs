@@ -10,6 +10,7 @@ import {createModelRouter3d} from "../lib/renovision/model-router-3d.mjs";
 import {createAsset3dAdapter, ASSET3D_MODES} from "../lib/renovision/asset3d-adapter.mjs";
 import {createAsset3dAuthMiddleware} from "../lib/renovision/asset3d-auth.mjs";
 import {createMemoryAsset3dStorage} from "../lib/renovision/asset3d-storage.mjs";
+import {createUnified3dEngine} from "../lib/renovision/ocg-unified-engine.mjs";
 
 export const SAMPLE_3D_CATALOG = Object.freeze([
   {
@@ -215,6 +216,8 @@ export function createAsset3dRouter({
     }
 
     if (req.method === "GET" && path === "/api/3d/capabilities") {
+      const unified = createUnified3dEngine();
+      const glbExportMode = process.env.OCG_TEXTURED_GLB_MODE || "geometry_only";
       return sendJson(res, 200, {
         ok: true,
         modes: ASSET3D_MODES,
@@ -223,8 +226,65 @@ export function createAsset3dRouter({
         storageClass: artifactStore.storageClass,
         localOnly: true,
         budgetUsd: 0,
+        glbExportMode,
+        texturedGlbSupported: process.env.OCG_NVDIFFRAST_COMMERCIAL_LICENSED === "true",
+        unifiedSubsystems: Object.keys(unified.subsystems),
+        qualityProfiles: Object.keys(unified.subsystems.adaptiveInference.QUALITY_PROFILES),
+        motionPrimitives: unified.subsystems.motion.MOTION_PRIMITIVES,
         adapterStatus: engineAdapter.status(),
       });
+    }
+
+    if (req.method === "POST" && path === "/api/3d/unified/evaluate") {
+      const rawBody = await readBody(req).catch((err) => err);
+      if (rawBody instanceof Error) return sendJson(res, 400, {error: rawBody.message});
+      let body;
+      try {
+        body = JSON.parse(rawBody.toString("utf8") || "{}");
+      } catch {
+        return sendJson(res, 400, {error: "invalid_json"});
+      }
+      const unified = createUnified3dEngine();
+      const subsystem = String(body?.subsystem || "");
+      try {
+        if (subsystem === "world") {
+          const world = unified.subsystems.world.createWorldSceneGraph({
+            sceneId: body.sceneId || "default-scene",
+            boundsMeters: body.boundsMeters,
+            nodes: Array.isArray(body.nodes) ? body.nodes : [],
+          });
+          const nav =
+            body.startMeters && body.goalMeters
+              ? world.planNavigationPath(body.startMeters, body.goalMeters, body.steps || 8)
+              : null;
+          return sendJson(res, 200, {ok: true, subsystem, nodes: world.getNodes(), navigation: nav});
+        }
+        if (subsystem === "reality") {
+          const composite = unified.subsystems.reality.computeRealityComposite(body.params || {});
+          return sendJson(res, 200, {ok: true, subsystem, composite});
+        }
+        if (subsystem === "fourD") {
+          const trajectory = unified.subsystems.fourD.create4dCameraTrajectory(body.params || {});
+          return sendJson(res, 200, {ok: true, subsystem, trajectory});
+        }
+        if (subsystem === "motion") {
+          const clip = unified.subsystems.motion.createMotionSmartPrimitive(body.params || {});
+          const retargeted = Array.isArray(body.targetJoints)
+            ? unified.subsystems.motion.retargetMotionClip({clip, targetJoints: body.targetJoints})
+            : null;
+          return sendJson(res, 200, {ok: true, subsystem, clip, retargeted});
+        }
+        if (subsystem === "adaptiveInference") {
+          const schedule = unified.subsystems.adaptiveInference.scheduleInferenceJob({
+            ...(body.params || {}),
+            environment,
+          });
+          return sendJson(res, 200, {ok: true, subsystem, schedule});
+        }
+        return sendJson(res, 400, {error: "unsupported_subsystem", supported: ["world", "reality", "fourD", "motion", "adaptiveInference"]});
+      } catch (err) {
+        return sendJson(res, 400, {error: err?.message || "unified_evaluation_failed"});
+      }
     }
 
     if (req.method === "GET" && path === "/api/3d/models") {
