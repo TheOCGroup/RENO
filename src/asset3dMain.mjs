@@ -1,4 +1,5 @@
 import { createAsset3dServer } from "./asset3dServer.mjs";
+import { createAsset3dAdapter } from "../lib/renovision/asset3d-adapter.mjs";
 import { createTrellisSubprocessProvider } from "../lib/renovision/trellis-provider.mjs";
 
 export function resolveAsset3dServerConfig(env = process.env) {
@@ -17,7 +18,8 @@ const isCli = process.argv[1] && import.meta.url.endsWith(process.argv[1].replac
 if (isCli) {
   const { port, host, enabled, founderApproved } = resolveAsset3dServerConfig(process.env);
   const provider = enabled && founderApproved ? createTrellisSubprocessProvider() : null;
-  const server = createAsset3dServer({ enabled, founderApproved, provider });
+  const adapter = createAsset3dAdapter({ enabled, founderApproved, provider, environment: process.env });
+  const server = createAsset3dServer({ environment: process.env, adapter });
   server.listen(port, host, () => {
     console.log(`OCG 3D ENGINE listening on http://${host}:${port} (enabled=${enabled}, founderApproved=${founderApproved})`);
   });

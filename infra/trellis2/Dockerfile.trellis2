@@ -3,7 +3,7 @@
 # Installs microsoft/TRELLIS.2 at pinned revision 75fbf0183001ed9876c8dbb35de6b68552ee08bd.
 # Does NOT download gated model weights (DINOv3 / TRELLIS.2-4B) at build time.
 
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
 ARG TRELLIS2_REPO=https://github.com/microsoft/TRELLIS.2.git
 ARG TRELLIS2_COMMIT=75fbf0183001ed9876c8dbb35de6b68552ee08bd

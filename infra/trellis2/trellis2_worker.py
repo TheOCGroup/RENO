@@ -64,8 +64,8 @@ def main() -> None:
         fail("GPU_UNAVAILABLE", "NVIDIA CUDA GPU is required for TRELLIS.2-4B inference.")
 
     cache_dir = os.environ.get("OCG_TRELLIS_LOCAL_CACHE_DIR", "").strip()
-    if not cache_dir or not os.path.isdir(cache_dir):
-        fail("WEIGHTS_NOT_CACHED", "OCG_TRELLIS_LOCAL_CACHE_DIR must point to locally cached TRELLIS.2-4B weights.")
+    if not cache_dir or not os.path.isdir(cache_dir) or not os.path.isfile(os.path.join(cache_dir, "pipeline.json")):
+        fail("WEIGHTS_NOT_CACHED", "OCG_TRELLIS_LOCAL_CACHE_DIR must point to locally cached TRELLIS.2-4B weights containing pipeline.json.")
 
     tmp_dir = tempfile.mkdtemp(prefix="ocg-trellis2-")
     try:
@@ -79,17 +79,21 @@ def main() -> None:
 
         from trellis2.pipelines import Trellis2ImageTo3DPipeline  # type: ignore
 
-        pipe = Trellis2ImageTo3DPipeline.from_pretrained(cache_dir, local_files_only=True)
+        pipe = Trellis2ImageTo3DPipeline.from_pretrained(cache_dir)
+        if os.environ.get("OCG_BRIA_COMMERCIAL_LICENSED", "").lower() != "true":
+            pipe.rembg_model = None
         pipe.cuda()
-        mesh = pipe.run(Image.open(prepped_path))[0]
+        with Image.open(prepped_path) as prepped_img:
+            mesh = pipe.run(prepped_img, preprocess_image=True)[0]
 
         if glb_mode == "geometry_only":
             import trimesh  # type: ignore
 
-            tri_mesh = trimesh.Trimesh(
-                vertices=mesh.vertices.detach().cpu().numpy(),
-                faces=mesh.faces.detach().cpu().numpy(),
-            )
+            verts = mesh.vertices.detach().cpu().numpy()
+            faces = mesh.faces.detach().cpu().numpy()
+            if len(verts) == 0 or len(faces) == 0:
+                fail("EMPTY_MESH_OUTPUT", "TRELLIS.2 pipeline produced zero vertices or faces.")
+            tri_mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
             tri_mesh.export(output_path)
         else:
             if not nvdiff_ok:
