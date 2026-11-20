@@ -1,11 +1,17 @@
 # Reproducible Linux CUDA 12.4 container specification for OCG 3D ENGINE (TRELLIS.2-4B)
 # CANDIDATE SPECIFICATION — NOT BUILT OR ACTIVATED WITHOUT FOUNDER AUTHORIZATION
+# Installs microsoft/TRELLIS.2 at pinned revision 75fbf0183001ed9876c8dbb35de6b68552ee08bd.
 # Does NOT download gated model weights (DINOv3 / TRELLIS.2-4B) at build time.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
+ARG TRELLIS2_REPO=https://github.com/microsoft/TRELLIS.2.git
+ARG TRELLIS2_COMMIT=75fbf0183001ed9876c8dbb35de6b68552ee08bd
+
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
+    OCG_PYTHON_BIN=python3.10 \
+    OCG_TRELLIS_WORKER_PATH=/app/infra/trellis2/trellis2_worker.py \
     OCG_BG_REMOVER=u2net \
     OCG_DINOV3_ATTRIBUTION="Built with DINOv3" \
     NODE_ENV=production
@@ -16,6 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+RUN git clone --no-checkout "${TRELLIS2_REPO}" /opt/trellis2 \
+    && git -C /opt/trellis2 checkout "${TRELLIS2_COMMIT}"
+
 WORKDIR /app
 COPY package.json ./
 COPY lib ./lib
@@ -24,7 +33,14 @@ COPY assets ./assets
 COPY infra/trellis2/requirements.trellis2.txt ./infra/trellis2/requirements.trellis2.txt
 COPY infra/trellis2/trellis2_worker.py ./infra/trellis2/trellis2_worker.py
 
-RUN python3.10 -m pip install --no-cache-dir -r ./infra/trellis2/requirements.trellis2.txt
+RUN python3.10 -m pip install --no-cache-dir -r ./infra/trellis2/requirements.trellis2.txt \
+    && python3.10 -m pip install --no-cache-dir --no-deps -e /opt/trellis2 \
+    && if [ -d /opt/trellis2/o-voxel ]; then python3.10 -m pip install --no-cache-dir --no-deps -e /opt/trellis2/o-voxel; fi
+
+RUN useradd --create-home --shell /bin/bash ocg && chown -R ocg:ocg /app /opt/trellis2
+USER ocg
 
 EXPOSE 8788
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8788/health || exit 1
 CMD ["node", "src/asset3dMain.mjs"]
