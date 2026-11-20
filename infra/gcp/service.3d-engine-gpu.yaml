@@ -1,0 +1,66 @@
+# CANDIDATE SPECIFICATION — NOT APPLIED / NOT ACTIVATED
+# Cloud Run GPU (NVIDIA L4, 24 GB VRAM) deployment manifest for OCG 3D ENGINE
+# Requires explicit Founder authorization for:
+#   1. DINOv3 gated Hugging Face license acceptance & UI attribution ("Built with DINOv3")
+#   2. Secret Manager bindings (ocg-3d-engine-token, OIDC JWKS/issuer/audience)
+#   3. Cloud Run NVIDIA L4 GPU quota & billing activation
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ocg-3d-engine-gpu
+  namespace: ocg-pipeline
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "1"
+        run.googleapis.com/gpu-zonal-redundancy-disabled: "true"
+    spec:
+      serviceAccountName: ocg-3d-engine-sa@ocg-pipeline.iam.gserviceaccount.com
+      containerConcurrency: 1
+      timeoutSeconds: 300
+      containers:
+        - image: us-central1-docker.pkg.dev/ocg-pipeline/ocg-3d/ocg-3d-engine-gpu:CANDIDATE
+          ports:
+            - containerPort: 8788
+          resources:
+            limits:
+              cpu: "4"
+              memory: 16Gi
+              nvidia.com/gpu: "1"
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: OCG_3D_PORT
+              value: "8788"
+            - name: OCG_BG_REMOVER
+              value: u2net
+            - name: OCG_DINOV3_ATTRIBUTION
+              value: Built with DINOv3
+            - name: OCG_3D_ENGINE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ocg-3d-engine-token
+                  key: latest
+            - name: OCG_OIDC_JWKS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ocg-3d-oidc-jwks-url
+                  key: latest
+            - name: OCG_OIDC_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: ocg-3d-oidc-issuer
+                  key: latest
+            - name: OCG_OIDC_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: ocg-3d-oidc-audience
+                  key: latest
+      nodeSelector:
+        run.googleapis.com/accelerator: nvidia-l4

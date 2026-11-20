@@ -1,0 +1,30 @@
+# Reproducible Linux CUDA 12.4 container specification for OCG 3D ENGINE (TRELLIS.2-4B)
+# CANDIDATE SPECIFICATION — NOT BUILT OR ACTIVATED WITHOUT FOUNDER AUTHORIZATION
+# Does NOT download gated model weights (DINOv3 / TRELLIS.2-4B) at build time.
+
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    OCG_BG_REMOVER=u2net \
+    OCG_DINOV3_ATTRIBUTION="Built with DINOv3" \
+    NODE_ENV=production
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 python3-pip python3-venv curl ca-certificates git \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY package.json ./
+COPY lib ./lib
+COPY src ./src
+COPY assets ./assets
+COPY infra/trellis2/requirements.trellis2.txt ./infra/trellis2/requirements.trellis2.txt
+COPY infra/trellis2/trellis2_worker.py ./infra/trellis2/trellis2_worker.py
+
+RUN python3.10 -m pip install --no-cache-dir -r ./infra/trellis2/requirements.trellis2.txt
+
+EXPOSE 8788
+CMD ["node", "src/asset3dMain.mjs"]
