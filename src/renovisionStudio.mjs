@@ -195,6 +195,15 @@ details.quiet:not([open])>summary::after{content:" +"}
   .journey-card strong{font-size:18px}
   .material-grid{grid-template-columns:1fr}
 }
+/* UF-PV-7: at narrow widths the six journey stages overflowed one line and
+   stages 4-6 were clipped inside a hidden-scrollbar scroll area. Wrap the
+   strip so every stage stays visible, and give stages extra scroll margin
+   for the taller sticky strip. */
+@media(max-width:740px){
+  .journey{flex-wrap:wrap;gap:4px 18px;overflow-x:visible}
+  section.vx-stage{scroll-margin-top:100px}
+  .stage-block,#stageProject,#stageVision,#stageConcept,#interiorPlanner{scroll-margin-top:100px}
+}
 
 /* ---- Guided platform components (2026-11-19) ---- */
 .gx-rate-row{display:grid;grid-template-columns:auto 130px 90px 84px 1fr 110px;gap:8px;align-items:center;margin:6px 0}
