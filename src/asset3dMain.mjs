@@ -1,14 +1,24 @@
 import { createAsset3dServer } from "./asset3dServer.mjs";
 import { createTrellisSubprocessProvider } from "../lib/renovision/trellis-provider.mjs";
 
-const port = Number(process.env.OCG_3D_PORT || 8788);
-const host = "127.0.0.1";
+export function resolveAsset3dServerConfig(env = process.env) {
+  const portRaw = env.OCG_3D_PORT || env.PORT || "8788";
+  const port = Number(portRaw);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid OCG_3D_PORT/PORT: ${portRaw}`);
+  }
+  const host = (env.OCG_3D_HOST || "127.0.0.1").trim() || "127.0.0.1";
+  const enabled = env.OCG_3D_ENABLED === "true";
+  const founderApproved = env.OCG_3D_FOUNDER_APPROVED === "true";
+  return { port, host, enabled, founderApproved };
+}
 
-const enabled = process.env.OCG_3D_ENABLED === "true";
-const founderApproved = process.env.OCG_3D_FOUNDER_APPROVED === "true";
-const provider = enabled && founderApproved ? createTrellisSubprocessProvider() : null;
-
-const server = createAsset3dServer({ enabled, founderApproved, provider });
-server.listen(port, host, () => {
-  console.log(`OCG 3D ENGINE listening on http://${host}:${port} (enabled=${enabled}, founderApproved=${founderApproved})`);
-});
+const isCli = process.argv[1] && import.meta.url.endsWith(process.argv[1].replaceAll("\\", "/").split("/").pop());
+if (isCli) {
+  const { port, host, enabled, founderApproved } = resolveAsset3dServerConfig(process.env);
+  const provider = enabled && founderApproved ? createTrellisSubprocessProvider() : null;
+  const server = createAsset3dServer({ enabled, founderApproved, provider });
+  server.listen(port, host, () => {
+    console.log(`OCG 3D ENGINE listening on http://${host}:${port} (enabled=${enabled}, founderApproved=${founderApproved})`);
+  });
+}
