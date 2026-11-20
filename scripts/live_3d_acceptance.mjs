@@ -65,29 +65,52 @@ export function buildProceduralObjectPng256() {
   ]);
 }
 
-async function main() {
-  const engineUrl = (process.env.OCG_3D_ENGINE_URL || "").replace(/\/$/, "");
-  const engineToken = (process.env.OCG_3D_ENGINE_TOKEN || "").trim();
-
-  if (!engineUrl || !engineToken) {
-    console.error(JSON.stringify({
+export async function runLiveAcceptanceSuite({
+  engineUrl,
+  engineToken,
+  crossTenantToken = null,
+  timeoutMs = 240_000,
+  modeLabel = "REAL GPU EXECUTED",
+} = {}) {
+  const baseUrl = String(engineUrl || "").replace(/\/$/, "");
+  const token = String(engineToken || "").trim();
+  if (!baseUrl || !token) {
+    return {
       status: "BLOCKED",
+      classification: "BLOCKED",
       reason: "OCG_3D_ENGINE_URL and OCG_3D_ENGINE_TOKEN are required for live GPU inference acceptance.",
-    }));
-    process.exit(2);
+    };
   }
 
   const refPng = buildProceduralObjectPng256();
-  const unauth = await fetch(`${engineUrl}/api/3d/jobs`, { method: "POST" });
+  const healthRes = await fetch(`${baseUrl}/health`);
+  if (!healthRes.ok) throw new Error(`Liveness /health failed: ${healthRes.status}`);
+
+  const unauth = await fetch(`${baseUrl}/api/3d/jobs`, { method: "POST" });
   if (unauth.status !== 401 && unauth.status !== 403 && unauth.status !== 503) {
     throw new Error(`Expected unauthenticated POST /api/3d/jobs to fail closed, got ${unauth.status}`);
   }
 
+  const invalidAuth = await fetch(`${baseUrl}/api/3d/jobs`, {
+    method: "POST",
+    headers: { authorization: "Bearer invalid-acceptance-token", "content-type": "application/json" },
+    body: JSON.stringify({ consumer: "nova", mode: "image_to_3d", category: "furniture" }),
+  });
+  if (invalidAuth.status !== 401 && invalidAuth.status !== 403) {
+    throw new Error(`Expected invalid Bearer token to be rejected (401/403), got ${invalidAuth.status}`);
+  }
+
+  const capRes = await fetch(`${baseUrl}/api/3d/capabilities`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!capRes.ok) throw new Error(`Capabilities check failed: ${capRes.status}`);
+  const capabilities = await capRes.json();
+
   const t0 = performance.now();
-  const submitRes = await fetch(`${engineUrl}/api/3d/jobs`, {
+  const submitRes = await fetch(`${baseUrl}/api/3d/jobs`, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${engineToken}`,
+      authorization: `Bearer ${token}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -97,6 +120,7 @@ async function main() {
       assetName: "live-acceptance-chair-256",
       mimeType: "image/png",
       imageBase64: refPng.toString("base64"),
+      processImmediately: true,
     }),
   });
   const submitData = await submitRes.json();
@@ -106,39 +130,113 @@ async function main() {
 
   const jobId = submitData.job.jobId;
   let job = submitData.job;
-  const deadline = Date.now() + 240_000;
-  while (Date.now() < deadline && !["completed", "failed", "blocked"].includes(job.status)) {
-    await new Promise((r) => setTimeout(r, 2000));
-    const pollRes = await fetch(`${engineUrl}/api/3d/jobs/${encodeURIComponent(jobId)}`, {
-      headers: { authorization: `Bearer ${engineToken}` },
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && !["completed", "failed", "blocked", "cancelled"].includes(job.status)) {
+    await new Promise((r) => setTimeout(r, 100));
+    const pollRes = await fetch(`${baseUrl}/api/3d/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { authorization: `Bearer ${token}` },
     });
     const pollData = await pollRes.json();
     job = pollData.job ?? job;
   }
 
   if (job.status !== "completed") {
-    throw new Error(`Live inference did not complete: status=${job.status} reason=${job.blockedReason || job.error}`);
+    throw new Error(`Inference did not complete: status=${job.status} reason=${job.blockedReason || job.error}`);
   }
   const latencyMs = +(performance.now() - t0).toFixed(2);
 
+  if (crossTenantToken) {
+    const crossJobRes = await fetch(`${baseUrl}/api/3d/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { authorization: `Bearer ${crossTenantToken}` },
+    });
+    if (crossJobRes.status !== 404 && crossJobRes.status !== 403) {
+      throw new Error(`Cross-tenant job isolation failed: expected 404/403, got ${crossJobRes.status}`);
+    }
+  }
+
   const exportSizes = {};
+  let glbInspection = null;
   for (const fmt of ["glb", "gltf", "obj", "stl", "ply"]) {
     const expRes = await fetch(
-      `${engineUrl}/api/3d/jobs/${encodeURIComponent(jobId)}/export?format=${fmt}`,
-      { headers: { authorization: `Bearer ${engineToken}` } }
+      `${baseUrl}/api/3d/jobs/${encodeURIComponent(jobId)}/export.${fmt}`,
+      { headers: { authorization: `Bearer ${token}` } }
     );
     if (!expRes.ok) throw new Error(`Export ${fmt} failed: ${expRes.status}`);
     const buf = Buffer.from(await expRes.arrayBuffer());
     exportSizes[fmt] = buf.length;
     if (fmt === "glb") {
-      const inspected = inspectGlbFile(buf);
-      if (!inspected.passed || !inspected.validGlb) {
-        throw new Error(`Generated GLB failed inspection: ${JSON.stringify(inspected.errors)}`);
+      glbInspection = inspectGlbFile(buf);
+      const triCount = glbInspection?.inspection?.triangleCount ?? 0;
+      const vertCount = glbInspection?.inspection?.vertexCount ?? 0;
+      if (!glbInspection.passed || !glbInspection.validGlb || triCount <= 0 || vertCount <= 0) {
+        throw new Error(`Generated GLB failed inspection: ${JSON.stringify(glbInspection.errors)}`);
       }
     }
   }
 
-  console.log(JSON.stringify({ status: "LIVE_INFERENCE_VERIFIED", jobId, latencyMs, exportSizes }));
+  // Cancellation contract check on a separate queued job
+  const cancelSubmit = await fetch(`${baseUrl}/api/3d/jobs`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      consumer: "nova",
+      mode: "image_to_3d",
+      category: "furniture",
+      assetName: "cancel-probe-256",
+      mimeType: "image/png",
+      imageBase64: refPng.toString("base64"),
+    }),
+  });
+  let cancelVerified = false;
+  if (cancelSubmit.ok) {
+    const cancelData = await cancelSubmit.json();
+    const cid = cancelData?.job?.jobId;
+    if (cid) {
+      const cancelRes = await fetch(`${baseUrl}/api/3d/jobs/${encodeURIComponent(cid)}/cancel`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      cancelVerified = cancelRes.ok;
+    }
+  }
+
+  const mem = process.memoryUsage();
+  return {
+    status: "LIVE_INFERENCE_VERIFIED",
+    classification: modeLabel,
+    jobId,
+    assetId: job.assetId || null,
+    latencyMs,
+    vertexCount: glbInspection?.inspection?.vertexCount ?? 0,
+    triangleCount: glbInspection?.inspection?.triangleCount ?? 0,
+    glbExportMode: capabilities.glbExportMode,
+    texturedGlbSupported: capabilities.texturedGlbSupported,
+    exportSizes,
+    cancelVerified,
+    budgetUsd: 0,
+    memoryMb: {
+      rss: +(mem.rss / 1048576).toFixed(2),
+      heapUsed: +(mem.heapUsed / 1048576).toFixed(2),
+    },
+  };
+}
+
+async function main() {
+  const engineUrl = (process.env.OCG_3D_ENGINE_URL || "").replace(/\/$/, "");
+  const engineToken = (process.env.OCG_3D_ENGINE_TOKEN || "").trim();
+  const crossTenantToken = (process.env.OCG_3D_CROSS_TENANT_TOKEN || "").trim() || null;
+
+  if (!engineUrl || !engineToken) {
+    console.error(JSON.stringify({
+      status: "BLOCKED",
+      classification: "BLOCKED",
+      reason: "OCG_3D_ENGINE_URL and OCG_3D_ENGINE_TOKEN are required for live GPU inference acceptance.",
+    }));
+    process.exit(2);
+  }
+
+  const report = await runLiveAcceptanceSuite({ engineUrl, engineToken, crossTenantToken });
+  console.log(JSON.stringify(report));
 }
 
 const isCli = process.argv[1] && import.meta.url.endsWith(process.argv[1].replaceAll("\\", "/").split("/").pop());

@@ -548,6 +548,23 @@ export function createAsset3dServer({
         return send(res, 200, "text/html; charset=utf-8", renderAsset3dViewerHtml());
       }
 
+      if (req.method === "GET" && path === "/health") {
+        return sendJson(res, 200, {
+          ok: true,
+          status: "live",
+          service: "ocg-3d-engine",
+        });
+      }
+
+      if (req.method === "GET" && path === "/ready") {
+        const ready = authMiddleware.configured === true;
+        return sendJson(res, ready ? 200 : 503, {
+          ok: ready,
+          status: ready ? "ready" : "not_ready",
+          service: "ocg-3d-engine",
+        });
+      }
+
       if (path.startsWith("/api/3d/")) {
         const authResult = await authMiddleware.requireAuth(req);
         if (!authResult.ok) {
