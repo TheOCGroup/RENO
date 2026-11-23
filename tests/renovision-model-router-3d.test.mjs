@@ -22,7 +22,7 @@ test("model router selects least-resource compatible local model by default and 
     environment: GPU_ENV,
   });
   assert.equal(std.selected, true);
-  assert.equal(std.model.key, "trellis-2-4b"); // 12GB min at 512 < 16GB for trellis-1
+  assert.equal(std.model.key, "trellis-1"); // lowest published minimum: v1 16GB < TRELLIS.2 24GB
   assert.equal(std.costUsd, 0);
 
   const high = router.selectModel({

@@ -161,3 +161,10 @@ test("Dockerfile.trellis2 pins upstream TRELLIS.2 commit, uses o_voxel.postproce
   assert.match(gpuYaml, /containerConcurrency:\s*1/);
   assert.match(gpuYaml, /nvidia-l4/);
 });
+
+test("CUDA native extension build targets existing A40 sm_86 and proposed L4 sm_89", () => {
+  const dockerfile = fs.readFileSync("infra/trellis2/Dockerfile.trellis2", "utf8");
+  const archList = dockerfile.match(/TORCH_CUDA_ARCH_LIST="([^"]+)"/)?.[1];
+  assert.ok(archList, "CUDA architecture list must be explicit");
+  assert.deepEqual(archList.split(";"), ["8.6", "8.9"]);
+});
