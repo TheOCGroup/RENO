@@ -168,3 +168,23 @@ test("CUDA native extension build targets existing A40 sm_86 and proposed L4 sm_
   assert.ok(archList, "CUDA architecture list must be explicit");
   assert.deepEqual(archList.split(";"), ["8.6", "8.9"]);
 });
+
+test("TRELLIS provider defaults to geometry-only without a commercial rasterizer license", async () => {
+  const previous = process.env.OCG_TEXTURED_GLB_MODE;
+  delete process.env.OCG_TEXTURED_GLB_MODE;
+  try {
+    const provider = createTrellisSubprocessProvider({
+      nvdiffrastCommercialLicensed: false,
+      execFileImpl: async (_bin, args, opts) => {
+        assert.equal(opts.env.OCG_TEXTURED_GLB_MODE, "geometry_only");
+        fs.copyFileSync("assets/samples/accent-chair.glb", args[2]);
+      },
+    });
+    const result = await provider({ imageBase64: buildProceduralObjectPng256().toString("base64"), mimeType: "image/png" });
+    assert.equal(result.geometryOnly, true);
+    assert.equal(result.texturedOutput, false);
+  } finally {
+    if (previous === undefined) delete process.env.OCG_TEXTURED_GLB_MODE;
+    else process.env.OCG_TEXTURED_GLB_MODE = previous;
+  }
+});
