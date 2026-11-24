@@ -49,7 +49,7 @@ COPY infra/trellis2/requirements.trellis2.txt ./infra/trellis2/requirements.trel
 RUN python3.10 -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && python3.10 -m pip install --no-cache-dir -r ./infra/trellis2/requirements.trellis2.txt
 
-RUN if [ -d /opt/trellis2/o-voxel ]; then python3.10 -m pip install --no-cache-dir --no-deps --no-build-isolation /opt/trellis2/o-voxel; fi
+RUN if [ -d /opt/trellis2/o-voxel ]; then python3.10 -m pip install --no-cache-dir --no-deps --no-build-isolation /opt/trellis2/o-voxel; else echo "ERROR: /opt/trellis2/o-voxel missing — TRELLIS.2 clone/submodule incomplete; refusing to build an image whose o-voxel install was silently skipped (UF-Q9-5)" >&2; exit 1; fi
 
 RUN useradd --create-home --shell /bin/bash ocg && chown -R ocg:ocg /opt/trellis2
 
