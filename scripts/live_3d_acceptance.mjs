@@ -65,6 +65,18 @@ export function buildProceduralObjectPng256() {
   ]);
 }
 
+/** Phase 9.2 fix (Phase 8 Low): the acceptance `status` must distinguish
+ * CPU-contract / mocked runs from live GPU runs. Only an explicitly
+ * REAL GPU run may carry LIVE_INFERENCE_VERIFIED; every other
+ * classification gets its own honest status and never the LIVE label. */
+export function resolveAcceptanceStatus(modeLabel = "") {
+  const label = String(modeLabel || "");
+  if (label === "REAL GPU EXECUTED") return "LIVE_INFERENCE_VERIFIED";
+  if (/cpu/i.test(label)) return "CPU_CONTRACT_VERIFIED";
+  if (/mock/i.test(label)) return "MOCKED_CONTRACT_VERIFIED";
+  return "CONTRACT_VERIFIED_NOT_LIVE";
+}
+
 export async function runLiveAcceptanceSuite({
   engineUrl,
   engineToken,
@@ -202,7 +214,7 @@ export async function runLiveAcceptanceSuite({
 
   const mem = process.memoryUsage();
   return {
-    status: "LIVE_INFERENCE_VERIFIED",
+    status: resolveAcceptanceStatus(modeLabel),
     classification: modeLabel,
     jobId,
     assetId: job.assetId || null,

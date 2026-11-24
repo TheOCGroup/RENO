@@ -557,11 +557,34 @@ export function createAsset3dServer({
       }
 
       if (req.method === "GET" && path === "/ready") {
-        const ready = authMiddleware.configured === true;
-        return sendJson(res, ready ? 200 : 503, {
-          ok: ready,
-          status: ready ? "ready" : "not_ready",
+        // Phase 9.2 fix (Phase 8 Low): readiness reflects ENGINE readiness,
+        // not only auth configuration. A disabled engine, or an engine whose
+        // model preflight fails, must NOT report ready-for-inference.
+        // Fail-closed is preserved: unconfigured auth is also not-ready.
+        const authReady = authMiddleware.configured === true;
+        let adapterStatus = null;
+        try {
+          adapterStatus = asset3dRouter.adapter.status();
+        } catch {
+          adapterStatus = null;
+        }
+        const engineEnabled = adapterStatus?.enabled === true;
+        const preflightReady = adapterStatus?.preflight?.ready === true;
+        const readyForInference = authReady && engineEnabled && preflightReady;
+        return sendJson(res, readyForInference ? 200 : 503, {
+          ok: readyForInference,
+          status: readyForInference ? "ready" : "not_ready",
           service: "ocg-3d-engine",
+          readyForInference,
+          components: {
+            auth: { configured: authReady, ready: authReady },
+            engine: {
+              enabled: engineEnabled,
+              preflightReady,
+              providerConfigured: adapterStatus?.providerConfigured === true,
+              blockers: preflightReady ? [] : (adapterStatus?.preflight?.blockers ?? ["engine_status_unavailable"]),
+            },
+          },
         });
       }
 
