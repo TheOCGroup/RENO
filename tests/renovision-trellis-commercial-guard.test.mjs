@@ -95,7 +95,7 @@ test("worker-to-API integration: createAsset3dAdapter -> createTrellisSubprocess
       cudaVersion: "12.4",
       pythonVersion: "3.10",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
   });
 
