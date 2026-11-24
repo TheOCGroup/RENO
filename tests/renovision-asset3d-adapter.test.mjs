@@ -102,7 +102,7 @@ test("adapter processes local image-to-3D, background removal, text-to-image-to-
       cudaVersion: "12.4",
       pythonVersion: "3.10",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
     backgroundRemover: async ({ imageBase64 }) => ({ imageBase64 }),
     backgroundRemoverCommercialAuthorized: true,
@@ -178,7 +178,7 @@ test("LIC-1: unauthorized background remover is skipped while local 3D engine co
       cudaVersion: "12.4",
       pythonVersion: "3.10",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
     backgroundRemover: async ({ imageBase64 }) => {
       bgCalled = true;

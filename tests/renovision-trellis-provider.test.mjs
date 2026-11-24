@@ -56,3 +56,20 @@ test("evaluateTrellisPreflight passes when GPU, VRAM, disk, CUDA, Python, licens
   assert.equal(res.blockers.length, 0);
   assert.equal(res.localInferenceCostUsd, 0);
 });
+
+test("upstream TRELLIS.2 requires at least 24GB VRAM at all resolutions", () => {
+  for (const resolution of [256, 512, 1024, 1536]) {
+    assert.equal(TRELLIS_MODELS["trellis-2-4b"].minVramGbByResolution[resolution], 24);
+    const result = evaluateTrellisPreflight({
+      modelKey: "trellis-2-4b",
+      resolution,
+      environment: {
+        os: "linux", hasNvidiaGpu: true, vramGb: 16, freeDiskGb: 60,
+        cudaVersion: "12.4", pythonVersion: "3.10",
+        helperLicensesAccepted: true, weightsCachedLocally: true,
+      },
+    });
+    assert.equal(result.ready, false);
+    assert.ok(result.blockers.some((message) => /insufficient VRAM/.test(message)));
+  }
+});

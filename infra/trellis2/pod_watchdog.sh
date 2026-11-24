@@ -21,7 +21,8 @@
 #   RUNPOD_POD_ID, RUNPOD_API_KEY, OCG_POD_MAX_RUNTIME_SECONDS
 # Optional env:
 #   OCG_POD_IDLE_TIMEOUT_SECONDS (default 900), OCG_POD_STOP_ACTION (stop|terminate,
-#   default terminate), OCG_ACTIVITY_FILE (default /tmp/ocg-3d-last-activity),
+#   default stop; terminate requires OCG_POD_TERMINATION_APPROVED=1),
+#   OCG_ACTIVITY_FILE (default /tmp/ocg-3d-last-activity),
 #   OCG_WATCHDOG_POLL_SECONDS (default 15), OCG_WATCHDOG_DRY_RUN=1 (log only).
 
 set -u
@@ -33,6 +34,8 @@ IDLE_TIMEOUT="${OCG_POD_IDLE_TIMEOUT_SECONDS:-900}"
 ACTION="${OCG_POD_STOP_ACTION:-stop}"
 ACTIVITY_FILE="${OCG_ACTIVITY_FILE:-/tmp/ocg-3d-last-activity}"
 POLL="${OCG_WATCHDOG_POLL_SECONDS:-15}"
+RETRY_SLEEP="${OCG_WATCHDOG_RETRY_SLEEP_SECONDS:-10}"
+GRAPHQL_ENDPOINT="${OCG_RUNPOD_GRAPHQL_ENDPOINT:-https://api.runpod.io/graphql}"
 DRY_RUN="${OCG_WATCHDOG_DRY_RUN:-0}"
 HARD_CEILING_SECONDS=3600
 
@@ -41,6 +44,7 @@ case "$MAX_RUNTIME" in
 esac
 case "$IDLE_TIMEOUT" in ''|*[!0-9]*) IDLE_TIMEOUT=900 ;; esac
 case "$POLL" in ''|*[!0-9]*|0) POLL=15 ;; esac
+case "$RETRY_SLEEP" in ''|*[!0-9]*) RETRY_SLEEP=10 ;; esac
 if [ "$MAX_RUNTIME" -gt "$HARD_CEILING_SECONDS" ]; then
   log "OCG_POD_MAX_RUNTIME_SECONDS=$MAX_RUNTIME exceeds hard ceiling; clamping to $HARD_CEILING_SECONDS"
   MAX_RUNTIME=$HARD_CEILING_SECONDS
@@ -74,18 +78,34 @@ request_shutdown() {
       else runpodctl stop pod "$RUNPOD_POD_ID" && { log "runpodctl stop accepted (attempt $attempt)"; exit 0; }
       fi
     fi
-    if response=$(curl -fsS --max-time 20 -X POST "https://api.runpod.io/graphql" \
+    if response=$(curl -fsS --max-time 20 -X POST "${GRAPHQL_ENDPOINT}" \
          -H "Content-Type: application/json" \
          -H "Authorization: Bearer ${RUNPOD_API_KEY}" \
          -d "{\"query\": \"${mutation}\"}"  ); then
-      if printf '%s' "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if not d.get("errors") and isinstance(d.get("data"),dict) and d["data"].get("podStop" if sys.argv[1]=="stop" else "podTerminate") is not None else 1)' "$ACTION"; then
+      PY_BIN="$(command -v python3 || command -v python || true)"
+      if [ -n "$PY_BIN" ] && printf '%s' "$response" | "$PY_BIN" -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+if not isinstance(d, dict) or d.get("errors"):
+    sys.exit(1)
+data = d.get("data")
+if not isinstance(data, dict):
+    sys.exit(1)
+if sys.argv[1] == "stop":
+    ps = data.get("podStop")
+    sys.exit(0 if isinstance(ps, dict) and isinstance(ps.get("id"), str) and bool(ps.get("id")) else 1)
+else:
+    sys.exit(0 if ("podTerminate" in data and data.get("podTerminate") is not False) else 1)
+' "$ACTION"; then
       log "API $ACTION request accepted (attempt $attempt) — acceptance is NOT confirmation of billing stop"
       exit 0
       fi
     fi
     log "API $ACTION request failed (attempt $attempt); retrying"
     attempt=$((attempt + 1))
-    sleep 10
+    sleep "$RETRY_SLEEP"
   done
   log "ERROR all $ACTION attempts failed; out-of-pod guard must stop this pod"
   exit 4

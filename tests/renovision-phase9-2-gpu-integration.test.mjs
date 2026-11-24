@@ -5,8 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { execFile } from "node:child_process";
+import { spawnSync, spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import {
@@ -42,6 +41,7 @@ const READY_ENV = {
   pythonVersion: "3.10",
   helperLicensesAccepted: true,
   weightsCachedLocally: true,
+  cachedModelKeys: ["trellis-2-4b"],
 };
 const tmp = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
 
@@ -472,13 +472,175 @@ test("status outage cannot confirm termination or close a guarded session", asyn
   const stateFile = path.join(dir, "s.json");
   try {
     writeSessionState(stateFile, { podId: "p", status: "open", deadlineMs: 0 });
-    assert.equal((await reconcileSession(client, stateFile)).action, "unconfirmed");
+    assert.equal((await reconcileSession(client, stateFile, { nowImpl: () => t, sleep: async () => { t += 100; }, confirmTimeoutMs: 100 })).action, "unconfirmed");
     assert.equal(readSessionState(stateFile).status, "open");
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("GraphQL HTTP 200 errors are rejected by the spend guard transport", async () => {
-  const { createRunpodGraphqlTransport } = await import("../lib/renovision/runpod-spend-guard.mjs");
+  const { createRunpodGraphqlTransport, createRunpodClient } = await import("../lib/renovision/runpod-spend-guard.mjs");
   const query = createRunpodGraphqlTransport({ apiKey: "mock-only", fetchImpl: async () => ({ ok: true, json: async () => ({ errors: [{ message: "stop rejected" }] }) }) });
   await assert.rejects(query("mock"), /RUNPOD_API_ERROR: stop rejected/);
+
+  const emptyDataQuery = createRunpodGraphqlTransport({ apiKey: "mock-only", fetchImpl: async () => ({ ok: true, json: async () => ({}) }) });
+  await assert.rejects(emptyDataQuery("mock"), /RUNPOD_API_ERROR: missing or invalid GraphQL data object/);
+
+  const nullStopClient = createRunpodClient(createRunpodGraphqlTransport({ apiKey: "mock-only", fetchImpl: async () => ({ ok: true, json: async () => ({ data: { podStop: null } }) }) }));
+  await assert.rejects(nullStopClient.stop("p1"), /RUNPOD_API_ERROR: ambiguous podStop response/);
+
+  const missingTermClient = createRunpodClient(createRunpodGraphqlTransport({ apiKey: "mock-only", fetchImpl: async () => ({ ok: true, json: async () => ({ data: {} }) }) }));
+  await assert.rejects(missingTermClient.terminate("p1"), /RUNPOD_API_ERROR: ambiguous podTerminate response/);
+});
+
+test("ambiguous terminate response never confirms termination even when pod() returns null", async () => {
+  let t = 0;
+  const ambiguousClient = {
+    stop: async () => ({}),
+    terminate: async () => ({}),
+    pod: async () => null,
+  };
+  const res = await shutdownAndConfirm(ambiguousClient, "p-ambig", {
+    action: "terminate",
+    nowImpl: () => t,
+    sleep: async () => { t += 100; },
+    confirmTimeoutMs: 100,
+  });
+  assert.equal(res.confirmed, false);
+  assert.equal(res.attempts[0].accepted, false);
+});
+
+test("overdue reconcile still attempts safe shutdown when initial status query fails", async () => {
+  const dir = tmp("ocg-overdue-outage-");
+  const stateFile = path.join(dir, "s.json");
+  try {
+    let podCalls = 0;
+    const calls = [];
+    const transientClient = {
+      async pod(id) {
+        podCalls += 1;
+        calls.push("pod");
+        if (podCalls === 1) throw new Error("transient status outage");
+        return { id, desiredStatus: "EXITED", runtime: null };
+      },
+      async stop(id) {
+        calls.push("stop");
+        return { id, desiredStatus: "EXITED" };
+      },
+      async terminate() {
+        calls.push("terminate");
+        return { id: "p1", desiredStatus: "TERMINATED" };
+      },
+    };
+    writeSessionState(stateFile, { podId: "p1", status: "open", deadlineMs: 0 });
+    const res = await reconcileSession(transientClient, stateFile, { sleep: async () => {} });
+    assert.equal(res.action, "shutdown");
+    assert.equal(res.confirmed, true);
+    assert.ok(calls.includes("stop"), "overdue reconcile must attempt stop even after initial pod() failure");
+    assert.equal(readSessionState(stateFile).status, "closed");
+
+    const persistentOutageCalls = [];
+    let t = 0;
+    const outageClient = {
+      async pod() { persistentOutageCalls.push("pod"); throw new Error("offline"); },
+      async stop() { persistentOutageCalls.push("stop"); throw new Error("offline"); },
+      async terminate() { persistentOutageCalls.push("terminate"); throw new Error("offline"); },
+    };
+    writeSessionState(stateFile, { podId: "p2", status: "open", deadlineMs: 0 });
+    const r2 = await reconcileSession(outageClient, stateFile, {
+      nowImpl: () => t,
+      sleep: async () => { t += 100; },
+      confirmTimeoutMs: 100,
+    });
+    assert.equal(r2.action, "unconfirmed");
+    assert.ok(persistentOutageCalls.includes("stop"), "overdue reconcile must still attempt stop on persistent outage");
+    assert.equal(readSessionState(stateFile).status, "open");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CLI refuses destructive --terminate and --allow-terminate-escalation without OCG_POD_TERMINATION_APPROVED=1", async () => {
+  const fake = fakeRunpod({ desiredStatus: "RUNNING" });
+  const dir = tmp("ocg-term-gate-");
+  const write = process.stdout.write;
+  const captured = [];
+  process.stdout.write = (chunk) => { captured.push(String(chunk)); return true; };
+  try {
+    const c1 = await guardMain(["stop", "--pod", "p1", "--terminate"], {
+      env: { OCG_GPU_SESSION_STATE_FILE: path.join(dir, "s.json") },
+      client: fake,
+    });
+    assert.equal(c1, 2);
+    const c2 = await guardMain(["stop", "--pod", "p1", "--allow-terminate-escalation"], {
+      env: { OCG_GPU_SESSION_STATE_FILE: path.join(dir, "s.json") },
+      client: fake,
+    });
+    assert.equal(c2, 2);
+    const c3 = await guardMain(["start", "--pod", "p1", "--max-minutes", "10", "--max-cost-usd", "1", "--approval-id", "A", "--acknowledge-no-hard-ceiling", "--allow-terminate-escalation"], {
+      env: { OCG_GPU_SESSION_STATE_FILE: path.join(dir, "s.json"), OCG_GPU_ACTIVATION_APPROVAL_ID: "A" },
+      client: fake,
+    });
+    assert.equal(c3, 2);
+  } finally {
+    process.stdout.write = write;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  assert.deepEqual(fake.calls, [], "no Runpod API calls may occur when destructive termination is not approved");
+  assert.match(captured.join("\n"), /DESTRUCTIVE_TERMINATION_NOT_APPROVED/);
+});
+
+test("in-pod watchdog rejects GraphQL errors and null podStop responses and accepts valid stop response", async (t) => {
+  if (spawnSync("sh", ["-c", "command -v curl >/dev/null && (command -v python3 >/dev/null || command -v python >/dev/null)"]).status !== 0) {
+    return t.skip("sh/curl/python not available");
+  }
+  const http = await import("node:http");
+  const dir = tmp("ocg-wd-gql-");
+  let mode = "errors";
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    if (mode === "errors") res.end(JSON.stringify({ errors: [{ message: "unauthorized" }] }));
+    else if (mode === "nullStop") res.end(JSON.stringify({ data: { podStop: null } }));
+    else res.end(JSON.stringify({ data: { podStop: { id: "pod-test", desiredStatus: "EXITED" } } }));
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const { port } = server.address();
+  const baseEnv = {
+    ...process.env,
+    OCG_WATCHDOG_DRY_RUN: "0",
+    OCG_POD_MAX_RUNTIME_SECONDS: "0",
+    OCG_WATCHDOG_POLL_SECONDS: "1",
+    OCG_WATCHDOG_RETRY_SLEEP_SECONDS: "0",
+    OCG_ACTIVITY_FILE: path.join(dir, "act"),
+    RUNPOD_POD_ID: "pod-test",
+    RUNPOD_API_KEY: "mock-only",
+    OCG_RUNPOD_GRAPHQL_ENDPOINT: `http://127.0.0.1:${port}/graphql`,
+  };
+  const runWatchdog = (env) =>
+    new Promise((resolve, reject) => {
+      const child = spawn("sh", ["infra/trellis2/pod_watchdog.sh"], { env, stdio: ["ignore", "pipe", "pipe"] });
+      let stderr = "";
+      child.stderr.on("data", (d) => { stderr += d.toString(); });
+      const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("watchdog test timeout")); }, 20_000);
+      child.on("close", (status) => { clearTimeout(timer); resolve({ status, stderr }); });
+      child.on("error", (err) => { clearTimeout(timer); reject(err); });
+    });
+  try {
+    mode = "errors";
+    const rErr = await runWatchdog(baseEnv);
+    assert.equal(rErr.status, 4);
+    assert.match(rErr.stderr, /all stop attempts failed/);
+
+    mode = "nullStop";
+    const rNull = await runWatchdog(baseEnv);
+    assert.equal(rNull.status, 4);
+    assert.match(rNull.stderr, /all stop attempts failed/);
+
+    mode = "ok";
+    const rOk = await runWatchdog(baseEnv);
+    assert.equal(rOk.status, 0);
+    assert.match(rOk.stderr, /API stop request accepted/);
+  } finally {
+    server.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

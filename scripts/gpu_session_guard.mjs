@@ -55,6 +55,17 @@ export async function main(argv = process.argv.slice(2), { env = process.env, cl
   const stateFile = env.OCG_GPU_SESSION_STATE_FILE || path.join(os.homedir(), ".ocg", "gpu-session-state.json");
   const client = injected ?? createRunpodClient(createRunpodGraphqlTransport({ apiKey: env.RUNPOD_API_KEY }));
   const podId = typeof args.pod === "string" ? args.pod : readSessionState(stateFile)?.podId;
+  const requestsDestructiveTermination = args.terminate === true || args["allow-terminate-escalation"] === true;
+  if (requestsDestructiveTermination && env.OCG_POD_TERMINATION_APPROVED !== "1") {
+    out({
+      command: args.command,
+      podId: podId ?? null,
+      refused: true,
+      error: "DESTRUCTIVE_TERMINATION_NOT_APPROVED: --terminate and --allow-terminate-escalation require OCG_POD_TERMINATION_APPROVED=1",
+      disclosure: HARD_CEILING_DISCLOSURE,
+    });
+    return 2;
+  }
 
   switch (args.command) {
     case "status": {
