@@ -2,6 +2,18 @@
 # CANDIDATE SPECIFICATION — NOT BUILT OR ACTIVATED WITHOUT FOUNDER AUTHORIZATION
 # Installs microsoft/TRELLIS.2 at pinned revision 75fbf0183001ed9876c8dbb35de6b68552ee08bd.
 # Does NOT download gated model weights (DINOv3 / TRELLIS.2-4B) at build time.
+#
+# Phase 9.2 notes:
+#  - TORCH_CUDA_ARCH_LIST covers sm_86 (Runpod A40 / A6000 / RTX 3090) AND sm_89
+#    (Cloud Run L4 / L40S). The Phase 9.1 value "8.9" alone produced o-voxel kernels
+#    that cannot execute on the A40 shared-GPU candidate ("no kernel image").
+#    "+PTX" embeds PTX for forward compatibility with newer GPUs.
+#  - Node.js 24 matches package.json "engines": {"node": ">=24"}.
+#  - Heavy, slow layers (apt, TRELLIS.2 clone, torch/requirements, o-voxel CUDA
+#    compile) are ordered BEFORE the application source COPY so that app-only edits
+#    no longer invalidate the CUDA build cache.
+#  - OCG_TEXTURED_GLB_MODE defaults to geometry_only (commercial-safe; nvdiffrast is
+#    NVIDIA Non-Commercial and is never installed).
 
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
@@ -11,16 +23,19 @@ ARG TRELLIS2_COMMIT=75fbf0183001ed9876c8dbb35de6b68552ee08bd
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/opt/trellis2 \
-    TORCH_CUDA_ARCH_LIST="8.9" \
+    TORCH_CUDA_ARCH_LIST="8.6;8.9+PTX" \
     OCG_PYTHON_BIN=python3.10 \
     OCG_TRELLIS_WORKER_PATH=/app/infra/trellis2/trellis2_worker.py \
     OCG_BG_REMOVER=u2net \
     OCG_DINOV3_ATTRIBUTION="Built with DINOv3" \
+    OCG_TEXTURED_GLB_MODE=geometry_only \
+    OCG_GPU_MAX_CONCURRENCY=1 \
+    HF_HUB_OFFLINE=1 \
     NODE_ENV=production
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 python3.10-dev python3-pip python3-venv curl ca-certificates git build-essential ninja-build \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,19 +44,21 @@ RUN git clone --no-checkout "${TRELLIS2_REPO}" /opt/trellis2 \
     && git -C /opt/trellis2 submodule update --init --recursive --depth 1
 
 WORKDIR /app
-COPY package.json ./
-COPY lib ./lib
-COPY src ./src
-COPY assets ./assets
 COPY infra/trellis2/requirements.trellis2.txt ./infra/trellis2/requirements.trellis2.txt
-COPY infra/trellis2/trellis2_worker.py ./infra/trellis2/trellis2_worker.py
 
 RUN python3.10 -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && python3.10 -m pip install --no-cache-dir -r ./infra/trellis2/requirements.trellis2.txt
 
 RUN if [ -d /opt/trellis2/o-voxel ]; then python3.10 -m pip install --no-cache-dir --no-deps --no-build-isolation /opt/trellis2/o-voxel; fi
 
-RUN useradd --create-home --shell /bin/bash ocg && chown -R ocg:ocg /app /opt/trellis2
+RUN useradd --create-home --shell /bin/bash ocg && chown -R ocg:ocg /opt/trellis2
+
+COPY --chown=ocg:ocg package.json ./
+COPY --chown=ocg:ocg lib ./lib
+COPY --chown=ocg:ocg src ./src
+COPY --chown=ocg:ocg assets ./assets
+COPY --chown=ocg:ocg infra/trellis2/trellis2_worker.py ./infra/trellis2/trellis2_worker.py
+COPY --chown=ocg:ocg infra/trellis2/pod_watchdog.sh ./infra/trellis2/pod_watchdog.sh
 USER ocg
 
 EXPOSE 8788
