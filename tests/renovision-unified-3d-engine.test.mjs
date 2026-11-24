@@ -71,7 +71,7 @@ test("Compute-Aware Scheduler enforces $0 budget, commercial licenses, and GPU p
     backgroundRemover: "briaai/RMBG-2.0",
     environment: {
       os: "linux", hasNvidiaGpu: true, vramGb: 24, freeDiskGb: 60,
-      cudaVersion: "12.4", pythonVersion: "3.10", helperLicensesAccepted: true, weightsCachedLocally: true,
+      cudaVersion: "12.4", pythonVersion: "3.10", helperLicensesAccepted: true, cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
   });
   assert.equal(blockedLicense.scheduled, false);
@@ -83,7 +83,7 @@ test("Compute-Aware Scheduler enforces $0 budget, commercial licenses, and GPU p
     dinov3AttributionPresent: true,
     environment: {
       os: "linux", hasNvidiaGpu: true, vramGb: 24, freeDiskGb: 60,
-      cudaVersion: "12.4", pythonVersion: "3.10", helperLicensesAccepted: true, weightsCachedLocally: true,
+      cudaVersion: "12.4", pythonVersion: "3.10", helperLicensesAccepted: true, cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
   });
   assert.equal(ok.scheduled, true);
