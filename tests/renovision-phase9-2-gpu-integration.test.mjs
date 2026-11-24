@@ -554,6 +554,27 @@ test("overdue reconcile still attempts safe shutdown when initial status query f
     assert.equal(r2.action, "unconfirmed");
     assert.ok(persistentOutageCalls.includes("stop"), "overdue reconcile must still attempt stop on persistent outage");
     assert.equal(readSessionState(stateFile).status, "open");
+
+    writeSessionState(stateFile, { podId: "p2", status: "open", deadlineMs: Date.now() + 60_000 });
+    const write = process.stdout.write;
+    const errWrite = process.stderr.write;
+    process.stdout.write = () => true;
+    process.stderr.write = () => true;
+    try {
+      const cliCode = await guardMain(["reconcile"], {
+        env: { OCG_GPU_SESSION_STATE_FILE: stateFile },
+        client: {
+          async pod() { throw new Error("offline"); },
+          async stop() { throw new Error("offline"); },
+          async terminate() { throw new Error("offline"); },
+        },
+        sleep: async () => {},
+      });
+      assert.equal(cliCode, 4, "CLI reconcile must exit 4 on unconfirmed shutdown/outage, never silent 0");
+    } finally {
+      process.stdout.write = write;
+      process.stderr.write = errWrite;
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

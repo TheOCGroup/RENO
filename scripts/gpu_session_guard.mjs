@@ -156,7 +156,7 @@ export async function main(argv = process.argv.slice(2), { env = process.env, cl
     case "reconcile": {
       const res = await reconcileSession(client, stateFile, { log, ...(sleep ? { sleep } : {}) });
       out({ command: "reconcile", ...res });
-      return res.action === "shutdown" && !res.confirmed ? 4 : 0;
+      return res.action === "unconfirmed" || (res.action === "shutdown" && !res.confirmed) ? 4 : 0;
     }
     default:
       out({
