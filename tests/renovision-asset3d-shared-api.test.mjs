@@ -68,7 +68,7 @@ function makeActiveAdapter() {
       cudaVersion: "12.4",
       pythonVersion: "3.11",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
     provider: async ({ assetName }) => ({
       glbBuffer: buildMinimalGlb({
