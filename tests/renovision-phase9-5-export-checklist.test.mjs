@@ -58,6 +58,14 @@ test("UF-Q9D2-1: null/blank selection values never count as confirmed", () => {
   assert.deepEqual(out, { designSelections: false, paintMaterialSchedule: false });
 });
 
+test("UF-Q9.5-2: whitespace-only strings and falsy non-strings never count as confirmed", () => {
+  const out = evaluateDesignChecklist({
+    harmonySelections: { paintHex: "   ", cabinetry: 0 },
+    conceptSelections: [{ style: " ", palette: false, material: "\t\n" }],
+  });
+  assert.deepEqual(out, { designSelections: false, paintMaterialSchedule: false });
+});
+
 test("UF-Q9D2-1 wiring: studio publishes saved concept selections and the checklist consumes the shared evaluator", () => {
   // The module script exposes the evaluator on window.RV.
   assert.match(RENOVISION_STUDIO_HTML, /export-checklist\.mjs/);
