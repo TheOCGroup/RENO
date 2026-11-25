@@ -95,7 +95,7 @@ test("worker-to-API integration: createAsset3dAdapter -> createTrellisSubprocess
       cudaVersion: "12.4",
       pythonVersion: "3.10",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
   });
 
@@ -160,4 +160,31 @@ test("Dockerfile.trellis2 pins upstream TRELLIS.2 commit, uses o_voxel.postproce
   assert.match(gpuYaml, /maxScale:\s*"1"/);
   assert.match(gpuYaml, /containerConcurrency:\s*1/);
   assert.match(gpuYaml, /nvidia-l4/);
+});
+
+test("CUDA native extension build targets existing A40 sm_86 and proposed L4 sm_89", () => {
+  const dockerfile = fs.readFileSync("infra/trellis2/Dockerfile.trellis2", "utf8");
+  const archList = dockerfile.match(/TORCH_CUDA_ARCH_LIST="([^"]+)"/)?.[1];
+  assert.ok(archList, "CUDA architecture list must be explicit");
+  assert.deepEqual(archList.split(";").map((a) => a.replace(/\+PTX$/, "")), ["8.6", "8.9"]);
+});
+
+test("TRELLIS provider defaults to geometry-only without a commercial rasterizer license", async () => {
+  const previous = process.env.OCG_TEXTURED_GLB_MODE;
+  delete process.env.OCG_TEXTURED_GLB_MODE;
+  try {
+    const provider = createTrellisSubprocessProvider({
+      nvdiffrastCommercialLicensed: false,
+      execFileImpl: async (_bin, args, opts) => {
+        assert.equal(opts.env.OCG_TEXTURED_GLB_MODE, "geometry_only");
+        fs.copyFileSync("assets/samples/accent-chair.glb", args[2]);
+      },
+    });
+    const result = await provider({ imageBase64: buildProceduralObjectPng256().toString("base64"), mimeType: "image/png" });
+    assert.equal(result.geometryOnly, true);
+    assert.equal(result.texturedOutput, false);
+  } finally {
+    if (previous === undefined) delete process.env.OCG_TEXTURED_GLB_MODE;
+    else process.env.OCG_TEXTURED_GLB_MODE = previous;
+  }
 });

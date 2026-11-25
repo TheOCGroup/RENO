@@ -10,7 +10,7 @@ const GPU_ENV = {
   cudaVersion: "12.4",
   pythonVersion: "3.10",
   helperLicensesAccepted: true,
-  weightsCachedLocally: true,
+  cachedModelKeys: ["trellis-1", "trellis-2-4b"],
 };
 
 test("model router selects least-resource compatible local model by default and escalates on high quality", () => {
@@ -22,7 +22,7 @@ test("model router selects least-resource compatible local model by default and 
     environment: GPU_ENV,
   });
   assert.equal(std.selected, true);
-  assert.equal(std.model.key, "trellis-2-4b"); // 12GB min at 512 < 16GB for trellis-1
+  assert.equal(std.model.key, "trellis-1"); // lowest published minimum: v1 16GB < TRELLIS.2 24GB
   assert.equal(std.costUsd, 0);
 
   const high = router.selectModel({
@@ -86,4 +86,15 @@ test("model router refuses paid providers and supports custom OCG local model re
   });
   assert.equal(cpuRes.selected, true);
   assert.equal(cpuRes.model.key, "ocg-cpu-light");
+});
+
+test("automatic routing requires model-specific cache evidence", () => {
+  const router = createModelRouter3d();
+  const onlyV2 = { ...GPU_ENV, cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true };
+  assert.equal(router.selectModel({ environment: onlyV2 }).model.key, "trellis-2-4b");
+  assert.equal(router.selectModel({ environment: onlyV2, requestedModelKey: "trellis-1" }).selected, false);
+  const legacy = { ...GPU_ENV, cachedModelKeys: undefined, weightsCachedLocally: true };
+  assert.equal(router.selectModel({ environment: legacy }).selected, false);
+  assert.equal(router.selectModel({ environment: legacy, requestedModelKey: "trellis-2-4b" }).selected, true);
+  assert.equal(router.selectModel({ environment: { ...onlyV2, cachedModelKeys: [] } }).selected, false);
 });

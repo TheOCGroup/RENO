@@ -65,12 +65,27 @@ export function buildProceduralObjectPng256() {
   ]);
 }
 
+/** Phase 9.2 fix (Phase 8 Low): the acceptance `status` must distinguish
+ * CPU-contract / mocked runs from live GPU runs. Only an explicitly
+ * REAL GPU run may carry LIVE_INFERENCE_VERIFIED; every other
+ * classification gets its own honest status and never the LIVE label. */
+export function resolveAcceptanceStatus(modeLabel = "") {
+  const label = String(modeLabel || "");
+  if (label === "REAL GPU EXECUTED") return "LIVE_INFERENCE_VERIFIED";
+  if (/cpu/i.test(label)) return "CPU_CONTRACT_VERIFIED";
+  if (/mock/i.test(label)) return "MOCKED_CONTRACT_VERIFIED";
+  return "CONTRACT_VERIFIED_NOT_LIVE";
+}
+
 export async function runLiveAcceptanceSuite({
   engineUrl,
   engineToken,
   crossTenantToken = null,
   timeoutMs = 240_000,
-  modeLabel = "REAL GPU EXECUTED",
+  // UF-Q9-2: the default must never be the LIVE label. A run only carries
+  // "REAL GPU EXECUTED" (→ LIVE_INFERENCE_VERIFIED) when the caller
+  // explicitly declares it — the CLI requires --real-gpu-executed for that.
+  modeLabel = "UNDECLARED MODE",
 } = {}) {
   const baseUrl = String(engineUrl || "").replace(/\/$/, "");
   const token = String(engineToken || "").trim();
@@ -202,7 +217,7 @@ export async function runLiveAcceptanceSuite({
 
   const mem = process.memoryUsage();
   return {
-    status: "LIVE_INFERENCE_VERIFIED",
+    status: resolveAcceptanceStatus(modeLabel),
     classification: modeLabel,
     jobId,
     assetId: job.assetId || null,
@@ -235,7 +250,18 @@ async function main() {
     process.exit(2);
   }
 
-  const report = await runLiveAcceptanceSuite({ engineUrl, engineToken, crossTenantToken });
+  // UF-Q9-2: the LIVE classification requires an explicit operator opt-in.
+  // --mode-label declares the run mode; --real-gpu-executed is the only way
+  // to declare a genuine REAL GPU run. Without either, the run is labeled
+  // non-live and can never emit LIVE_INFERENCE_VERIFIED.
+  const argv = process.argv.slice(2);
+  const modeIdx = argv.indexOf("--mode-label");
+  const explicitModeLabel = modeIdx >= 0 ? argv[modeIdx + 1] : undefined;
+  const modeLabel = argv.includes("--real-gpu-executed")
+    ? "REAL GPU EXECUTED"
+    : (explicitModeLabel || "CLI RUN (MODE UNDECLARED)");
+
+  const report = await runLiveAcceptanceSuite({ engineUrl, engineToken, crossTenantToken, modeLabel });
   console.log(JSON.stringify(report));
 }
 

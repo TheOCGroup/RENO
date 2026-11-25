@@ -21,7 +21,19 @@ function makeTenantAuth() {
 }
 
 test("GET /health returns unauthenticated non-sensitive liveness while /api/3d/health stays authenticated", async () => {
-  const server = createAsset3dServer({ authenticate: makeTenantAuth() });
+  // /ready now requires engine readiness too (Phase 9.2 fix): supply an
+  // enabled adapter whose model preflight passes on CPU-contract env data.
+  const readyAdapter = createAsset3dAdapter({
+    enabled: true,
+    founderApproved: true,
+    provider: async () => ({ glbBuffer: fs.readFileSync(path.resolve("assets/samples/accent-chair.glb")) }),
+    environment: {
+      os: "linux", hasNvidiaGpu: true, vramGb: 24, freeDiskGb: 60, cudaVersion: "12.4",
+      pythonVersion: "3.10", helperLicensesAccepted: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
+    },
+  });
+  const server = createAsset3dServer({ authenticate: makeTenantAuth(), adapter: readyAdapter });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -36,6 +48,10 @@ test("GET /health returns unauthenticated non-sensitive liveness while /api/3d/h
     const ready = await readyRes.json();
     assert.equal(ready.ok, true);
     assert.equal(ready.status, "ready");
+    assert.equal(ready.readyForInference, true);
+    assert.equal(ready.components.auth.ready, true);
+    assert.equal(ready.components.engine.enabled, true);
+    assert.equal(ready.components.engine.preflightReady, true);
 
     const apiHealthUnauth = await fetch(`${baseUrl}/api/3d/health`);
     assert.equal(apiHealthUnauth.status, 401);
@@ -79,7 +95,7 @@ test("CPU contract: strengthened runLiveAcceptanceSuite verifies auth, tenant is
       cudaVersion: "12.4",
       pythonVersion: "3.10",
       helperLicensesAccepted: true,
-      weightsCachedLocally: true,
+      cachedModelKeys: ["trellis-2-4b"], weightsCachedLocally: true,
     },
   });
   const server = createAsset3dServer({ authenticate: makeTenantAuth(), adapter });
@@ -93,7 +109,8 @@ test("CPU contract: strengthened runLiveAcceptanceSuite verifies auth, tenant is
       crossTenantToken: "tenant-b-token",
       modeLabel: "CPU CONTRACT TESTED",
     });
-    assert.equal(result.status, "LIVE_INFERENCE_VERIFIED");
+    // Phase 9.2 fix: a CPU-contract run must NOT be labelled LIVE.
+    assert.equal(result.status, "CPU_CONTRACT_VERIFIED");
     assert.equal(result.classification, "CPU CONTRACT TESTED");
     assert.ok(result.triangleCount > 0);
     assert.equal(result.glbExportMode, "geometry_only");
