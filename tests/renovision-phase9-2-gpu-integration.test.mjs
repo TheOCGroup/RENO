@@ -106,9 +106,12 @@ test("worker timeout is bounded to [30s, 900s] with a 600s default", () => {
 
 // ---------- GPU scheduler ----------
 
-test("GPU scheduler defaults to sequential (concurrency 1) and clamps env", () => {
+test("GPU scheduler defaults to sequential (concurrency 1); env requests above 1 are refused (UF-Q9-3)", () => {
   assert.equal(resolveGpuSchedulerConfig({}).maxConcurrency, 1);
-  assert.equal(resolveGpuSchedulerConfig({ OCG_GPU_MAX_CONCURRENCY: "99" }).maxConcurrency, 4);
+  assert.throws(
+    () => resolveGpuSchedulerConfig({ OCG_GPU_MAX_CONCURRENCY: "99" }),
+    (e) => e.code === GPU_SCHEDULER_ERRORS.CONCURRENCY_REFUSED,
+  );
   assert.equal(resolveGpuSchedulerConfig({ OCG_GPU_MAX_CONCURRENCY: "0" }).maxConcurrency, 1);
 });
 

@@ -837,6 +837,8 @@ const blobToB64=(blob)=>new Promise((resolve,reject)=>{const r=new FileReader();
 const b64ToBlob=(b64,mime)=>{const d=atob(b64);const a=new Uint8Array(d.length);for(let i=0;i<d.length;i++)a[i]=d.charCodeAt(i);return new Blob([a],{type:mime});};
 const conceptApi=async(path,method,body)=>{const r=await apiCall('/api/renovision/projects/'+encodeURIComponent(activeProjectId)+path,method,body);if(r.status<200||r.status>=300)throw Error((r.data&&r.data.errors||['request failed']).join(', '));return r.data;};
 function renderConceptHistory(list){
+  window.__rvConceptSelections=(list||[]).map(c=>(c&&c.selections)?c.selections:null).filter(Boolean);
+  window.dispatchEvent(new Event('rv-concepts-changed'));
   const box=$('conceptHistoryList');box.innerHTML='';
   if(!list||!list.length){box.innerHTML='<p class="note">No concepts saved yet. Generate a concept while a project is open and it will be recorded here.</p>';return;}
   for(const c of list){
@@ -1739,10 +1741,13 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
     exportList.innerHTML = "";
     var fp = typeof guidedState !== "undefined" ? guidedState.furnishProposal : null;
     var plans = typeof guidedState !== "undefined" && guidedState.planUploads ? guidedState.planUploads.length : 0;
+    var chk = (window.RV && window.RV.exportChecklist && window.RV.exportChecklist.evaluateDesignChecklist)
+      ? window.RV.exportChecklist.evaluateDesignChecklist({ harmonyChosen: designChosen, harmonySelections: designState && designState.selections ? designState.selections : {}, conceptSelections: window.__rvConceptSelections || [] })
+      : { designSelections: designChosen, paintMaterialSchedule: designChosen };
     var items = [
       [plans > 0, "Floor plan — registered original preserved, with your confirmed dimensions"],
-      [designChosen, "Design selections — style, paint and materials with revision history"],
-      [designChosen, "Paint & material schedule — included in the design brief download"],
+      [chk.designSelections, "Design selections — style, paint and materials with revision history"],
+      [chk.paintMaterialSchedule, "Paint & material schedule — included in the design brief download"],
       [!!fp, "Furniture schedule — items, fit classifications and prices from your catalog"],
       [!!(fp || (typeof guidedState !== "undefined" && guidedState.estimate) || dsScope), "Budget summary — estimates and totals with their sources"],
       [!!dsScope, "Deal Scout scope — imported with provenance intact"],
@@ -1775,6 +1780,7 @@ if (window.RV) gxBuildPanels(); else window.addEventListener("rv-ready", gxBuild
     if (g.assistantOpen === false) vxSetAssistant(false);
     renderFamilies(); renderCombo(); renderPaintChips(); renderSwatches(); renderHarmonyStatus(); renderVersions(); renderDealScout(); refreshDesignDone();
   }
+  window.addEventListener("rv-concepts-changed", function () { renderExport(); });
   if (window.RV) vxInit(); else window.addEventListener("rv-ready", vxInit);
 
   /* --- Persistence: ride the existing design-workspace document --- */
@@ -1795,7 +1801,8 @@ import * as harmony from "/lib/renovision/design-harmony.mjs";
 import * as fitTiers from "/lib/renovision/fit-tiers.mjs";
 import * as dealScout from "/lib/renovision/deal-scout-contract.mjs";
 import * as designLibrary from "/lib/renovision/design-library.mjs";
-window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, harmony, fitTiers, dealScout, designLibrary };
+import * as exportChecklist from "/lib/renovision/export-checklist.mjs";
+window.RV = { concierge, propertyProfile, planIngestion, conversions, conversionCosts, furnish, harmony, fitTiers, dealScout, designLibrary, exportChecklist };
 window.dispatchEvent(new Event("rv-ready"));
 </script>
 </body></html>`;
